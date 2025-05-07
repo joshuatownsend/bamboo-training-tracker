@@ -45,3 +45,31 @@ export interface TrainingStatistics {
   completionRate: number;
   departmentStats: DepartmentStats[];
 }
+
+// New interfaces for AVFRD specific requirements
+export interface Position {
+  id: string;
+  title: string;
+  description: string;
+  department: string;
+  countyRequirements: string[]; // Training IDs required by Loudoun County
+  avfrdRequirements: string[]; // Training IDs required by AVFRD
+}
+
+export interface QualificationStatus {
+  positionId: string;
+  positionTitle: string;
+  isQualifiedCounty: boolean;
+  isQualifiedAVFRD: boolean;
+  missingCountyTrainings: Training[];
+  missingAVFRDTrainings: Training[];
+  completedTrainings: Training[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'user' | 'admin';
+  employeeId: string;
+}
