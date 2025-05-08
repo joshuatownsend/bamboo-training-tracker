@@ -1,5 +1,6 @@
 
 import { useCallback, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 
@@ -44,13 +45,34 @@ const useBambooHR = () => {
       setIsLoading(false);
     }
   }, [isConfigured, getBambooService]);
+
+  // React Query hook to fetch all BambooHR data
+  const useAllData = () => {
+    return useQuery({
+      queryKey: ['bamboohr', 'allData'],
+      queryFn: async () => {
+        if (!isConfigured) {
+          throw new Error('BambooHR is not configured.');
+        }
+        try {
+          const service = getBambooService();
+          return await service.fetchAllData();
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          throw new Error(errorMessage);
+        }
+      },
+      enabled: isConfigured
+    });
+  };
   
   return {
     isLoading,
     error,
     fetchData,
     isConfigured,
-    getBambooService
+    getBambooService,
+    useAllData
   };
 };
 

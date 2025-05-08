@@ -15,6 +15,7 @@ import { useState } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
+import { Employee, Training, TrainingCompletion } from "@/lib/types";
 
 const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,9 +32,9 @@ const Employees = () => {
   }
   
   // Use BambooHR data if available, otherwise fall back to mock data
-  const employeesData = isConfigured && data?.employees?.length ? data.employees : mockEmployees;
-  const trainingsData = isConfigured && data?.trainings?.length ? data.trainings : mockTrainings;
-  const completionsData = isConfigured && data?.completions?.length ? data.completions : mockCompletions;
+  const employeesData: Employee[] = isConfigured && data?.employees?.length ? data.employees : mockEmployees;
+  const trainingsData: Training[] = isConfigured && data?.trainings?.length ? data.trainings : mockTrainings;
+  const completionsData: TrainingCompletion[] = isConfigured && data?.completions?.length ? data.completions : mockCompletions;
   
   // Get unique departments for filter
   const departments = [...new Set(employeesData.map(e => e.department))];
@@ -112,7 +113,7 @@ const Employees = () => {
                 Error loading employee data
               </p>
               <p className="text-sm mt-1">
-                {error instanceof Error ? error.message : 'Unknown error'}
+                {error instanceof Error ? error.message : String(error)}
               </p>
               <div className="mt-3">
                 <Button asChild variant="outline" size="sm">
@@ -144,8 +145,8 @@ const Employees = () => {
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
             {departments.map((dept) => (
-              <SelectItem key={dept} value={dept}>
-                {dept}
+              <SelectItem key={dept as string} value={dept as string}>
+                {dept as string}
               </SelectItem>
             ))}
           </SelectContent>
