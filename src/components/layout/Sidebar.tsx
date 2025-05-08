@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Settings,
@@ -7,7 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useUser } from "@/contexts/UserContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -27,7 +28,7 @@ interface NavItem {
 }
 
 const Sidebar = () => {
-  const { user, signOut, isAdmin } = useAuth();
+  const { currentUser: user, logout: signOut, isAdmin } = useUser();
 
   const navigationItems: NavItem[] = [
     {

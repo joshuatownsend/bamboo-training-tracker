@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -63,7 +64,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/employees" element={<Employees />} />
         <Route path="/employees/:id" element={<EmployeeDetail />} />
-        <Route path="/courses" element={<Courses />} />
+        <Route path="/trainings" element={<Courses />} />
         <Route path="/my-trainings" element={<MyTrainings />} />
         <Route path="/my-qualifications" element={<MyQualifications />} />
         <Route path="/required-trainings" element={<RequiredTrainings />} />
@@ -71,8 +72,8 @@ const AppRoutes = () => {
         <Route path="/admin/positions" element={<AdminRoute><PositionManagement /></AdminRoute>} />
         <Route path="/admin/training-impact" element={<AdminRoute><TrainingImpact /></AdminRoute>} />
         <Route path="/admin/requirements" element={<AdminRoute><TrainingRequirementManagement /></AdminRoute>} />
-        <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-        <Route path="/bamboo-troubleshooting" element={<BambooTroubleshooting />} />
+        <Route path="/admin" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+        <Route path="/bamboo-troubleshooting" element={<AdminRoute><BambooTroubleshooting /></AdminRoute>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
