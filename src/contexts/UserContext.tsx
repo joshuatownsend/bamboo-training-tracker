@@ -2,7 +2,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useMsal } from "./MsalContext";
 import { loginRequest } from "../lib/authConfig";
-import { AuthenticationResult, InteractionRequiredAuthError, AccountInfo } from "@azure/msal-browser";
+import { InteractionType, PopupRequest, RedirectRequest, AuthenticationResult, AccountInfo } from "@azure/msal-browser";
+import { useMsalAuthentication } from "@azure/msal-react";
 import { User } from "@/lib/types";
 
 interface UserContextType {
@@ -73,7 +74,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchUserData();
   }, [instance, activeAccount]);
 
-  // Interactive login
+  // Interactive login - use redirect for better SPA compatibility
   const login = async () => {
     setIsLoading(true);
     try {
@@ -81,6 +82,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const accounts = instance.getAllAccounts();
       if (accounts.length > 0) {
         try {
+          instance.setActiveAccount(accounts[0]);
           const response = await instance.acquireTokenSilent({
             ...loginRequest,
             account: accounts[0],
@@ -88,20 +90,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(mapAccountToUser(response.account));
           return;
         } catch (error) {
-          // Silent acquisition failed, fallback to popup
-          if (error instanceof InteractionRequiredAuthError) {
-            const response = await instance.acquireTokenPopup(loginRequest);
-            setCurrentUser(mapAccountToUser(response.account));
-            return;
-          }
-          throw error;
+          // Silent acquisition failed, fallback to redirect
+          console.log("Silent acquisition failed, falling back to redirect login");
+          instance.loginRedirect(loginRequest);
+          return;
         }
       } else {
-        // No accounts, do popup login
-        const response = await instance.loginPopup(loginRequest);
-        if (response) {
-          setCurrentUser(mapAccountToUser(response.account));
-        }
+        // No accounts, do redirect login
+        instance.loginRedirect(loginRequest);
       }
     } catch (error) {
       console.error("Login failed:", error);
@@ -113,7 +109,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout the user
   const logout = () => {
-    instance.logoutPopup({
+    instance.logoutRedirect({
       postLogoutRedirectUri: window.location.origin,
     });
     setCurrentUser(null);

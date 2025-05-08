@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { PublicClientApplication, EventType, AuthenticationResult, AccountInfo } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { msalConfig } from '../lib/authConfig';
@@ -7,7 +7,7 @@ import { msalConfig } from '../lib/authConfig';
 // Initialize MSAL instance
 const msalInstance = new PublicClientApplication(msalConfig);
 
-// Set up default account selection after page load
+// Default account selection
 msalInstance.addEventCallback((event) => {
   if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
     const result = event.payload as AuthenticationResult;
@@ -36,6 +36,24 @@ interface MsalContextProviderProps {
 }
 
 export const MsalContextProvider: React.FC<MsalContextProviderProps> = ({ children }) => {
+  // Handle redirect response as soon as component mounts
+  useEffect(() => {
+    const handleRedirectPromise = async () => {
+      try {
+        const response = await msalInstance.handleRedirectPromise();
+        if (response) {
+          // If we have a response, a redirect was just handled
+          console.log("Redirect response handled successfully", response);
+          msalInstance.setActiveAccount(response.account);
+        }
+      } catch (error) {
+        console.error("Error handling redirect:", error);
+      }
+    };
+    
+    handleRedirectPromise();
+  }, []);
+
   // Check if there's already an active account
   const activeAccount = msalInstance.getActiveAccount();
 

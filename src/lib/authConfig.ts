@@ -6,6 +6,8 @@ export const msalConfig = {
     authority: `https://login.microsoftonline.com/${import.meta.env.VITE_AZURE_TENANT_ID || "common"}`,
     redirectUri: window.location.origin,
     postLogoutRedirectUri: window.location.origin,
+    // The following settings are critical for SPA authentication
+    navigateToLoginRequestUrl: true,
   },
   cache: {
     cacheLocation: "sessionStorage",
