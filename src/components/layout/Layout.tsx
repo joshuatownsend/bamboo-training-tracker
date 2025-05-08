@@ -1,5 +1,5 @@
 
-import { Sidebar } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import { Header } from "./Header";
 import { Outlet } from "react-router-dom";
 
