@@ -1,4 +1,3 @@
-
 import { Employee, Training, TrainingCompletion } from "../types";
 import { BambooApiOptions, BambooEmployee, BambooTraining, BambooTrainingCompletion } from "./types";
 import { BambooHRClient } from "./client";
@@ -20,18 +19,29 @@ class BambooHRService {
     try {
       console.log('Testing BambooHR connection...');
       
-      // Use a simple endpoint to test the connection
-      const response = await this.client.fetchFromBamboo('/employees/directory?limit=1');
-      console.log('BambooHR connection test successful, received data:', response);
+      // Use a different endpoint with less data for quicker response
+      const testEndpoint = '/meta/fields';
       
-      // Validate that we actually got employee data
-      if (!response || !response.employees) {
-        throw new Error('BambooHR API returned an unexpected response format. Expected "employees" field.');
-      }
+      console.log(`Performing test connection using endpoint: ${testEndpoint}`);
       
+      const response = await this.client.fetchFromBamboo(testEndpoint);
+      console.log('BambooHR connection test response:', response);
+      
+      // If we get here without errors, connection is working
       return true;
     } catch (error) {
       console.error('BambooHR connection test failed:', error);
+      
+      // Provide more specific error based on the content
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Enhance error with troubleshooting advice
+      if (errorMessage.includes('HTML') || errorMessage.includes('<!DOCTYPE')) {
+        throw new Error(`Connection failed: BambooHR is returning a login page instead of API data. 
+        Please verify your subdomain is correct (currently using "${this.client['subdomain']}") and 
+        that your API key is valid.`);
+      }
+      
       throw error;
     }
   }
@@ -50,7 +60,7 @@ class BambooHRService {
         "hireDate", 
         "photoUrl"
       ].join(",");
-
+      
       const response = await this.client.fetchFromBamboo(`/employees/directory?fields=${fields}`);
       
       // Map BambooHR employees to our Employee type

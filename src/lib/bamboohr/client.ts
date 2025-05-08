@@ -65,12 +65,23 @@ export class BambooHRClient {
         const contentType = response.headers.get('content-type');
         const responseText = await response.text();
         
+        console.log('Response status:', response.status);
+        console.log('Content-Type:', contentType);
+        console.log('Response preview:', responseText.substring(0, 200) + '...');
+        
         if (contentType && contentType.includes('text/html')) {
           console.error('Received HTML response instead of JSON:', responseText.substring(0, 200) + '...');
           
-          // More specific error message for HTML responses
+          // Look for specific patterns in the HTML to provide better diagnostics
           if (responseText.includes('login') || responseText.includes('<!DOCTYPE')) {
-            throw new Error(`BambooHR API returned a login page instead of JSON data. This typically means either your subdomain "${this.subdomain}" is incorrect or your API key is invalid/expired.`);
+            // Extract the page title which might contain useful error info
+            const titleMatch = responseText.match(/<title>(.*?)<\/title>/);
+            const title = titleMatch ? titleMatch[1] : 'Login page';
+            
+            throw new Error(`BambooHR returned a ${title} page instead of JSON data. This typically indicates: 
+            1. Incorrect subdomain - "${this.subdomain}" might not be valid 
+            2. Invalid API key - Please verify your API key is current
+            3. Authentication issues - Your API key may not have sufficient permissions`);
           } else {
             throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
           }
@@ -92,6 +103,12 @@ export class BambooHRClient {
         return JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', responseText.substring(0, 200));
+        
+        // If response starts with HTML, it's likely redirecting to login
+        if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+          throw new Error(`BambooHR returned an HTML page instead of JSON. This suggests the subdomain "${this.subdomain}" is incorrect or your API key is invalid. Please verify both in the BambooHR settings.`);
+        }
+        
         throw new Error(`Invalid JSON response from BambooHR API: ${(parseError as Error).message}`);
       }
     } catch (error) {
