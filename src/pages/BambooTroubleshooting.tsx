@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,10 +146,28 @@ const BambooTroubleshooting = () => {
       
     } catch (error) {
       console.error('Test error:', error);
+      
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let helpText = '';
+      
+      // Detect common error types and provide helpful messages
+      if (errorMessage.includes('HTML instead of JSON') || errorMessage.includes('Unexpected token')) {
+        helpText = `
+          This typically means one of:
+          1. Incorrect subdomain - Check that "${config.subdomain}" is correct
+          2. Invalid API key format - Ensure API key is copied correctly
+          3. BambooHR is returning a login page instead of API data
+          
+          Try refreshing your API key in BambooHR admin panel and ensure your subdomain matches your company's BambooHR URL.
+        `;
+      } else if (errorMessage.includes('CORS')) {
+        helpText = 'CORS errors are expected when accessing BambooHR directly. Try enabling the proxy option.';
+      }
+      
       results[results.length - 1] = {
         step: results[results.length - 1].step,
         status: 'error',
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Error: ${errorMessage}${helpText ? '\n\n' + helpText : ''}`
       };
       setTestResults(results);
     }

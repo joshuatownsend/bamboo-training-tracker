@@ -1,3 +1,4 @@
+
 import { BambooApiOptions, BambooEmployee, BambooTraining, BambooTrainingCompletion } from "./types";
 import { Employee, Training, TrainingCompletion } from "../types";
 import { getEffectiveBambooConfig } from "./config";
@@ -10,7 +11,7 @@ class BambooHRService {
   constructor(options: BambooApiOptions) {
     this.apiKey = options.apiKey;
     this.subdomain = options.subdomain;
-    this.useProxy = true; // Default to using the proxy
+    this.useProxy = options.useProxy ?? true; // Default to using the proxy
     console.log(`BambooHR service initialized with subdomain: ${options.subdomain}`);
   }
 
@@ -57,17 +58,35 @@ class BambooHRService {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`BambooHR API error (${response.status}): ${errorText || 'Unknown error'}`);
+        // Check if the response is HTML (common when getting redirected to a login page)
+        const contentType = response.headers.get('content-type');
+        const responseText = await response.text();
+        
+        if (contentType && contentType.includes('text/html')) {
+          console.error('Received HTML response instead of JSON:', responseText.substring(0, 200) + '...');
+          throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
+        }
+        
+        // Try to parse as JSON if it might be JSON
+        try {
+          const errorJson = JSON.parse(responseText);
+          throw new Error(`BambooHR API error (${response.status}): ${errorJson.error || JSON.stringify(errorJson)}`);
+        } catch (parseError) {
+          // If not parseable as JSON, return the text directly
+          throw new Error(`BambooHR API error (${response.status}): ${responseText || 'Unknown error'}`);
+        }
       }
 
-      return await response.json();
+      // Try to parse the response as JSON
+      const responseText = await response.text();
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', responseText.substring(0, 200));
+        throw new Error(`Invalid JSON response from BambooHR API: ${(parseError as Error).message}`);
+      }
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
-      
-      // If using proxy fails, we won't automatically try direct access
-      // as it will definitely fail in the browser
-      
       throw error;
     }
   }
@@ -80,6 +99,12 @@ class BambooHRService {
       // Use a simple endpoint to test the connection
       const response = await this.fetchFromBamboo('/employees/directory?limit=1');
       console.log('BambooHR connection test successful, received data:', response);
+      
+      // Validate that we actually got employee data
+      if (!response || !response.employees) {
+        throw new Error('BambooHR API returned an unexpected response format. Expected "employees" field.');
+      }
+      
       return true;
     } catch (error) {
       console.error('BambooHR connection test failed:', error);
