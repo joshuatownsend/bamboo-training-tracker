@@ -21,6 +21,7 @@ import UserProvider from "./contexts/UserContext";
 import MsalContextProvider from "./contexts/MsalContext";
 import Login from "./pages/Login";
 import { useUser } from "./contexts/UserContext";
+import { AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
 
 const queryClient = new QueryClient();
 
