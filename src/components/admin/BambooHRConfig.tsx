@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { BAMBOO_HR_CONFIG, isBambooConfigured, getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const BambooHRConfig: React.FC = () => {
   const [subdomain, setSubdomain] = useState<string>('');
@@ -193,7 +195,24 @@ const BambooHRConfig: React.FC = () => {
       <CardContent>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="subdomain">BambooHR Subdomain</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="subdomain">BambooHR Subdomain</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-5 w-5">
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Your BambooHR subdomain is the unique prefix in your BambooHR URL.<br />
+                      Example: for "acme.bamboohr.com", enter "acme"
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="subdomain"
               placeholder="your-company"
@@ -207,7 +226,29 @@ const BambooHRConfig: React.FC = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="apiKey">API Key</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-5 w-5">
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-xs">
+                      <p>Generate an API key in BambooHR by:</p>
+                      <ol className="list-decimal ml-4 text-xs">
+                        <li>Logging in as an admin</li>
+                        <li>Going to your avatar → Account</li>
+                        <li>Select API Keys</li>
+                        <li>Generate a new key</li>
+                      </ol>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="apiKey"
               type="password"
@@ -232,13 +273,15 @@ const BambooHRConfig: React.FC = () => {
                 <p className="text-xs text-amber-700">
                   BambooHR's API doesn't allow direct browser access due to CORS restrictions. This is expected and not an error with your API key.
                   <br /><br />
-                  <strong>Workaround options:</strong>
+                  <strong>Common Issues:</strong>
                   <br />
-                  1. You can still save the configuration - we'll store the credentials and they'll work when used server-side.
+                  1. <strong>Incorrect subdomain format</strong> - Make sure you're only entering the company prefix (e.g., "acme", not "acme.bamboohr.com")
                   <br />
-                  2. Your API key is likely correct despite the connection test failing.
+                  2. <strong>Invalid API key</strong> - The key should be a long string of letters and numbers
+                  <br />
+                  3. <strong>API key permissions</strong> - The key needs read access to employee data
                   <br /><br />
-                  Click "Save Anyway" to store your credentials.
+                  Click "Save Anyway" to store your credentials and try with the proxy.
                 </p>
               </div>
             </div>

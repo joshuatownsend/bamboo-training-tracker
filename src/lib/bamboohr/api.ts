@@ -64,7 +64,13 @@ class BambooHRService {
         
         if (contentType && contentType.includes('text/html')) {
           console.error('Received HTML response instead of JSON:', responseText.substring(0, 200) + '...');
-          throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
+          
+          // More specific error message for HTML responses
+          if (responseText.includes('login') || responseText.includes('<!DOCTYPE')) {
+            throw new Error(`BambooHR API returned a login page instead of JSON data. This typically means either your subdomain "${this.subdomain}" is incorrect or your API key is invalid/expired.`);
+          } else {
+            throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
+          }
         }
         
         // Try to parse as JSON if it might be JSON
