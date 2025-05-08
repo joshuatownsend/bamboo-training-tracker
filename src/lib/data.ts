@@ -1,4 +1,3 @@
-
 import { 
   Employee, 
   Training, 
@@ -375,3 +374,120 @@ export const positions: Position[] = [
     avfrdRequirements: ["tr-1", "tr-3", "tr-7", "tr-9", "tr-10"] // + HazMat, CPR, ICS
   }
 ];
+
+// Add these functions at the end of the file
+export const getTrainingStatistics = () => {
+  // Calculate training statistics
+  const totalTrainings = trainings.length;
+  const completedTrainings = trainingCompletions.filter(c => c.status === "completed").length;
+  const expiredTrainings = trainingCompletions.filter(c => c.status === "expired").length;
+  const upcomingTrainings = trainingCompletions.filter(c => c.status === "due").length;
+  
+  // Calculate completion rate
+  const completionRate = totalTrainings > 0 
+    ? Math.round((completedTrainings / totalTrainings) * 100) 
+    : 0;
+  
+  // Calculate department statistics
+  const departmentStats = getDepartmentStats();
+  
+  return {
+    totalTrainings,
+    completedTrainings,
+    expiredTrainings,
+    upcomingTrainings,
+    completionRate,
+    departmentStats
+  };
+};
+
+// Helper function to calculate department statistics
+const getDepartmentStats = () => {
+  // Get unique departments
+  const departments = [...new Set(employees.map(e => e.department))];
+  
+  return departments.map(department => {
+    // Get employees in department
+    const deptEmployees = employees.filter(e => e.department === department);
+    
+    // Get trainings required for this department
+    const requiredTrainings = trainings.filter(t => 
+      t.requiredFor.includes(department)
+    );
+    
+    // Count total required trainings
+    const totalRequired = deptEmployees.length * requiredTrainings.length;
+    
+    // Count completed trainings
+    const completedCount = trainingCompletions.filter(c => 
+      c.status === "completed" && 
+      deptEmployees.some(e => e.id === c.employeeId) &&
+      requiredTrainings.some(t => t.id === c.trainingId)
+    ).length;
+    
+    // Calculate compliance rate
+    const complianceRate = totalRequired > 0 
+      ? Math.round((completedCount / totalRequired) * 100) 
+      : 100;
+    
+    return {
+      department,
+      completedCount,
+      totalRequired,
+      complianceRate
+    };
+  });
+};
+
+export const getEmployeeTrainingStatus = (employeeId: string) => {
+  // Get employee details
+  const employee = employees.find(e => e.id === employeeId);
+  if (!employee) return null;
+  
+  // Get trainings required for employee's department
+  const requiredTrainings = trainings.filter(t => 
+    t.requiredFor.includes(employee.department)
+  );
+  
+  // Get employee's completions
+  const employeeCompletions = trainingCompletions.filter(c => 
+    c.employeeId === employeeId
+  );
+  
+  // Map each required training to its status
+  const trainingStatus = requiredTrainings.map(training => {
+    const completion = employeeCompletions.find(c => c.trainingId === training.id);
+    
+    return {
+      training,
+      status: completion ? completion.status : "not-started",
+      completionDate: completion?.completionDate,
+      expirationDate: completion?.expirationDate,
+      score: completion?.score
+    };
+  });
+  
+  // Calculate completion statistics
+  const completed = trainingStatus.filter(t => t.status === "completed").length;
+  const expired = trainingStatus.filter(t => t.status === "expired").length;
+  const notStarted = trainingStatus.filter(t => t.status === "not-started").length;
+  const inProgress = trainingStatus.length - completed - expired - notStarted;
+  
+  // Calculate overall compliance
+  const complianceRate = trainingStatus.length > 0 
+    ? Math.round((completed / trainingStatus.length) * 100) 
+    : 100;
+  
+  return {
+    employee,
+    trainingStatus,
+    stats: {
+      completed,
+      expired,
+      notStarted,
+      inProgress,
+      total: trainingStatus.length,
+      complianceRate
+    }
+  };
+};

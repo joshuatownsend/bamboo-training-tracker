@@ -26,7 +26,7 @@ import { Search } from "lucide-react";
 export default function MyTrainings() {
   const { currentUser } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   // Get unique categories for filter
   const categories = [...new Set(trainings.map((t) => t.category))];
@@ -54,7 +54,7 @@ export default function MyTrainings() {
     
     const matchesSearch = training.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          training.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !categoryFilter || training.category === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || training.category === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
@@ -116,7 +116,7 @@ export default function MyTrainings() {
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category} value={category}>
                 {category}
