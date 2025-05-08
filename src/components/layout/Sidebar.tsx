@@ -5,6 +5,11 @@ import {
   User,
   Book,
   AlertTriangle,
+  Shield,
+  FileText,
+  BookCheck,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -37,14 +42,53 @@ const Sidebar = () => {
       icon: LayoutDashboard,
     },
     {
+      name: "My Trainings",
+      href: "/my-trainings",
+      icon: Book,
+    },
+    {
+      name: "My Qualifications",
+      href: "/my-qualifications",
+      icon: Shield,
+    },
+    {
+      name: "Required Trainings",
+      href: "/required-trainings",
+      icon: FileText,
+    },
+    {
       name: "Employees",
       href: "/employees",
-      icon: User,
+      icon: Users,
     },
     {
       name: "Trainings",
       href: "/trainings",
+      icon: BookCheck,
+    },
+    {
+      name: "Admin Reports",
+      href: "/admin/reports",
+      icon: BarChart3,
+      admin: true,
+    },
+    {
+      name: "Position Management",
+      href: "/admin/positions",
+      icon: Users,
+      admin: true,
+    },
+    {
+      name: "Training Requirements",
+      href: "/admin/requirements",
       icon: Book,
+      admin: true,
+    },
+    {
+      name: "Training Impact",
+      href: "/admin/training-impact",
+      icon: BarChart3,
+      admin: true,
     },
     {
       name: "Admin Settings",
