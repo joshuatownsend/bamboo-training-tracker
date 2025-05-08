@@ -1,4 +1,3 @@
-
 import { BambooApiOptions, BambooEmployee, BambooTraining, BambooTrainingCompletion } from "./types";
 import { Employee, Training, TrainingCompletion } from "../types";
 
@@ -9,6 +8,7 @@ class BambooHRService {
   constructor(options: BambooApiOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = `https://api.bamboohr.com/api/gateway.php/${options.subdomain}/v1`;
+    console.log(`BambooHR service initialized with subdomain: ${options.subdomain}`);
   }
 
   private async fetchFromBamboo(endpoint: string, method = 'GET', body?: any) {
@@ -22,10 +22,11 @@ class BambooHRService {
       headers.append("Content-Type", "application/json");
     }
 
-    console.log(`BambooHR API request: ${method} ${this.baseUrl}${endpoint}`);
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log(`BambooHR API request: ${method} ${url}`);
     
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(url, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
@@ -36,14 +37,44 @@ class BambooHRService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`BambooHR API error (${response.status}):`, errorText);
-        throw new Error(`BambooHR API error (${response.status}): ${errorText}`);
+        
+        // More descriptive error messages based on status codes
+        if (response.status === 401) {
+          throw new Error(`Authentication failed: Please check your API key (Status ${response.status})`);
+        } else if (response.status === 404) {
+          throw new Error(`API endpoint not found: Please check your subdomain (Status ${response.status})`);
+        } else if (response.status === 403) {
+          throw new Error(`Access forbidden: Your API key may not have sufficient permissions (Status ${response.status})`);
+        } else {
+          throw new Error(`BambooHR API error (${response.status}): ${errorText || 'Unknown error'}`);
+        }
       }
 
       const data = await response.json();
-      console.log(`BambooHR API response for ${endpoint}:`, data);
+      console.log(`BambooHR API response for ${endpoint} (truncated):`, 
+                 JSON.stringify(data).substring(0, 200) + '...');
       return data;
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
+      
+      // Check specifically for CORS errors
+      if (error instanceof TypeError && error.message.includes('NetworkError')) {
+        console.error('Likely CORS error when accessing BambooHR API directly from browser');
+        throw new Error(`CORS error: BambooHR API cannot be accessed directly from browser. ${error.message}`);
+      }
+      
+      throw error;
+    }
+  }
+
+  // Test connection
+  async testConnection(): Promise<boolean> {
+    try {
+      // Use a simple endpoint to test the connection
+      const response = await this.fetchFromBamboo('/employees/directory?limit=1');
+      return true;
+    } catch (error) {
+      console.error('BambooHR connection test failed:', error);
       throw error;
     }
   }

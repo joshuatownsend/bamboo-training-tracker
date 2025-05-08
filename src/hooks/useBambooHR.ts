@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '../lib/bamboohr/api';
 import { BAMBOO_HR_CONFIG, isBambooConfigured } from '../lib/bamboohr/config';
@@ -7,6 +6,7 @@ import { useState, useEffect } from 'react';
 
 export const useBambooHR = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
   useEffect(() => {
     // Check configuration on mount and whenever localStorage changes
@@ -14,6 +14,30 @@ export const useBambooHR = () => {
       const configured = isBambooConfigured();
       setIsConfigured(configured);
       console.log('BambooHR configuration status:', configured ? 'Configured' : 'Not configured');
+      
+      if (configured) {
+        // Test the connection when config is available
+        console.log('Testing BambooHR connection...');
+        const service = getBambooService();
+        service.testConnection()
+          .then(() => {
+            console.log('BambooHR connection test successful');
+            setConnectionError(null);
+          })
+          .catch(error => {
+            console.error('BambooHR connection test failed:', error);
+            setConnectionError(error instanceof Error ? error.message : 'Unknown connection error');
+            
+            // Only show toast for connection issues, not CORS issues which are expected
+            if (!(error instanceof Error && error.message.includes('CORS'))) {
+              toast({
+                title: 'BambooHR Connection Issue',
+                description: error instanceof Error ? error.message : 'Failed to connect to BambooHR API',
+                variant: 'destructive',
+              });
+            }
+          });
+      }
     };
     
     // Check initially
@@ -37,6 +61,7 @@ export const useBambooHR = () => {
     localStorage.setItem('bamboo_subdomain', subdomain);
     localStorage.setItem('bamboo_api_key', apiKey);
     setIsConfigured(true);
+    setConnectionError(null);
     window.location.reload(); // Reload to refresh queries with new config
   };
 
@@ -53,6 +78,25 @@ export const useBambooHR = () => {
     };
     
     return new BambooHRService(options);
+  };
+
+  // Test connection only (doesn't fetch data)
+  const useConnectionTest = () => {
+    return useQuery({
+      queryKey: ['bamboo', 'connectionTest'],
+      queryFn: async () => {
+        if (!isConfigured) return false;
+        try {
+          const service = getBambooService();
+          await service.testConnection();
+          return true;
+        } catch (error) {
+          console.error('Connection test failed:', error);
+          return false;
+        }
+      },
+      enabled: isConfigured
+    });
   };
 
   // Query for all employees
@@ -192,7 +236,9 @@ export const useBambooHR = () => {
 
   return {
     isConfigured,
+    connectionError,
     configureBamboo,
+    useConnectionTest,
     useEmployees,
     useEmployee,
     useTrainings,
