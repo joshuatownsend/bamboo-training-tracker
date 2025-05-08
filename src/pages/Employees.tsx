@@ -15,7 +15,7 @@ import { useState } from "react";
 
 const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   
   // Get unique departments for filter
   const departments = [...new Set(employees.map(e => e.department))];
@@ -24,7 +24,7 @@ const Employees = () => {
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           employee.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = !departmentFilter || employee.department === departmentFilter;
+    const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
     
     return matchesSearch && matchesDepartment;
   });
@@ -55,7 +55,7 @@ const Employees = () => {
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Departments</SelectItem>
+            <SelectItem value="all">All Departments</SelectItem>
             {departments.map((dept) => (
               <SelectItem key={dept} value={dept}>
                 {dept}

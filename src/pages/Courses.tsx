@@ -15,8 +15,8 @@ import { useState } from "react";
 
 const Courses = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   
   // Get unique types and categories for filtering
   const types = [...new Set(trainings.map(t => t.type))];
@@ -26,8 +26,8 @@ const Courses = () => {
   const filteredTrainings = trainings.filter(training => {
     const matchesSearch = training.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         training.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = !typeFilter || training.type === typeFilter;
-    const matchesCategory = !categoryFilter || training.category === categoryFilter;
+    const matchesType = typeFilter === "all" || training.type === typeFilter;
+    const matchesCategory = categoryFilter === "all" || training.category === categoryFilter;
     
     return matchesSearch && matchesType && matchesCategory;
   });
@@ -58,7 +58,7 @@ const Courses = () => {
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             {types.map((type) => (
               <SelectItem key={type} value={type}>
                 {type}
@@ -71,7 +71,7 @@ const Courses = () => {
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category} value={category}>
                 {category}

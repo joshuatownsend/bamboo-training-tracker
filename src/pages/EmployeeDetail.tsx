@@ -18,14 +18,14 @@ const EmployeeDetail = () => {
     return <div>Employee not found</div>;
   }
   
-  const trainingStatus = getEmployeeTrainingStatus(employee.id);
+  const trainingStatusData = getEmployeeTrainingStatus(employee.id);
   const initials = employee.name.split(" ").map(n => n[0]).join("");
   
   // Calculate training completion stats
-  const totalTrainings = trainingStatus?.length || 0;
-  const completedTrainings = trainingStatus?.filter(ts => ts.completion.status === "completed").length || 0;
-  const expiredTrainings = trainingStatus?.filter(ts => ts.completion.status === "expired").length || 0;
-  const dueTrainings = trainingStatus?.filter(ts => ts.completion.status === "due").length || 0;
+  const totalTrainings = trainingStatusData?.trainingStatus.length || 0;
+  const completedTrainings = trainingStatusData?.trainingStatus.filter(ts => ts.status === "completed").length || 0;
+  const expiredTrainings = trainingStatusData?.trainingStatus.filter(ts => ts.status === "expired").length || 0;
+  const dueTrainings = trainingStatusData?.trainingStatus.filter(ts => ts.status === "due").length || 0;
   
   const completionRate = totalTrainings > 0 ? (completedTrainings / totalTrainings) * 100 : 0;
   
@@ -124,7 +124,7 @@ const EmployeeDetail = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {trainingStatus?.map((ts) => (
+              {trainingStatusData?.trainingStatus.map((ts) => (
                 <div key={ts.training.id} className="flex items-start justify-between border-b pb-4 last:border-0">
                   <div>
                     <h4 className="font-medium">{ts.training.title}</h4>
@@ -138,18 +138,18 @@ const EmployeeDetail = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {ts.completion.status === "completed" && (
+                    {ts.status === "completed" && (
                       <>
                         <Badge variant="default" className="bg-green-500">Completed</Badge>
                         <span className="text-sm text-muted-foreground">
-                          {format(new Date(ts.completion.completionDate), "MMM d, yyyy")}
+                          {format(new Date(ts.completionDate), "MMM d, yyyy")}
                         </span>
                       </>
                     )}
-                    {ts.completion.status === "expired" && (
+                    {ts.status === "expired" && (
                       <Badge variant="destructive">Expired</Badge>
                     )}
-                    {ts.completion.status === "due" && (
+                    {ts.status === "due" && (
                       <Badge variant="outline" className="text-amber-500 border-amber-500">Due</Badge>
                     )}
                   </div>
