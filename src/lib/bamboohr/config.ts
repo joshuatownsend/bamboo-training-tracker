@@ -25,9 +25,20 @@ export const isBambooConfigured = (): boolean => {
 export const getEffectiveBambooConfig = () => {
   const storedSubdomain = localStorage.getItem('bamboo_subdomain');
   const storedApiKey = localStorage.getItem('bamboo_api_key');
+  const useProxyStr = localStorage.getItem('bamboo_use_proxy');
+  
+  // Default to using proxy if not specified
+  const useProxy = useProxyStr === null ? true : useProxyStr === 'true';
   
   return {
     subdomain: storedSubdomain || BAMBOO_HR_CONFIG.subdomain,
-    apiKey: storedApiKey || BAMBOO_HR_CONFIG.apiKey
+    apiKey: storedApiKey || BAMBOO_HR_CONFIG.apiKey,
+    useProxy
   };
+};
+
+// Set the useProxy flag in localStorage
+export const setUseProxyFlag = (useProxy: boolean): void => {
+  localStorage.setItem('bamboo_use_proxy', useProxy.toString());
+  console.log('BambooHR proxy setting updated:', useProxy);
 };

@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import useBambooHR from '@/hooks/useBambooHR';
-import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { getEffectiveBambooConfig, setUseProxyFlag } from '@/lib/bamboohr/config';
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const BambooTroubleshooting = () => {
   const [testResults, setTestResults] = useState<{
@@ -17,8 +19,25 @@ const BambooTroubleshooting = () => {
   }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("tests");
+  const [useProxy, setUseProxy] = useState(() => {
+    const config = getEffectiveBambooConfig();
+    return config.useProxy ?? true;
+  });
 
   const { isConfigured, getBambooService } = useBambooHR();
+  
+  // Handle proxy toggle
+  const handleProxyToggle = (checked: boolean) => {
+    setUseProxy(checked);
+    setUseProxyFlag(checked);
+    toast({
+      title: "Proxy Setting Updated",
+      description: checked 
+        ? "Now using the server-side proxy to access BambooHR API." 
+        : "Now attempting to access BambooHR API directly (may cause CORS errors).",
+      duration: 3000
+    });
+  };
   
   const runTests = async () => {
     setIsLoading(true);
@@ -30,7 +49,7 @@ const BambooTroubleshooting = () => {
       step: 'Configuration Check',
       status: isConfigured ? 'success' : 'error',
       message: isConfigured 
-        ? `Configuration found: subdomain=${config.subdomain}, API key present: ${Boolean(config.apiKey)}`
+        ? `Configuration found: subdomain=${config.subdomain}, API key present: ${Boolean(config.apiKey)}, Proxy: ${config.useProxy ? 'Enabled' : 'Disabled'}`
         : 'BambooHR not configured. Please add your subdomain and API key in Admin Settings.'
     }];
     setTestResults(results);
@@ -144,8 +163,9 @@ const BambooTroubleshooting = () => {
       <h1 className="text-3xl font-bold tracking-tight">BambooHR Connection Troubleshooting</h1>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2">
+        <TabsList className="grid grid-cols-3">
           <TabsTrigger value="tests">Connection Tests</TabsTrigger>
+          <TabsTrigger value="proxy">Proxy Settings</TabsTrigger>
           <TabsTrigger value="solutions">CORS Solutions</TabsTrigger>
         </TabsList>
         
@@ -214,6 +234,7 @@ const BambooTroubleshooting = () => {
               <div className="text-sm text-muted-foreground">
                 <p>Subdomain: <code>{getEffectiveBambooConfig().subdomain || 'Not set'}</code></p>
                 <p>API Key: <code>{getEffectiveBambooConfig().apiKey ? '••••••••' : 'Not set'}</code></p>
+                <p>Proxy: <code>{getEffectiveBambooConfig().useProxy ? 'Enabled' : 'Disabled'}</code></p>
               </div>
             </CardFooter>
           </Card>
@@ -248,6 +269,65 @@ const BambooTroubleshooting = () => {
                 <p className="text-sm">
                   Ensure your API key has the necessary permissions. The API key should have read access to employee data and training records.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="proxy">
+          <Card>
+            <CardHeader>
+              <CardTitle>Proxy Configuration</CardTitle>
+              <CardDescription>
+                Configure the server-side proxy to handle BambooHR API requests
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              <div className="rounded-md bg-green-50 p-4 border border-green-200">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Server-side Proxy Configured</h3>
+                    <div className="mt-2 text-sm text-green-700">
+                      <p>
+                        A server-side proxy has been set up to forward requests to the BambooHR API, avoiding CORS issues.
+                        Use the toggle below to enable or disable the proxy.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="proxy-mode" 
+                  checked={useProxy} 
+                  onCheckedChange={handleProxyToggle} 
+                />
+                <Label htmlFor="proxy-mode" className="font-medium">
+                  Use Server-side Proxy for BambooHR API
+                </Label>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p className="mb-2">Current setting: <strong>{useProxy ? 'Using proxy (recommended)' : 'Direct API access (not recommended)'}</strong></p>
+                <p className="mb-4">
+                  The proxy forwards requests from <code>/api/bamboohr/...</code> to <code>https://api.bamboohr.com/...</code> 
+                  while handling authentication headers. This helps avoid CORS issues in the browser.
+                </p>
+                
+                <div className="bg-muted rounded-md p-3">
+                  <h4 className="font-medium mb-1">How the proxy works:</h4>
+                  <ol className="list-decimal ml-5 space-y-1">
+                    <li>Your browser sends an API request to your own server at <code>/api/bamboohr/...</code></li>
+                    <li>The Vite dev server proxies this request to the BambooHR API</li>
+                    <li>The proxy adds necessary headers and forwards the response back to your browser</li>
+                    <li>No CORS errors occur because the request appears to come from the same origin</li>
+                  </ol>
+                </div>
               </div>
             </CardContent>
           </Card>

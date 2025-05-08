@@ -4,78 +4,70 @@ import { getEffectiveBambooConfig } from "./config";
 
 class BambooHRService {
   private apiKey: string;
-  private baseUrl: string;
-  private isBrowser: boolean;
+  private subdomain: string;
+  private useProxy: boolean;
 
   constructor(options: BambooApiOptions) {
     this.apiKey = options.apiKey;
-    this.baseUrl = `https://api.bamboohr.com/api/gateway.php/${options.subdomain}/v1`;
-    this.isBrowser = typeof window !== 'undefined';
+    this.subdomain = options.subdomain;
+    this.useProxy = true; // Default to using the proxy
     console.log(`BambooHR service initialized with subdomain: ${options.subdomain}`);
-    if (this.isBrowser) {
-      console.log('Running in browser environment - CORS limitations will apply');
-    }
   }
 
   private async fetchFromBamboo(endpoint: string, method = 'GET', body?: any) {
     const headers = new Headers();
-    // Base64 encode API key with empty username as per BambooHR docs
-    const authHeader = "Basic " + btoa(`${this.apiKey}:`);
-    headers.append("Authorization", authHeader);
+    
+    let url: string;
+    
+    if (this.useProxy) {
+      // Use our proxy endpoint
+      url = `/api/bamboohr/api/gateway.php/${this.subdomain}/v1${endpoint}`;
+      // Add auth header that the server will forward
+      headers.append("X-BambooHR-ApiKey", this.apiKey);
+    } else {
+      // Direct API access (will fail in browser due to CORS)
+      url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
+      // Base64 encode API key with empty username as per BambooHR docs
+      const authHeader = "Basic " + btoa(`${this.apiKey}:`);
+      headers.append("Authorization", authHeader);
+    }
+    
     headers.append("Accept", "application/json");
     
     if (method !== 'GET' && body) {
       headers.append("Content-Type", "application/json");
     }
 
-    const url = `${this.baseUrl}${endpoint}`;
     console.log(`BambooHR API request: ${method} ${url}`);
     
     // Log headers (redacting sensitive info)
     const headerObj: Record<string, string> = {};
     headers.forEach((value, key) => {
-      headerObj[key] = key === 'Authorization' ? 'Basic [REDACTED]' : value;
+      headerObj[key] = key === 'Authorization' || key === 'X-BambooHR-ApiKey' ? '[REDACTED]' : value;
     });
     console.log('Request headers:', headerObj);
     
     try {
       console.log(`Sending request to BambooHR API: ${method} ${url}`);
       
-      // If we're in browser environment, we expect CORS errors
-      // In production, this should be replaced with a server-side proxy
-      if (this.isBrowser) {
-        try {
-          const response = await fetch(url, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-            mode: 'cors',
-            credentials: 'omit'
-          });
-  
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`BambooHR API error (${response.status}): ${errorText || 'Unknown error'}`);
-          }
-  
-          return await response.json();
-        } catch (error) {
-          // Detect CORS errors - they're expected in browser environment
-          if (error instanceof TypeError && 
-              (error.message.includes('NetworkError') || 
-              error.message.includes('Failed to fetch'))) {
-            console.warn('CORS error detected - this is expected in browser environments');
-            throw new Error(`CORS error: BambooHR API cannot be accessed directly from browser. ${error.message}`);
-          }
-          throw error;
-        }
-      } else {
-        // Server environment code path would go here in a real implementation
-        // This would use a server-side HTTP client that isn't subject to CORS
-        throw new Error('Server-side BambooHR API access not implemented');
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`BambooHR API error (${response.status}): ${errorText || 'Unknown error'}`);
       }
+
+      return await response.json();
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
+      
+      // If using proxy fails, we won't automatically try direct access
+      // as it will definitely fail in the browser
+      
       throw error;
     }
   }
@@ -85,32 +77,12 @@ class BambooHRService {
     try {
       console.log('Testing BambooHR connection...');
       
-      // In browser, we expect CORS errors but we want to simulate successful connection
-      // if credentials are provided
-      if (this.isBrowser) {
-        // For test connection in browser, we'll just check if credentials exist
-        // This doesn't actually verify if they're correct, but it's the best we can do
-        if (this.apiKey && this.baseUrl.includes('.bamboohr.com')) {
-          console.log('BambooHR credentials provided - assuming valid connection (cannot verify due to CORS)');
-          return true;
-        }
-        throw new Error('Missing or invalid BambooHR credentials');
-      }
-      
       // Use a simple endpoint to test the connection
       const response = await this.fetchFromBamboo('/employees/directory?limit=1');
       console.log('BambooHR connection test successful, received data:', response);
       return true;
     } catch (error) {
       console.error('BambooHR connection test failed:', error);
-      
-      // Special case for CORS errors - they're expected but we want to handle them gracefully
-      if (error instanceof Error && error.message.includes('CORS')) {
-        console.log('CORS error during connection test - this is expected in browser environments');
-        // We'll treat CORS errors during testing as "maybe valid" since we can't verify directly
-        return true;
-      }
-      
       throw error;
     }
   }

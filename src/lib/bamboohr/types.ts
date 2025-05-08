@@ -1,31 +1,34 @@
 
-// BambooHR API response types
+export interface BambooApiOptions {
+  subdomain: string;
+  apiKey: string;
+  useProxy?: boolean;
+}
+
 export interface BambooEmployee {
   id: string;
-  displayName: string;
+  displayName?: string;
   firstName: string;
   lastName: string;
-  jobTitle: {
+  jobTitle?: {
     name: string;
   };
-  department: {
+  department?: {
     name: string;
   };
-  workEmail: string;
-  hireDate: string;
+  workEmail?: string;
   photoUrl?: string;
-  customFields?: Record<string, any>;
+  hireDate?: string;
 }
 
 export interface BambooTraining {
   id: string;
   name: string;
   type: string;
-  description: string;
   category: string;
+  description?: string;
   duration: number;
-  isRequired: boolean;
-  requiredFor: string[];
+  requiredFor?: string[];
 }
 
 export interface BambooTrainingCompletion {
@@ -37,9 +40,4 @@ export interface BambooTrainingCompletion {
   status: string;
   score?: number;
   certificateUrl?: string;
-}
-
-export interface BambooApiOptions {
-  apiKey: string;
-  subdomain: string;
 }
