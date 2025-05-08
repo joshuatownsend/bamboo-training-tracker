@@ -1,3 +1,4 @@
+
 import { BambooApiOptions, BambooEmployee, BambooTraining, BambooTrainingCompletion } from "./types";
 import { Employee, Training, TrainingCompletion } from "../types";
 import { getEffectiveBambooConfig } from "./config";
@@ -25,9 +26,17 @@ class BambooHRService {
 
     const url = `${this.baseUrl}${endpoint}`;
     console.log(`BambooHR API request: ${method} ${url}`);
-    console.log(`Using Authorization header: ${authHeader.substring(0, 10)}...`);
+    
+    // Log headers (redacting sensitive info)
+    const headerObj: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      headerObj[key] = key === 'Authorization' ? 'Basic [REDACTED]' : value;
+    });
+    console.log('Request headers:', headerObj);
     
     try {
+      console.log(`Sending request to BambooHR API: ${method} ${url}`);
+      
       const response = await fetch(url, {
         method,
         headers,
@@ -36,6 +45,9 @@ class BambooHRService {
         mode: 'cors',
         credentials: 'omit'
       });
+
+      console.log(`BambooHR API response status: ${response.status}, statusText: ${response.statusText}`);
+      console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -53,10 +65,17 @@ class BambooHRService {
         }
       }
 
-      const data = await response.json();
-      console.log(`BambooHR API response for ${endpoint} (truncated):`, 
-                 JSON.stringify(data).substring(0, 200) + '...');
-      return data;
+      try {
+        const data = await response.json();
+        console.log(`BambooHR API response for ${endpoint} (sample):`, 
+                  JSON.stringify(data).substring(0, 200) + '...');
+        return data;
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        const text = await response.text();
+        console.log('Raw response text:', text.substring(0, 500) + '...');
+        throw new Error(`Failed to parse JSON response: ${parseError}`);
+      }
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
       
@@ -73,8 +92,10 @@ class BambooHRService {
   // Test connection - used just to verify credentials
   async testConnection(): Promise<boolean> {
     try {
+      console.log('Testing BambooHR connection...');
       // Use a simple endpoint to test the connection
       const response = await this.fetchFromBamboo('/employees/directory?limit=1');
+      console.log('BambooHR connection test successful, received data:', response);
       return true;
     } catch (error) {
       console.error('BambooHR connection test failed:', error);
@@ -229,8 +250,13 @@ class BambooHRService {
 
   // Fetch all data needed for the app
   async fetchAllData() {
-    console.log('Fetching all BambooHR data with config:', getEffectiveBambooConfig());
+    console.log('Fetching all BambooHR data with config:', {
+      subdomain: getEffectiveBambooConfig().subdomain,
+      apiKey: getEffectiveBambooConfig().apiKey ? '[REDACTED]' : null
+    });
+    
     try {
+      console.log('Step 1: Fetching employees...');
       const employees = await this.getEmployees();
       console.log(`Successfully fetched ${employees.length} employees`);
       
@@ -238,6 +264,7 @@ class BambooHRService {
       let allCompletions: TrainingCompletion[] = [];
       
       try {
+        console.log('Step 2: Fetching trainings...');
         trainings = await this.getTrainings();
         console.log(`Successfully fetched ${trainings.length} trainings`);
       } catch (error) {
@@ -247,13 +274,15 @@ class BambooHRService {
       // Get training completions for all employees
       // Note: This might be inefficient for large organizations, consider pagination
       try {
-        const completionsPromises = employees.map(employee => 
-          this.getTrainingCompletions(employee.id)
+        console.log('Step 3: Fetching training completions for all employees...');
+        const completionsPromises = employees.map(employee => {
+          console.log(`Fetching training completions for employee ${employee.id}...`);
+          return this.getTrainingCompletions(employee.id)
             .catch(error => {
               console.error(`Failed to fetch completions for employee ${employee.id}:`, error);
               return [];
-            })
-        );
+            });
+        });
         
         allCompletions = (await Promise.all(completionsPromises)).flat();
         console.log(`Successfully fetched ${allCompletions.length} training completions`);
@@ -261,11 +290,19 @@ class BambooHRService {
         console.error('Failed to fetch training completions, continuing with empty list:', error);
       }
       
-      return {
+      const result = {
         employees,
         trainings,
         completions: allCompletions
       };
+      
+      console.log('All data fetched successfully. Summary:', {
+        employeesCount: employees.length,
+        trainingsCount: trainings.length,
+        completionsCount: allCompletions.length
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error fetching all data from BambooHR:', error);
       throw error;

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +22,7 @@ import MsalContextProvider from "./contexts/MsalContext";
 import Login from "./pages/Login";
 import { useUser } from "./contexts/UserContext";
 import { AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
+import BambooTroubleshooting from "./pages/BambooTroubleshooting";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +72,7 @@ const AppRoutes = () => {
         <Route path="/admin/training-impact" element={<AdminRoute><TrainingImpact /></AdminRoute>} />
         <Route path="/admin/requirements" element={<AdminRoute><TrainingRequirementManagement /></AdminRoute>} />
         <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+        <Route path="/bamboo-troubleshooting" element={<BambooTroubleshooting />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -3,6 +3,9 @@ import React from "react";
 import AdminSettings from "@/components/admin/AdminSettings";
 import BambooHRConfig from "@/components/admin/BambooHRConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { AlertTriangle } from "lucide-react";
 
 export default function AdminSettingsPage() {
   return (
@@ -24,6 +27,16 @@ export default function AdminSettingsPage() {
           <p className="text-muted-foreground">
             Configure integrations with external systems like BambooHR to import data.
           </p>
+          
+          <div className="flex justify-end mb-4">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/bamboo-troubleshooting" className="flex items-center">
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                BambooHR Troubleshooting
+              </Link>
+            </Button>
+          </div>
+          
           <BambooHRConfig />
         </TabsContent>
       </Tabs>

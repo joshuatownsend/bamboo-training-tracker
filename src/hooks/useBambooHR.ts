@@ -218,6 +218,7 @@ export const useBambooHR = () => {
         
         try {
           const service = getBambooService();
+          console.log('Attempting to fetch all BambooHR data...');
           const data = await service.fetchAllData();
           console.log('Successfully fetched all BambooHR data:', data);
           return data;
@@ -249,6 +250,7 @@ export const useBambooHR = () => {
     isConfigured,
     connectionError,
     configureBamboo,
+    getBambooService,
     useConnectionTest,
     useEmployees,
     useEmployee,

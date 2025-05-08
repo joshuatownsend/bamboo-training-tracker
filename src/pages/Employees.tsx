@@ -8,12 +8,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { PlusCircle, Search, RefreshCw } from "lucide-react";
+import { PlusCircle, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
 import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
 import { useState } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,6 +51,9 @@ const Employees = () => {
     console.log('Manually refreshing BambooHR data');
     refetch();
   };
+
+  // Check if we're actually using mock data despite having BambooHR configured
+  const usingMockDataDespiteConfig = isConfigured && (!data?.employees?.length || data.employees.length === 0);
   
   return (
     <div className="space-y-6">
@@ -73,6 +77,52 @@ const Employees = () => {
             BambooHR integration is not configured. Using mock data. 
             Administrators can configure BambooHR in the Admin Settings.
           </p>
+        </div>
+      )}
+      
+      {usingMockDataDespiteConfig && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md mb-4">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">
+                BambooHR is configured, but no data was returned.
+              </p>
+              <p className="text-sm mt-1">
+                This could be due to connection issues, incorrect API credentials, or empty data in your BambooHR account.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/bamboo-troubleshooting" className="text-amber-800">
+                    Run Connection Tests
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md mb-4">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">
+                Error loading employee data
+              </p>
+              <p className="text-sm mt-1">
+                {error instanceof Error ? error.message : 'Unknown error'}
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/bamboo-troubleshooting" className="text-red-800">
+                    Troubleshoot Connection
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       
@@ -116,14 +166,6 @@ const Employees = () => {
           trainings={trainingsData}
           completions={completionsData}
         />
-      )}
-      
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md">
-          <p className="text-sm">
-            Error loading employee data: {error instanceof Error ? error.message : 'Unknown error'}
-          </p>
-        </div>
       )}
     </div>
   );
