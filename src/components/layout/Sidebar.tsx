@@ -1,137 +1,155 @@
-
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
-  CalendarCheck,
-  CheckSquare,
+  BarChartHorizontal,
+  Briefcase,
+  ClipboardCheck,
   FileBarChart,
-  FileText,
+  Home,
   ListChecks,
   Settings,
   User,
-  Users
+  X,
 } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
+import { NavLink, useLocation } from "react-router-dom";
 
-export function Sidebar() {
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/useMobile";
+
+interface SidebarLinkProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+}
+
+const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, active }) => (
+  <li>
+    <NavLink
+      to={to}
+      className={`flex items-center px-3 py-2 rounded-md hover:bg-company-yellow/10 ${
+        active ? "bg-company-yellow/20 font-medium" : ""
+      }`}
+    >
+      {icon}
+      <span className="ml-3">{label}</span>
+    </NavLink>
+  </li>
+);
+
+export default function Sidebar() {
+  const { isMobile, setIsMobile } = useMobile();
   const location = useLocation();
-  const { isAdmin } = useUser();
-  
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
 
   return (
-    <div className="hidden md:flex flex-col gap-2 border-r w-64 p-4 bg-company-yellow/10">
-      <div className="flex items-center gap-2 px-2 mb-4">
-        <div className="w-8 h-8 rounded-full bg-company-yellow flex items-center justify-center text-black font-bold">
-          A
-        </div>
-        <h2 className="text-lg font-bold">AVFRD Training</h2>
-      </div>
-      
-      <div className="space-y-1">
-        <Link to="/">
+    <div
+      className={`bg-black text-white flex flex-col w-64 h-screen fixed top-0 left-0 z-50 transition-transform duration-300 ease-in-out ${
+        isMobile ? "-translate-x-full" : "translate-x-0"
+      }`}
+    >
+      <div className="flex items-center justify-between p-4 bg-company-yellow">
+        <span className="text-company-black text-xl font-bold">AVFRD Training</span>
+        {isMobile && (
           <Button
-            variant={isActive("/") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/") ? "bg-company-grey text-white" : "")}
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMobile(!isMobile)}
+            className="text-company-black hover:bg-company-yellow/80"
           >
-            <CheckSquare className="mr-2 h-4 w-4" />
-            Dashboard
+            <X className="h-5 w-5" />
           </Button>
-        </Link>
-
-        <p className="px-2 pt-4 pb-2 text-xs font-semibold text-muted-foreground">Personal</p>
-        
-        <Link to="/my-trainings">
-          <Button
-            variant={isActive("/my-trainings") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/my-trainings") ? "bg-company-grey text-white" : "")}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            My Trainings
-          </Button>
-        </Link>
-        
-        <Link to="/my-qualifications">
-          <Button
-            variant={isActive("/my-qualifications") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/my-qualifications") ? "bg-company-grey text-white" : "")}
-          >
-            <CheckSquare className="mr-2 h-4 w-4" />
-            My Qualifications
-          </Button>
-        </Link>
-        
-        <Link to="/required-trainings">
-          <Button
-            variant={isActive("/required-trainings") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/required-trainings") ? "bg-company-grey text-white" : "")}
-          >
-            <ListChecks className="mr-2 h-4 w-4" />
-            Required Trainings
-          </Button>
-        </Link>
-
-        <p className="px-2 pt-4 pb-2 text-xs font-semibold text-muted-foreground">Training Records</p>
-        
-        <Link to="/employees">
-          <Button
-            variant={isActive("/employees") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/employees") ? "bg-company-grey text-white" : "")}
-          >
-            <Users className="mr-2 h-4 w-4" />
-            Employees
-          </Button>
-        </Link>
-        
-        <Link to="/courses">
-          <Button
-            variant={isActive("/courses") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/courses") ? "bg-company-grey text-white" : "")}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Courses
-          </Button>
-        </Link>
-        
-        {isAdmin && (
-          <>
-            <p className="px-2 pt-4 pb-2 text-xs font-semibold text-muted-foreground">Administration</p>
-            
-            <Link to="/admin/reports">
-              <Button
-                variant={isActive("/admin/reports") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/reports") ? "bg-company-grey text-white" : "")}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Admin Reports
-              </Button>
-            </Link>
-            
-            <Link to="/admin/training-impact">
-              <Button
-                variant={isActive("/admin/training-impact") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/training-impact") ? "bg-company-grey text-white" : "")}
-              >
-                <FileBarChart className="mr-2 h-4 w-4" />
-                Training Impact
-              </Button>
-            </Link>
-            
-            <Link to="/admin/positions">
-              <Button
-                variant={isActive("/admin/positions") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/positions") ? "bg-company-grey text-white" : "")}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Position Management
-              </Button>
-            </Link>
-          </>
         )}
       </div>
+
+      <nav className="flex-1 overflow-y-auto p-4">
+        <ul className="space-y-1">
+          <li>
+            <SidebarLink
+              to="/"
+              active={location.pathname === "/"}
+              icon={<Home className="h-4 w-4" />}
+              label="Dashboard"
+            />
+          </li>
+          <li>
+            <SidebarLink
+              to="/employees"
+              active={location.pathname.startsWith("/employees")}
+              icon={<User className="h-4 w-4" />}
+              label="Employees"
+            />
+          </li>
+          <li>
+            <SidebarLink
+              to="/courses"
+              active={location.pathname === "/courses"}
+              icon={<ListChecks className="h-4 w-4" />}
+              label="Courses"
+            />
+          </li>
+          <li className="mb-6">
+            <h3 className="mb-2 text-sm text-company-grey uppercase font-medium">
+              My Training
+            </h3>
+            <ul className="space-y-1">
+              <li>
+                <SidebarLink
+                  to="/my-trainings"
+                  active={location.pathname === "/my-trainings"}
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                  label="My Trainings"
+                />
+              </li>
+              <li>
+                <SidebarLink
+                  to="/my-qualifications"
+                  active={location.pathname === "/my-qualifications"}
+                  icon={<ListChecks className="h-4 w-4" />}
+                  label="My Qualifications"
+                />
+              </li>
+              <li>
+                <SidebarLink
+                  to="/required-trainings"
+                  active={location.pathname === "/required-trainings"}
+                  icon={<Settings className="h-4 w-4" />}
+                  label="Required Trainings"
+                />
+              </li>
+            </ul>
+          </li>
+          
+          <li className="mb-6">
+            <h3 className="mb-2 text-sm text-company-grey uppercase font-medium">
+              Administration
+            </h3>
+            <ul className="space-y-1">
+              <SidebarLink 
+                to="/admin/reports" 
+                active={location.pathname === "/admin/reports"}
+                icon={<FileBarChart className="h-4 w-4" />} 
+                label="Reports" 
+              />
+              <SidebarLink 
+                to="/admin/positions" 
+                active={location.pathname === "/admin/positions"}
+                icon={<Briefcase className="h-4 w-4" />} 
+                label="Positions" 
+              />
+              <SidebarLink 
+                to="/admin/requirements" 
+                active={location.pathname === "/admin/requirements"}
+                icon={<ClipboardCheck className="h-4 w-4" />} 
+                label="Requirements" 
+              />
+              <SidebarLink 
+                to="/admin/training-impact" 
+                active={location.pathname === "/admin/training-impact"}
+                icon={<BarChartHorizontal className="h-4 w-4" />} 
+                label="Training Impact" 
+              />
+            </ul>
+          </li>
+        </ul>
+      </nav>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import RequiredTrainings from "./pages/RequiredTrainings";
 import AdminReports from "./pages/AdminReports";
 import PositionManagement from "./pages/PositionManagement";
 import TrainingImpact from "./pages/TrainingImpact";
+import TrainingRequirementManagement from "./pages/TrainingRequirementManagement";
 import UserProvider from "./contexts/UserContext";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/admin/reports" element={<AdminReports />} />
               <Route path="/admin/positions" element={<PositionManagement />} />
               <Route path="/admin/training-impact" element={<TrainingImpact />} />
+              <Route path="/admin/requirements" element={<TrainingRequirementManagement />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
