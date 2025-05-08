@@ -141,7 +141,7 @@ function generateRecommendations(results: any[]) {
     return [
       `Receiving HTML pages instead of JSON data. This indicates authentication issues.`,
       `This usually means one of the following:`,
-      `1. The subdomain "${client['subdomain'] || 'unknown'}" might be incorrect - confirm your BambooHR URL`,
+      `1. The subdomain might be incorrect - confirm your BambooHR URL`,
       `2. Your API key might be invalid or expired - generate a new one in BambooHR`,
       `3. Your API key may not have sufficient permissions - check with your BambooHR admin`,
       `4. Try using the company name instead of the subdomain if you've been using the subdomain`
