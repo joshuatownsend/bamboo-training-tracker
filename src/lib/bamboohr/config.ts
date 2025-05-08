@@ -6,5 +6,12 @@ export const BAMBOO_HR_CONFIG = {
 
 // Check if BambooHR is properly configured
 export const isBambooConfigured = (): boolean => {
-  return Boolean(BAMBOO_HR_CONFIG.subdomain && BAMBOO_HR_CONFIG.apiKey);
+  // Check both environment variables and localStorage
+  const envConfigured = Boolean(BAMBOO_HR_CONFIG.subdomain && BAMBOO_HR_CONFIG.apiKey);
+  const localStorageConfigured = Boolean(
+    localStorage.getItem('bamboo_subdomain') && 
+    localStorage.getItem('bamboo_api_key')
+  );
+  
+  return envConfigured || localStorageConfigured;
 };

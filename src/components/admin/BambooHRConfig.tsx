@@ -13,6 +13,7 @@ const BambooHRConfig: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>('');
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorDetails, setErrorDetails] = useState<string>('');
 
   useEffect(() => {
     // Check if BambooHR is already configured
@@ -42,6 +43,7 @@ const BambooHRConfig: React.FC = () => {
     }
 
     setIsLoading(true);
+    setErrorDetails('');
 
     try {
       // Test the connection by trying to fetch employees
@@ -51,10 +53,28 @@ const BambooHRConfig: React.FC = () => {
       headers.append("Authorization", authHeader);
       headers.append("Accept", "application/json");
       
-      const response = await fetch(testUrl, { headers });
+      console.log(`Testing BambooHR connection to: ${testUrl}`);
+      
+      const response = await fetch(testUrl, { 
+        headers,
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      console.log(`Response status: ${response.status}`);
       
       if (!response.ok) {
-        throw new Error(`Connection failed (${response.status}): ${await response.text()}`);
+        const errorText = await response.text();
+        console.error('BambooHR API error:', errorText);
+        throw new Error(`Connection failed (${response.status}): ${errorText}`);
+      }
+      
+      // Try to parse the response to validate it's proper JSON
+      const data = await response.json();
+      console.log('BambooHR connection successful, retrieved:', data);
+      
+      if (!data || !data.employees) {
+        throw new Error('Unexpected response format from BambooHR API');
       }
       
       // Save settings to localStorage
@@ -74,9 +94,14 @@ const BambooHRConfig: React.FC = () => {
       }, 1500);
       
     } catch (error) {
+      console.error('BambooHR connection error:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to BambooHR API.';
+      setErrorDetails(errorMessage);
+      
       toast({
         title: 'Connection Failed',
-        description: error instanceof Error ? error.message : 'Failed to connect to BambooHR API.',
+        description: 'Could not connect to BambooHR. See details below.',
         variant: 'destructive',
       });
     } finally {
@@ -90,6 +115,7 @@ const BambooHRConfig: React.FC = () => {
     setSubdomain('');
     setApiKey('');
     setIsConfigured(false);
+    setErrorDetails('');
     toast({
       title: 'Configuration Cleared',
       description: 'BambooHR connection settings have been removed.',
@@ -97,8 +123,8 @@ const BambooHRConfig: React.FC = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-yellow-300">
+      <CardHeader className={isConfigured ? "bg-green-50" : "bg-yellow-50"}>
         <CardTitle className="flex items-center gap-2">
           {isConfigured ? (
             <CheckCircle className="h-5 w-5 text-green-500" />
@@ -142,6 +168,17 @@ const BambooHRConfig: React.FC = () => {
               Generate an API key in BambooHR under Account → API Keys
             </p>
           </div>
+          
+          {errorDetails && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm font-medium text-red-800 mb-1">Error Details:</p>
+              <p className="text-sm text-red-700">{errorDetails}</p>
+              <p className="text-xs mt-2 text-red-600">
+                If you're seeing CORS errors, this likely means your API key is correct but direct browser access 
+                is blocked. Consider setting up a server-side proxy to access the BambooHR API.
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
       
@@ -149,7 +186,11 @@ const BambooHRConfig: React.FC = () => {
         <Button variant="outline" onClick={clearConfig} disabled={isLoading || !isConfigured}>
           Clear Connection
         </Button>
-        <Button onClick={handleSaveConfig} disabled={isLoading}>
+        <Button 
+          onClick={handleSaveConfig} 
+          disabled={isLoading}
+          className="bg-yellow-500 hover:bg-yellow-600 text-black"
+        >
           {isLoading ? 'Testing Connection...' : isConfigured ? 'Update Connection' : 'Connect to BambooHR'}
         </Button>
       </CardFooter>

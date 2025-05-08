@@ -9,7 +9,27 @@ export const useBambooHR = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   
   useEffect(() => {
-    setIsConfigured(isBambooConfigured());
+    // Check configuration on mount and whenever localStorage changes
+    const checkConfig = () => {
+      const configured = isBambooConfigured();
+      setIsConfigured(configured);
+      console.log('BambooHR configuration status:', configured ? 'Configured' : 'Not configured');
+    };
+    
+    // Check initially
+    checkConfig();
+    
+    // Setup listener for localStorage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'bamboo_subdomain' || e.key === 'bamboo_api_key') {
+        checkConfig();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
   
   // Allow manual configuration of API key and subdomain
@@ -41,12 +61,15 @@ export const useBambooHR = () => {
       queryKey: ['bamboo', 'employees'],
       queryFn: async () => {
         if (!isConfigured) {
+          console.log('BambooHR not configured, returning empty employees array');
           return [];
         }
         
         try {
-          return await getBambooService().getEmployees();
+          const service = getBambooService();
+          return await service.getEmployees();
         } catch (error) {
+          console.error('Error in useEmployees query:', error);
           toast({
             title: 'Error fetching employees',
             description: error instanceof Error ? error.message : 'Unknown error',
@@ -65,12 +88,15 @@ export const useBambooHR = () => {
       queryKey: ['bamboo', 'employee', id],
       queryFn: async () => {
         if (!isConfigured || !id) {
+          console.log('BambooHR not configured or no ID provided, returning null');
           return null;
         }
         
         try {
-          return await getBambooService().getEmployee(id);
+          const service = getBambooService();
+          return await service.getEmployee(id);
         } catch (error) {
+          console.error(`Error in useEmployee query for ID ${id}:`, error);
           toast({
             title: 'Error fetching employee',
             description: error instanceof Error ? error.message : 'Unknown error',
@@ -89,12 +115,15 @@ export const useBambooHR = () => {
       queryKey: ['bamboo', 'trainings'],
       queryFn: async () => {
         if (!isConfigured) {
+          console.log('BambooHR not configured, returning empty trainings array');
           return [];
         }
         
         try {
-          return await getBambooService().getTrainings();
+          const service = getBambooService();
+          return await service.getTrainings();
         } catch (error) {
+          console.error('Error in useTrainings query:', error);
           toast({
             title: 'Error fetching trainings',
             description: error instanceof Error ? error.message : 'Unknown error',
@@ -113,12 +142,15 @@ export const useBambooHR = () => {
       queryKey: ['bamboo', 'completions', employeeId],
       queryFn: async () => {
         if (!isConfigured || !employeeId) {
+          console.log('BambooHR not configured or no employeeId provided, returning empty completions array');
           return [];
         }
         
         try {
-          return await getBambooService().getTrainingCompletions(employeeId);
+          const service = getBambooService();
+          return await service.getTrainingCompletions(employeeId);
         } catch (error) {
+          console.error(`Error in useTrainingCompletions query for employee ${employeeId}:`, error);
           toast({
             title: 'Error fetching training completions',
             description: error instanceof Error ? error.message : 'Unknown error',
@@ -137,12 +169,15 @@ export const useBambooHR = () => {
       queryKey: ['bamboo', 'allData'],
       queryFn: async () => {
         if (!isConfigured) {
+          console.log('BambooHR not configured, returning empty data object');
           return { employees: [], trainings: [], completions: [] };
         }
         
         try {
-          return await getBambooService().fetchAllData();
+          const service = getBambooService();
+          return await service.fetchAllData();
         } catch (error) {
+          console.error('Error in useAllData query:', error);
           toast({
             title: 'Error fetching data from BambooHR',
             description: error instanceof Error ? error.message : 'Unknown error',
