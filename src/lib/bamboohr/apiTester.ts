@@ -30,7 +30,8 @@ export async function testBambooHREndpoints(client: BambooHRClient) {
     '/company/photo',
   ];
 
-  const results: {endpoint: string, exists: boolean, error?: string}[] = [];
+  // Update the type definition to include the data property
+  const results: {endpoint: string, exists: boolean, error?: string, data?: any}[] = [];
   
   console.log('Testing BambooHR API endpoints...');
   
