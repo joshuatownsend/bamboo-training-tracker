@@ -31,7 +31,7 @@ export async function testBambooHREndpoints(client: BambooHRClient) {
   ];
 
   // Update the type definition to include the data property
-  const results: {endpoint: string, exists: boolean, error?: string, data?: any}[] = [];
+  const results: {endpoint: string, exists: boolean, error?: string, data?: any, responseType?: string}[] = [];
   
   console.log('Testing BambooHR API endpoints...');
   
@@ -49,16 +49,51 @@ export async function testBambooHREndpoints(client: BambooHRClient) {
       // If it exists, try to fetch data
       if (exists) {
         try {
-          const data = await client.fetchFromBamboo(endpoint);
-          console.log(`Endpoint ${endpoint} exists and returned data:`, data);
+          const response = await client.fetchRawResponse(endpoint);
+          const contentType = response.headers.get('content-type') || '';
+          const isJson = contentType.includes('application/json');
+          const isHtml = contentType.includes('text/html');
           
-          // Add detail about what was returned
-          results[results.length - 1].data = {
-            type: typeof data,
-            isArray: Array.isArray(data),
-            keys: data ? Object.keys(data) : [],
-            isEmpty: !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)
-          };
+          results[results.length - 1].responseType = contentType;
+          
+          if (isJson) {
+            // It's JSON, parse it
+            const data = await response.json();
+            console.log(`Endpoint ${endpoint} exists and returned JSON data:`, data);
+            
+            // Add detail about what was returned
+            results[results.length - 1].data = {
+              type: typeof data,
+              isArray: Array.isArray(data),
+              keys: data ? Object.keys(data) : [],
+              isEmpty: !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0)
+            };
+          } else if (isHtml) {
+            // It's HTML, extract useful information
+            const text = await response.text();
+            console.error(`Endpoint ${endpoint} returned HTML instead of JSON`);
+            
+            // Look for title or specific patterns in HTML that might help diagnose
+            const titleMatch = text.match(/<title>(.*?)<\/title>/);
+            const title = titleMatch ? titleMatch[1] : 'Unknown HTML Page';
+            
+            results[results.length - 1].error = `Returned HTML page "${title}" instead of JSON. This indicates an authentication issue.`;
+            results[results.length - 1].data = {
+              type: 'html',
+              title,
+              isLoginPage: text.includes('login') || title.toLowerCase().includes('login'),
+              isErrorPage: text.includes('error') || title.toLowerCase().includes('error')
+            };
+          } else {
+            // It's something else
+            const text = await response.text();
+            console.error(`Endpoint ${endpoint} returned non-JSON data:`, text.substring(0, 100));
+            results[results.length - 1].error = `Returned non-JSON response (${contentType})`;
+            results[results.length - 1].data = {
+              type: 'unknown',
+              preview: text.substring(0, 200)
+            };
+          }
         } catch (dataError) {
           console.error(`Endpoint ${endpoint} exists but fetch failed:`, dataError);
           results[results.length - 1].error = dataError instanceof Error ? dataError.message : String(dataError);
@@ -93,6 +128,23 @@ function generateRecommendations(results: any[]) {
       "No endpoints are accessible. This likely means the API key is invalid or doesn't have sufficient permissions.",
       "Try generating a new API key in BambooHR with admin permissions.",
       "Verify the subdomain is correct and doesn't include '.bamboohr.com'."
+    ];
+  }
+  
+  // Check if we're getting HTML responses
+  const htmlResponses = results.filter(r => 
+    r.data?.type === 'html' || 
+    (r.error && (r.error.includes('HTML') || r.error.includes('login page')))
+  );
+  
+  if (htmlResponses.length > 0) {
+    return [
+      `Receiving HTML pages instead of JSON data. This indicates authentication issues.`,
+      `This usually means one of the following:`,
+      `1. The subdomain "${client['subdomain'] || 'unknown'}" might be incorrect - confirm your BambooHR URL`,
+      `2. Your API key might be invalid or expired - generate a new one in BambooHR`,
+      `3. Your API key may not have sufficient permissions - check with your BambooHR admin`,
+      `4. Try using the company name instead of the subdomain if you've been using the subdomain`
     ];
   }
   

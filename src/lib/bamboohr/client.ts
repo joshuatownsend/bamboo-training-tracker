@@ -18,7 +18,8 @@ export class BambooHRClient {
     this.useProxy = options.useProxy ?? true; // Default to using the proxy
   }
 
-  async fetchFromBamboo(endpoint: string, method = 'GET', body?: any) {
+  // Return the raw response for advanced parsing
+  async fetchRawResponse(endpoint: string, method = 'GET', body?: any) {
     const headers = new Headers();
     
     let url: string;
@@ -64,7 +65,18 @@ export class BambooHRClient {
         // Explicitly set credentials mode based on proxy usage
         credentials: this.useProxy ? 'same-origin' : 'omit',
       });
+      
+      return response;
+    } catch (error) {
+      console.error(`Error in BambooHR API call to ${endpoint}:`, error);
+      throw error;
+    }
+  }
 
+  async fetchFromBamboo(endpoint: string, method = 'GET', body?: any) {
+    try {
+      const response = await this.fetchRawResponse(endpoint, method, body);
+      
       if (!response.ok) {
         // Check if the response is HTML (common when getting redirected to a login page)
         const contentType = response.headers.get('content-type');

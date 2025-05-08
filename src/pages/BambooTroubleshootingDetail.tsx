@@ -4,14 +4,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Server, Database } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { getEffectiveBambooConfig, setUseProxyFlag } from '@/lib/bamboohr/config';
 import { BambooHRClient } from '@/lib/bamboohr/client';
 import { testBambooHREndpoints } from '@/lib/bamboohr/apiTester';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/use-toast';
 
 const BambooTroubleshootingDetail = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [useProxy, setUseProxy] = useState(() => {
+    const config = getEffectiveBambooConfig();
+    return config.useProxy ?? true;
+  });
+  const [subdomain, setSubdomain] = useState(() => getEffectiveBambooConfig().subdomain || '');
+
+  // Handle proxy toggle
+  const handleProxyToggle = (checked: boolean) => {
+    setUseProxy(checked);
+    setUseProxyFlag(checked);
+    localStorage.setItem('bamboo_use_proxy', checked.toString());
+    toast({
+      title: "Proxy Setting Updated",
+      description: checked 
+        ? "Now using the server-side proxy to access BambooHR API." 
+        : "Now attempting to access BambooHR API directly (may cause CORS errors).",
+      duration: 3000
+    });
+  };
 
   const runApiTests = async () => {
     setIsLoading(true);
@@ -41,9 +63,74 @@ const BambooTroubleshootingDetail = () => {
     }
   };
 
+  const updateSubdomain = () => {
+    if (!subdomain) {
+      toast({
+        title: "Subdomain Required",
+        description: "Please enter a subdomain to test",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const cleanedSubdomain = subdomain.replace(/\.bamboohr\.com$/i, '');
+    localStorage.setItem('bamboo_subdomain', cleanedSubdomain);
+    toast({
+      title: "Subdomain Updated",
+      description: `Subdomain updated to "${cleanedSubdomain}". Run the tests again to verify.`,
+      duration: 3000
+    });
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">BambooHR API Diagnostics</h1>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Connection Settings</CardTitle>
+          <CardDescription>
+            Adjust your connection settings before running the API tests.
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <Label htmlFor="subdomain">BambooHR Subdomain</Label>
+              <div className="flex mt-1 gap-2">
+                <input 
+                  id="subdomain"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={subdomain}
+                  onChange={(e) => setSubdomain(e.target.value)}
+                  placeholder="Your company's BambooHR subdomain"
+                />
+                <Button onClick={updateSubdomain}>Update</Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                This is the prefix in your BambooHR URL: https://<strong>[your-company]</strong>.bamboohr.com
+              </p>
+            </div>
+            
+            <div className="md:w-1/3">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="proxy-mode" 
+                  checked={useProxy} 
+                  onCheckedChange={handleProxyToggle} 
+                />
+                <Label htmlFor="proxy-mode" className="font-medium">
+                  Use Server-side Proxy
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Toggle to use proxy when accessing the BambooHR API (recommended)
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
@@ -118,6 +205,9 @@ const BambooTroubleshootingDetail = () => {
                             Status
                           </th>
                           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Response Type
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Details
                           </th>
                         </tr>
@@ -139,15 +229,45 @@ const BambooTroubleshootingDetail = () => {
                                 </span>
                               )}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {result.responseType ? (
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  result.responseType.includes('application/json') 
+                                    ? 'bg-green-50 text-green-700' 
+                                    : result.responseType.includes('text/html')
+                                      ? 'bg-red-50 text-red-700'
+                                      : 'bg-gray-50 text-gray-700'
+                                }`}>
+                                  {result.responseType.includes('application/json') 
+                                    ? 'JSON' 
+                                    : result.responseType.includes('text/html')
+                                      ? 'HTML'
+                                      : result.responseType}
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">Unknown</span>
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-sm text-gray-500">
                               {result.error && (
                                 <span className="text-red-600">{result.error}</span>
                               )}
-                              {result.data && (
+                              {result.data && result.data.type === 'html' && (
+                                <span className="text-amber-600">
+                                  HTML Page: "{result.data.title}" 
+                                  {result.data.isLoginPage ? " (Login Page)" : ""}
+                                </span>
+                              )}
+                              {result.data && result.data.type !== 'html' && result.data.type !== 'unknown' && (
                                 <span>
                                   {result.data.isEmpty 
                                     ? "Empty response" 
-                                    : `Data available (${result.data.keys.join(', ')})`}
+                                    : `Data available (${result.data.keys?.join(', ')})`}
+                                </span>
+                              )}
+                              {result.data && result.data.type === 'unknown' && (
+                                <span className="text-gray-500">
+                                  Unrecognized format
                                 </span>
                               )}
                             </td>
@@ -158,22 +278,31 @@ const BambooTroubleshootingDetail = () => {
                   </div>
                 </div>
                 
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md mt-6">
-                  <h3 className="font-medium text-yellow-800 flex items-center">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-md mt-6">
+                  <h3 className="font-medium text-amber-800 flex items-center">
                     <AlertTriangle className="h-4 w-4 mr-2" />
-                    What This Means
+                    HTML Responses (Login Pages) Instead of JSON Data
                   </h3>
-                  <p className="mt-2 text-sm text-yellow-700">
-                    BambooHR's API structure can vary between instances based on your company's setup and subscription level.
-                    These tests help identify what data is accessible with your current API key.
-                    <br /><br />
-                    If you're seeing errors or missing data, you may need to:
+                  <p className="mt-2 text-sm text-amber-700">
+                    If you're seeing HTML responses or login pages instead of JSON data, it typically means one of these issues:
                   </p>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-yellow-700">
-                    <li>Generate a new API key with admin permissions</li>
-                    <li>Contact BambooHR to verify your subscription includes API access</li>
-                    <li>Work with us to map your specific BambooHR structure to our application</li>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-amber-700">
+                    <li><strong>Incorrect subdomain</strong> - Double-check your BambooHR URL to confirm the correct subdomain</li>
+                    <li><strong>API key format</strong> - Ensure you're using an API key, not a password</li>
+                    <li><strong>Company name vs subdomain</strong> - Sometimes the subdomain differs from your company name; try both</li>
+                    <li><strong>API access permissions</strong> - Your API key may not have sufficient permissions</li>
+                    <li><strong>BambooHR account level</strong> - Your subscription may not include API access</li>
                   </ul>
+                  
+                  <div className="mt-4 p-3 bg-white rounded border border-amber-100">
+                    <h4 className="font-medium text-amber-800">Try These Steps:</h4>
+                    <ol className="list-decimal ml-5 text-sm space-y-1 text-amber-700">
+                      <li>Visit your BambooHR account in a browser to confirm the exact subdomain</li> 
+                      <li>Generate a fresh API key with admin permissions</li>
+                      <li>Contact BambooHR support to confirm API access is enabled for your account</li>
+                      <li>Check if your company uses a custom domain for BambooHR access</li>
+                    </ol>
+                  </div>
                 </div>
               </>
             )}
@@ -212,15 +341,21 @@ const BambooTroubleshootingDetail = () => {
           <div className="space-y-2">
             <h3 className="font-semibold flex items-center">
               <Server className="h-4 w-4 mr-2" />
-              Verify Subdomain Format
+              Company ID vs. Subdomain
             </h3>
             <p className="text-sm">
-              Make sure your subdomain is entered <strong>without</strong> ".bamboohr.com". For example,
-              if your BambooHR URL is "acme.bamboohr.com", your subdomain should just be "acme".
+              Sometimes the issue is related to the difference between your "company identifier" and your "subdomain".
+              Your BambooHR URL might be something like "companyname.bamboohr.com", but the API might expect a different
+              identifier (like an internal ID or abbreviated name).
             </p>
-            <div className="bg-gray-50 p-2 rounded text-sm">
-              <p>✓ Correct: <code className="bg-green-50 px-1 rounded">acme</code></p>
-              <p>✗ Incorrect: <code className="bg-red-50 px-1 rounded">acme.bamboohr.com</code></p>
+            <div className="bg-gray-50 p-3 rounded text-sm">
+              <p className="font-medium">Try these alternatives:</p>
+              <ol className="list-decimal ml-5 space-y-1">
+                <li>Your company name exactly as it appears in BambooHR</li>
+                <li>The subdomain from your BambooHR URL (before .bamboohr.com)</li>
+                <li>An abbreviated version of your company name (if it's long)</li>
+                <li>Contact your BambooHR administrator to confirm your company identifier</li>
+              </ol>
             </div>
           </div>
           
@@ -241,25 +376,18 @@ const BambooTroubleshootingDetail = () => {
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-semibold">Check API Access Permission</h3>
+            <h3 className="font-semibold">Contact BambooHR Support</h3>
             <p className="text-sm">
-              Not all BambooHR accounts have API access enabled. Contact your BambooHR account representative
-              to verify that API access is included in your subscription and has been activated for your account.
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <h3 className="font-semibold">Training & Certification Data Structure</h3>
-            <p className="text-sm">
-              BambooHR stores training and certification data differently depending on your setup:
+              If you've tried all of the above and still can't connect, contact BambooHR support with:
             </p>
             <ul className="list-disc ml-6 text-sm">
-              <li>Standard setup: Uses custom tables for training records</li>
-              <li>Learning module: Uses a dedicated API structure for learning content</li>
-              <li>Custom implementation: May have company-specific data structures</li>
+              <li>Your company name</li>
+              <li>Your BambooHR URL</li>
+              <li>Request confirmation of your API access and company identifier</li>
+              <li>Ask if there are any IP restrictions on API access</li>
             </ul>
             <p className="text-sm mt-2">
-              The API endpoint tests above will help identify which structure your BambooHR instance uses.
+              Sometimes BambooHR requires allowlisting specific IP addresses for API access.
             </p>
           </div>
         </CardContent>
