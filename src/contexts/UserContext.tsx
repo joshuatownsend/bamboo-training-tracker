@@ -13,12 +13,12 @@ const ADMIN_CONFIGURATION = {
     'admin@avfrd.org', 
     'chief@avfrd.org',
     'president@avfrd.org',
-    'training@avfrd.org'
+    'training@avfrd.org',
+    'jtownsend@avfrd.net'
   ],
   // Azure AD groups that grant admin access (group IDs or names)
   adminGroups: [
-    'avfrd-admins',
-    'avfrd-officers',
+    'training-portal-admins',
     'training-committee'
   ]
 };
