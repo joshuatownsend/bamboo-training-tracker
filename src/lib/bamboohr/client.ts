@@ -42,7 +42,10 @@ export class BambooHRClient {
       headers.append("Content-Type", "application/json");
     }
 
+    // Print full URL for debugging (removing API key for security)
     console.log(`BambooHR API request: ${method} ${url}`);
+    console.log(`Using proxy: ${this.useProxy}`);
+    console.log(`Subdomain: ${this.subdomain}`);
     
     // Log headers (redacting sensitive info)
     const headerObj: Record<string, string> = {};
@@ -58,6 +61,8 @@ export class BambooHRClient {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
+        // Explicitly set credentials mode based on proxy usage
+        credentials: this.useProxy ? 'same-origin' : 'omit',
       });
 
       if (!response.ok) {
@@ -81,7 +86,8 @@ export class BambooHRClient {
             throw new Error(`BambooHR returned a ${title} page instead of JSON data. This typically indicates: 
             1. Incorrect subdomain - "${this.subdomain}" might not be valid 
             2. Invalid API key - Please verify your API key is current
-            3. Authentication issues - Your API key may not have sufficient permissions`);
+            3. Authentication issues - Your API key may not have sufficient permissions
+            4. API endpoint format - The endpoint "${endpoint}" may not be correctly formatted`);
           } else {
             throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
           }
@@ -114,6 +120,39 @@ export class BambooHRClient {
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
       throw error;
+    }
+  }
+
+  // Test if API endpoint exists without parsing the response
+  async testEndpointExists(endpoint: string): Promise<boolean> {
+    const headers = new Headers();
+    
+    let url: string;
+    
+    if (this.useProxy) {
+      url = `/api/bamboohr/api/gateway.php/${this.subdomain}/v1${endpoint}`;
+      headers.append("X-BambooHR-ApiKey", this.apiKey);
+    } else {
+      url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
+      const authHeader = "Basic " + btoa(`${this.apiKey}:`);
+      headers.append("Authorization", authHeader);
+    }
+    
+    headers.append("Accept", "application/json");
+    
+    console.log(`Testing endpoint existence: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',  // Use HEAD to just check if resource exists
+        headers,
+        credentials: this.useProxy ? 'same-origin' : 'omit',
+      });
+      
+      return response.ok;
+    } catch (error) {
+      console.error(`Error checking endpoint ${endpoint}:`, error);
+      return false;
     }
   }
 }

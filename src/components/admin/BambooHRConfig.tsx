@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, HelpCircle, ExternalLink } from 'lucide-react';
 import { BAMBOO_HR_CONFIG, isBambooConfigured, getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BambooHRClient } from '@/lib/bamboohr/client';
 
 const BambooHRConfig: React.FC = () => {
   const [subdomain, setSubdomain] = useState<string>('');
@@ -16,6 +17,7 @@ const BambooHRConfig: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDetails, setErrorDetails] = useState<string>('');
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [showApiKeyFormat, setShowApiKeyFormat] = useState<boolean>(false);
 
   useEffect(() => {
     // Check if BambooHR is already configured
@@ -40,85 +42,78 @@ const BambooHRConfig: React.FC = () => {
       return;
     }
 
+    // Clean the subdomain (remove any .bamboohr.com if present)
+    const cleanedSubdomain = subdomain.replace(/\.bamboohr\.com$/i, '');
+    if (cleanedSubdomain !== subdomain) {
+      setSubdomain(cleanedSubdomain);
+      toast({
+        title: 'Subdomain Adjusted',
+        description: 'Removed ".bamboohr.com" from subdomain - only the company prefix is needed.',
+      });
+    }
+
     setIsLoading(true);
     setErrorDetails('');
     setTestStatus('testing');
 
     try {
-      // Test the connection by trying to fetch employees
-      const testUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`;
-      const headers = new Headers();
-      const authHeader = "Basic " + btoa(`${apiKey}:`);
-      headers.append("Authorization", authHeader);
-      headers.append("Accept", "application/json");
+      // First try direct fetch to test connection
+      const client = new BambooHRClient({
+        subdomain: cleanedSubdomain,
+        apiKey,
+        useProxy: true // Use proxy by default
+      });
       
-      console.log(`Testing BambooHR connection to: ${testUrl}`);
+      console.log('Testing BambooHR connection to subdomain:', cleanedSubdomain);
       
       try {
-        // First try a direct API call
-        const response = await fetch(testUrl, { 
-          method: 'GET',
-          headers,
-          mode: 'cors',
-          credentials: 'omit'
-        });
+        // Try to fetch meta/fields which is a lightweight endpoint 
+        const response = await client.fetchFromBamboo('/meta/fields');
         
-        console.log(`Direct API response status: ${response.status}`);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('BambooHR API error:', errorText);
-          throw new Error(`Connection failed (${response.status}): ${errorText}`);
-        }
-        
-        // Try to parse the response to validate it's proper JSON
-        const data = await response.json();
-        console.log('BambooHR connection successful, retrieved:', data);
-        
-        if (!data || !data.employees) {
-          throw new Error('Unexpected response format from BambooHR API');
-        }
-
-        // Success path
-        setTestStatus('success');
-        
-        // Save settings to localStorage
-        localStorage.setItem('bamboo_subdomain', subdomain);
-        localStorage.setItem('bamboo_api_key', apiKey);
-        
-        toast({
-          title: 'Configuration Saved',
-          description: 'BambooHR connection has been successfully configured!',
-        });
-        
-        setIsConfigured(true);
-        
-        // Reload the page to refresh queries with new configuration
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-        
-      } catch (fetchError) {
-        console.error('Direct fetch error:', fetchError);
-        
-        // CORS error is expected - not a failure case
-        if (fetchError instanceof TypeError && 
-            (fetchError.message.includes('NetworkError') || 
-             fetchError.message.includes('Failed to fetch'))) {
+        if (response) {
+          console.log('BambooHR connection successful, response:', response);
           
-          console.log('CORS error detected (expected) - saving config anyway');
-          setErrorDetails(`CORS error detected: ${fetchError.message}\n\nThis is expected and not an issue with your API key. Your credentials will be saved and should work correctly.`);
+          // Success path
+          setTestStatus('success');
           
-          // Since CORS errors are expected, we'll treat this as a "success with warning"
-          setTestStatus('error'); // Keep as error to show the explanation
-          
-          // Save the credentials anyway since CORS is expected
-          localStorage.setItem('bamboo_subdomain', subdomain);
+          // Save settings to localStorage
+          localStorage.setItem('bamboo_subdomain', cleanedSubdomain);
           localStorage.setItem('bamboo_api_key', apiKey);
           
           toast({
+            title: 'Configuration Saved',
+            description: 'BambooHR connection has been successfully configured!',
+          });
+          
+          setIsConfigured(true);
+          
+          // Reload the page to refresh queries with new configuration
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          throw new Error('Empty response from BambooHR API');
+        }
+      } catch (apiError) {
+        console.error('API connection error:', apiError);
+        
+        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+        
+        // Check for specific error patterns
+        if (errorMessage.includes('login page') || errorMessage.includes('HTML') || errorMessage.includes('<!DOCTYPE')) {
+          setErrorDetails(`Authentication error: ${errorMessage}\n\nBambooHR API authentication issues usually indicate:\n1. Incorrect subdomain format - use only the company prefix (e.g., "acme")\n2. Invalid API key - verify it's a current API key, not a password\n3. Insufficient permissions - the API key needs proper access rights`);
+        } else if (errorMessage.includes('CORS')) {
+          setErrorDetails(`CORS error: ${errorMessage}\n\nCORS errors are expected when testing directly and not a problem with your credentials.`);
+          
+          // Since CORS errors are expected, we'll treat this as a "success with warning" 
+          // if using the proxy option
+          localStorage.setItem('bamboo_subdomain', cleanedSubdomain);
+          localStorage.setItem('bamboo_api_key', apiKey);
+          localStorage.setItem('bamboo_use_proxy', 'true');
+          
+          toast({
             title: 'Configuration Saved (with CORS notice)',
-            description: 'Your BambooHR credentials have been saved. CORS errors are expected when testing directly from a browser.',
+            description: 'Your BambooHR credentials have been saved. API will be accessed via proxy.',
           });
           
           setIsConfigured(true);
@@ -127,21 +122,15 @@ const BambooHRConfig: React.FC = () => {
           setTimeout(() => {
             window.location.reload();
           }, 3000);
-          
+          return;
         } else {
-          // This is a real error with the API connection
-          setErrorDetails(`API connection failed: ${fetchError.message}\n\nPlease check your subdomain and API key.`);
-          setTestStatus('error');
-          
-          toast({
-            title: 'Connection Failed',
-            description: 'Could not connect to BambooHR API. Please check your credentials.',
-            variant: 'destructive',
-          });
+          setErrorDetails(`API connection failed: ${errorMessage}`);
         }
+        
+        setTestStatus('error');
       }
     } catch (error) {
-      console.error('BambooHR connection error:', error);
+      console.error('BambooHR connection setup error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to BambooHR API.';
       setErrorDetails(errorMessage);
@@ -160,6 +149,7 @@ const BambooHRConfig: React.FC = () => {
   const clearConfig = () => {
     localStorage.removeItem('bamboo_subdomain');
     localStorage.removeItem('bamboo_api_key');
+    localStorage.removeItem('bamboo_use_proxy');
     setSubdomain('');
     setApiKey('');
     setIsConfigured(false);
@@ -220,9 +210,18 @@ const BambooHRConfig: React.FC = () => {
               onChange={(e) => setSubdomain(e.target.value)}
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              This is the prefix in your BambooHR URL: https://<strong>[your-company]</strong>.bamboohr.com
-            </p>
+            <div className="flex items-center">
+              <p className="text-xs text-muted-foreground">
+                This is the prefix in your BambooHR URL: https://<strong>[your-company]</strong>.bamboohr.com
+              </p>
+              <Button 
+                variant="link" 
+                className="h-auto p-0 ml-2 text-xs"
+                onClick={() => window.open('https://help.bamboohr.com/hc/en-us/articles/229628187-API-Authentication', '_blank')}
+              >
+                BambooHR Help <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -257,9 +256,26 @@ const BambooHRConfig: React.FC = () => {
               onChange={(e) => setApiKey(e.target.value)}
               disabled={isLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              Generate an API key in BambooHR under Account → API Keys
-            </p>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">
+                Generate an API key in BambooHR under Account → API Keys
+              </p>
+              <Button 
+                variant="link" 
+                className="h-auto p-0 text-xs"
+                onClick={() => setShowApiKeyFormat(!showApiKeyFormat)}
+              >
+                {showApiKeyFormat ? 'Hide Format' : 'Show API Key Format'}
+              </Button>
+            </div>
+            
+            {showApiKeyFormat && (
+              <div className="p-2 bg-gray-50 rounded-md text-xs">
+                <p className="text-muted-foreground">Valid API Key Format Example:</p>
+                <code className="bg-gray-100 p-1 rounded">7ed5752ba65626248d4217cb9ab26a840a853374</code>
+                <p className="mt-1 text-muted-foreground">A BambooHR API key is a long string of letters and numbers, not a username/password.</p>
+              </div>
+            )}
           </div>
           
           {testStatus === 'error' && (
@@ -268,11 +284,9 @@ const BambooHRConfig: React.FC = () => {
               <p className="text-sm text-red-700 whitespace-pre-wrap">{errorDetails}</p>
               <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
                 <p className="text-sm flex items-center font-medium text-amber-800 mb-1">
-                  <AlertTriangle className="h-4 w-4 mr-1" /> Important Note About CORS
+                  <AlertTriangle className="h-4 w-4 mr-1" /> Important Note About BambooHR API
                 </p>
                 <p className="text-xs text-amber-700">
-                  BambooHR's API doesn't allow direct browser access due to CORS restrictions. This is expected and not an error with your API key.
-                  <br /><br />
                   <strong>Common Issues:</strong>
                   <br />
                   1. <strong>Incorrect subdomain format</strong> - Make sure you're only entering the company prefix (e.g., "acme", not "acme.bamboohr.com")
@@ -280,8 +294,10 @@ const BambooHRConfig: React.FC = () => {
                   2. <strong>Invalid API key</strong> - The key should be a long string of letters and numbers
                   <br />
                   3. <strong>API key permissions</strong> - The key needs read access to employee data
+                  <br />
+                  4. <strong>BambooHR account type</strong> - Your BambooHR subscription must include API access
                   <br /><br />
-                  Click "Save Anyway" to store your credentials and try with the proxy.
+                  Click "Save Configuration" to store your credentials and try with the proxy or "Save Anyway" to bypass the connection test.
                 </p>
               </div>
             </div>
@@ -311,9 +327,10 @@ const BambooHRConfig: React.FC = () => {
                 // Save anyway despite connection test failure
                 localStorage.setItem('bamboo_subdomain', subdomain);
                 localStorage.setItem('bamboo_api_key', apiKey);
+                localStorage.setItem('bamboo_use_proxy', 'true');
                 toast({
                   title: 'Configuration Saved',
-                  description: 'BambooHR credentials saved despite connection test failure.',
+                  description: 'BambooHR credentials saved. API connections will use the proxy.',
                 });
                 setIsConfigured(true);
                 setTimeout(() => window.location.reload(), 1500);

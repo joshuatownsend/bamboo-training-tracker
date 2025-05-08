@@ -19,16 +19,31 @@ class BambooHRService {
     try {
       console.log('Testing BambooHR connection...');
       
-      // Use a different endpoint with less data for quicker response
-      const testEndpoint = '/meta/fields';
+      // Try multiple endpoints to test connection
+      // These are ordered from simplest to more complex
+      const testEndpoints = [
+        '/meta/fields',
+        '/meta/lists',
+        '/employees/directory'
+      ];
       
-      console.log(`Performing test connection using endpoint: ${testEndpoint}`);
+      // Try each endpoint until one works
+      for (const endpoint of testEndpoints) {
+        try {
+          console.log(`Trying test endpoint: ${endpoint}`);
+          const response = await this.client.fetchFromBamboo(endpoint);
+          console.log(`Successfully connected to BambooHR API using endpoint: ${endpoint}`);
+          console.log('Response data type:', typeof response);
+          console.log('Response keys:', Object.keys(response));
+          return true;
+        } catch (endpointError) {
+          console.warn(`Endpoint ${endpoint} failed:`, endpointError);
+          // Continue to next endpoint
+        }
+      }
       
-      const response = await this.client.fetchFromBamboo(testEndpoint);
-      console.log('BambooHR connection test response:', response);
-      
-      // If we get here without errors, connection is working
-      return true;
+      // If we get here, all endpoints failed
+      throw new Error("All BambooHR API test endpoints failed. Please check your credentials and API access.");
     } catch (error) {
       console.error('BambooHR connection test failed:', error);
       
@@ -38,8 +53,12 @@ class BambooHRService {
       // Enhance error with troubleshooting advice
       if (errorMessage.includes('HTML') || errorMessage.includes('<!DOCTYPE')) {
         throw new Error(`Connection failed: BambooHR is returning a login page instead of API data. 
-        Please verify your subdomain is correct (currently using "${this.client['subdomain']}") and 
-        that your API key is valid.`);
+        Please verify:
+        1. Subdomain format - Use only the company prefix (e.g., "acme" not "acme.bamboohr.com")
+        2. API key format - Ensure you're using a valid API key, not a user password
+        3. BambooHR account - Verify your account has API access enabled
+        
+        Currently using subdomain: "${this.client['subdomain']}"`);
       }
       
       throw error;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Server, ArrowRight } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import useBambooHR from '@/hooks/useBambooHR';
 import { getEffectiveBambooConfig, setUseProxyFlag } from '@/lib/bamboohr/config';
@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Link } from "react-router-dom";
 
 const BambooTroubleshooting = () => {
   const [testResults, setTestResults] = useState<{
@@ -177,7 +178,15 @@ const BambooTroubleshooting = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">BambooHR Connection Troubleshooting</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">BambooHR Connection Troubleshooting</h1>
+        <Button asChild className="bg-yellow-500 hover:bg-yellow-600 text-black">
+          <Link to="/bamboo-diagnostics">
+            Advanced Diagnostics
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-3">
