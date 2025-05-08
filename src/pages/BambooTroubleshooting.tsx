@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import useBambooHR from '@/hooks/useBambooHR';
 import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 import { toast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const BambooTroubleshooting = () => {
   const [testResults, setTestResults] = useState<{
@@ -15,6 +16,7 @@ const BambooTroubleshooting = () => {
     message: string;
   }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("tests");
 
   const { isConfigured, getBambooService } = useBambooHR();
   
@@ -69,8 +71,10 @@ const BambooTroubleshooting = () => {
       
       results[results.length - 1] = {
         step: 'Fetch Employees',
-        status: 'success',
-        message: `Successfully fetched ${employees.length} employees.`
+        status: employees.length > 0 ? 'success' : 'error',
+        message: employees.length > 0
+          ? `Successfully fetched ${employees.length} employees.`
+          : 'No employees returned. This could be due to CORS restrictions or an empty employee directory.'
       };
       setTestResults(results);
       
@@ -139,108 +143,215 @@ const BambooTroubleshooting = () => {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">BambooHR Connection Troubleshooting</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection Diagnostics</CardTitle>
-          <CardDescription>
-            Run tests to check the connection to BambooHR and diagnose any issues.
-          </CardDescription>
-        </CardHeader>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-2">
+          <TabsTrigger value="tests">Connection Tests</TabsTrigger>
+          <TabsTrigger value="solutions">CORS Solutions</TabsTrigger>
+        </TabsList>
         
-        <CardContent className="space-y-4">
-          <div className="flex items-center mb-6">
-            <Button 
-              onClick={runTests}
-              disabled={isLoading} 
-              className="bg-yellow-500 hover:bg-yellow-600 text-black"
-            >
-              Run Connection Tests
-            </Button>
-            <p className="ml-4 text-sm text-muted-foreground">
-              {isConfigured ? 'BambooHR configuration detected.' : 'BambooHR is not configured.'}
-            </p>
-          </div>
+        <TabsContent value="tests">
+          <Card>
+            <CardHeader>
+              <CardTitle>Connection Diagnostics</CardTitle>
+              <CardDescription>
+                Run tests to check the connection to BambooHR and diagnose any issues.
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              <div className="flex items-center mb-6">
+                <Button 
+                  onClick={runTests}
+                  disabled={isLoading} 
+                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                >
+                  Run Connection Tests
+                </Button>
+                <p className="ml-4 text-sm text-muted-foreground">
+                  {isConfigured ? 'BambooHR configuration detected.' : 'BambooHR is not configured.'}
+                </p>
+              </div>
+              
+              {isLoading && testResults.length === 0 && (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              )}
+              
+              {testResults.length > 0 && (
+                <div className="space-y-4 border rounded-md p-4">
+                  {testResults.map((result, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      {result.status === 'success' && (
+                        <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
+                      )}
+                      {result.status === 'error' && (
+                        <AlertCircle className="h-5 w-5 text-red-500 mt-1" />
+                      )}
+                      {result.status === 'testing' && (
+                        <div className="h-5 w-5 rounded-full border-2 border-t-yellow-500 animate-spin mt-1" />
+                      )}
+                      <div>
+                        <h3 className="font-medium">{result.step}</h3>
+                        <p className={`text-sm ${
+                          result.status === 'error' 
+                            ? 'text-red-700' 
+                            : result.status === 'success' 
+                              ? 'text-green-700' 
+                              : 'text-muted-foreground'
+                        }`}>
+                          {result.message}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+            
+            <CardFooter className="flex justify-between bg-muted/20 border-t p-4">
+              <div className="text-sm text-muted-foreground">
+                <p>Subdomain: <code>{getEffectiveBambooConfig().subdomain || 'Not set'}</code></p>
+                <p>API Key: <code>{getEffectiveBambooConfig().apiKey ? '••••••••' : 'Not set'}</code></p>
+              </div>
+            </CardFooter>
+          </Card>
           
-          {isLoading && testResults.length === 0 && (
-            <div className="space-y-2">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          )}
-          
-          {testResults.length > 0 && (
-            <div className="space-y-4 border rounded-md p-4">
-              {testResults.map((result, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  {result.status === 'success' && (
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
-                  )}
-                  {result.status === 'error' && (
-                    <AlertCircle className="h-5 w-5 text-red-500 mt-1" />
-                  )}
-                  {result.status === 'testing' && (
-                    <div className="h-5 w-5 rounded-full border-2 border-t-yellow-500 animate-spin mt-1" />
-                  )}
-                  <div>
-                    <h3 className="font-medium">{result.step}</h3>
-                    <p className={`text-sm ${
-                      result.status === 'error' 
-                        ? 'text-red-700' 
-                        : result.status === 'success' 
-                          ? 'text-green-700' 
-                          : 'text-muted-foreground'
-                    }`}>
-                      {result.message}
-                    </p>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Common Issues</CardTitle>
+              <CardDescription>
+                Troubleshooting steps for common BambooHR connection issues
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold">CORS Errors</h3>
+                <p className="text-sm">
+                  The BambooHR API may return CORS errors when accessed directly from a browser. This is normal and not necessarily an error with your configuration.
+                  If you see CORS errors but your API key and subdomain are correct, you'll need a server-side proxy to access the API.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-semibold">Incorrect Subdomain</h3>
+                <p className="text-sm">
+                  Make sure your subdomain is entered correctly. This is the part of your BambooHR URL that comes before ".bamboohr.com".
+                  For example, if your BambooHR URL is "company.bamboohr.com", your subdomain is "company".
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-semibold">API Key Permissions</h3>
+                <p className="text-sm">
+                  Ensure your API key has the necessary permissions. The API key should have read access to employee data and training records.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="solutions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Understanding CORS Errors</CardTitle>
+              <CardDescription>
+                Cross-Origin Resource Sharing (CORS) limitations and how to address them
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              <div className="rounded-md bg-amber-50 p-4 border border-amber-200">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-amber-800">CORS Restriction Notice</h3>
+                    <div className="mt-2 text-sm text-amber-700">
+                      <p>
+                        The BambooHR API can't be accessed directly from a browser due to security restrictions called CORS.
+                        This is not an error in your configuration - it's a built-in browser security feature.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-        
-        <CardFooter className="flex justify-between bg-muted/20 border-t p-4">
-          <div className="text-sm text-muted-foreground">
-            <p>Subdomain: <code>{getEffectiveBambooConfig().subdomain || 'Not set'}</code></p>
-            <p>API Key: <code>{getEffectiveBambooConfig().apiKey ? '••••••••' : 'Not set'}</code></p>
-          </div>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Common Issues</CardTitle>
-          <CardDescription>
-            Troubleshooting steps for common BambooHR connection issues
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold">CORS Errors</h3>
-            <p className="text-sm">
-              The BambooHR API may return CORS errors when accessed directly from a browser. This is normal and not necessarily an error with your configuration.
-              If you see CORS errors but your API key and subdomain are correct, the integration should still work when used in production.
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <h3 className="font-semibold">Incorrect Subdomain</h3>
-            <p className="text-sm">
-              Make sure your subdomain is entered correctly. This is the part of your BambooHR URL that comes before ".bamboohr.com".
-              For example, if your BambooHR URL is "company.bamboohr.com", your subdomain is "company".
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <h3 className="font-semibold">API Key Permissions</h3>
-            <p className="text-sm">
-              Ensure your API key has the necessary permissions. The API key should have read access to employee data and training records.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-      
+              </div>
+              
+              <h3 className="text-lg font-medium mt-6">What is CORS?</h3>
+              <p className="text-sm">
+                Cross-Origin Resource Sharing (CORS) is a security mechanism that prevents web pages from making
+                requests to a different domain than the one that served the original page. This is a security feature 
+                implemented by all modern browsers.
+              </p>
+              
+              <h3 className="text-lg font-medium mt-4">Solutions to CORS Issues</h3>
+              
+              <div className="mt-4 space-y-4">
+                <div className="p-4 border rounded-md">
+                  <h4 className="font-medium">Option 1: Server-side Proxy</h4>
+                  <p className="text-sm mt-2">
+                    The most common solution is to create a server-side proxy that makes requests to BambooHR on behalf of your frontend.
+                    Your frontend would make requests to your server, which then forwards them to BambooHR.
+                  </p>
+                  <p className="text-sm mt-2 text-muted-foreground">
+                    This requires creating a backend API service using Node.js, Python, or another server-side technology.
+                  </p>
+                </div>
+                
+                <div className="p-4 border rounded-md">
+                  <h4 className="font-medium">Option 2: Serverless Function</h4>
+                  <p className="text-sm mt-2">
+                    Use a serverless function (like AWS Lambda, Vercel Functions, or Netlify Functions) as a proxy.
+                    This is similar to a server-side proxy but doesn't require maintaining a full server.
+                  </p>
+                </div>
+                
+                <div className="p-4 border rounded-md">
+                  <h4 className="font-medium">Option 3: Browser Extension</h4>
+                  <p className="text-sm mt-2">
+                    For development purposes only, you can use browser extensions that disable CORS checks.
+                    <strong> Never use this in production</strong> as it compromises security.
+                  </p>
+                </div>
+                
+                <div className="p-4 border rounded-md">
+                  <h4 className="font-medium">Option 4: BambooHR Webhooks</h4>
+                  <p className="text-sm mt-2">
+                    If your BambooHR account supports webhooks, you can set up webhooks to push data to your application
+                    instead of having your application pull data from BambooHR.
+                  </p>
+                </div>
+              </div>
+              
+              <h3 className="text-lg font-medium mt-6">Recommended Approach</h3>
+              <p className="text-sm">
+                The most reliable solution is to create a simple backend service that acts as a proxy between your frontend
+                application and the BambooHR API. This service would:
+              </p>
+              <ul className="list-disc pl-6 mt-2 space-y-1 text-sm">
+                <li>Accept requests from your frontend</li>
+                <li>Forward those requests to BambooHR with proper authentication</li>
+                <li>Return the responses to your frontend</li>
+                <li>Implement proper CORS headers to allow your frontend to access it</li>
+              </ul>
+              
+              <div className="mt-6">
+                <Button 
+                  variant="outline"
+                  className="flex items-center"
+                  onClick={() => window.open('https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS', '_blank')}
+                >
+                  Learn more about CORS
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
