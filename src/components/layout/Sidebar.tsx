@@ -23,9 +23,9 @@ export function Sidebar() {
   };
 
   return (
-    <div className="hidden md:flex flex-col gap-2 border-r w-64 p-4 bg-gray-50">
+    <div className="hidden md:flex flex-col gap-2 border-r w-64 p-4 bg-company-yellow/10">
       <div className="flex items-center gap-2 px-2 mb-4">
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+        <div className="w-8 h-8 rounded-full bg-company-yellow flex items-center justify-center text-black font-bold">
           A
         </div>
         <h2 className="text-lg font-bold">AVFRD Training</h2>
@@ -35,7 +35,7 @@ export function Sidebar() {
         <Link to="/">
           <Button
             variant={isActive("/") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/") ? "bg-company-grey text-white" : "")}
           >
             <CheckSquare className="mr-2 h-4 w-4" />
             Dashboard
@@ -47,7 +47,7 @@ export function Sidebar() {
         <Link to="/my-trainings">
           <Button
             variant={isActive("/my-trainings") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/my-trainings") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/my-trainings") ? "bg-company-grey text-white" : "")}
           >
             <FileText className="mr-2 h-4 w-4" />
             My Trainings
@@ -57,7 +57,7 @@ export function Sidebar() {
         <Link to="/my-qualifications">
           <Button
             variant={isActive("/my-qualifications") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/my-qualifications") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/my-qualifications") ? "bg-company-grey text-white" : "")}
           >
             <CheckSquare className="mr-2 h-4 w-4" />
             My Qualifications
@@ -67,7 +67,7 @@ export function Sidebar() {
         <Link to="/required-trainings">
           <Button
             variant={isActive("/required-trainings") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/required-trainings") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/required-trainings") ? "bg-company-grey text-white" : "")}
           >
             <ListChecks className="mr-2 h-4 w-4" />
             Required Trainings
@@ -79,7 +79,7 @@ export function Sidebar() {
         <Link to="/employees">
           <Button
             variant={isActive("/employees") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/employees") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/employees") ? "bg-company-grey text-white" : "")}
           >
             <Users className="mr-2 h-4 w-4" />
             Employees
@@ -89,7 +89,7 @@ export function Sidebar() {
         <Link to="/courses">
           <Button
             variant={isActive("/courses") ? "secondary" : "ghost"}
-            className={cn("w-full justify-start", isActive("/courses") ? "bg-secondary/20" : "")}
+            className={cn("w-full justify-start", isActive("/courses") ? "bg-company-grey text-white" : "")}
           >
             <FileText className="mr-2 h-4 w-4" />
             Courses
@@ -103,7 +103,7 @@ export function Sidebar() {
             <Link to="/admin/reports">
               <Button
                 variant={isActive("/admin/reports") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/reports") ? "bg-secondary/20" : "")}
+                className={cn("w-full justify-start", isActive("/admin/reports") ? "bg-company-grey text-white" : "")}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Admin Reports
@@ -113,7 +113,7 @@ export function Sidebar() {
             <Link to="/admin/training-impact">
               <Button
                 variant={isActive("/admin/training-impact") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/training-impact") ? "bg-secondary/20" : "")}
+                className={cn("w-full justify-start", isActive("/admin/training-impact") ? "bg-company-grey text-white" : "")}
               >
                 <FileBarChart className="mr-2 h-4 w-4" />
                 Training Impact
@@ -123,7 +123,7 @@ export function Sidebar() {
             <Link to="/admin/positions">
               <Button
                 variant={isActive("/admin/positions") ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", isActive("/admin/positions") ? "bg-secondary/20" : "")}
+                className={cn("w-full justify-start", isActive("/admin/positions") ? "bg-company-grey text-white" : "")}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Position Management

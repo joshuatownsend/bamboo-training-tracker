@@ -65,6 +65,12 @@ export default {
 					800: '#3f6212',
 					900: '#365314',
 				},
+				// Adding company colors directly for easier access
+				company: {
+					yellow: '#FCDC1D',
+					grey: '#747474',
+					black: '#000000'
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
