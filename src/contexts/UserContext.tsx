@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useMsal } from "./MsalContext";
 import { loginRequest } from "../lib/authConfig";
@@ -6,8 +7,11 @@ import { useMsalAuthentication } from "@azure/msal-react";
 import { User } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
 
-// Define the admin configuration - these can be easily updated
-const ADMIN_CONFIGURATION = {
+// Local storage key for admin settings
+const LOCAL_STORAGE_KEY = "avfrd_admin_settings";
+
+// Default admin configuration - will be used if no settings are found
+const DEFAULT_ADMIN_CONFIGURATION = {
   // Admin email addresses that should have administrator privileges
   adminEmails: [
     'admin@avfrd.org', 
@@ -22,6 +26,11 @@ const ADMIN_CONFIGURATION = {
     'training-committee'
   ]
 };
+
+interface AdminSettings {
+  adminEmails: string[];
+  adminGroups: string[];
+}
 
 interface UserContextType {
   currentUser: User | null;
@@ -45,20 +54,60 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { instance, activeAccount } = useMsal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>(DEFAULT_ADMIN_CONFIGURATION);
+  
+  // Load admin settings from localStorage
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedSettings) {
+        setAdminSettings(JSON.parse(savedSettings));
+      } else {
+        // Initialize settings if none exist
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN_CONFIGURATION));
+      }
+    } catch (error) {
+      console.error("Error loading admin settings:", error);
+      // In case of error, use default settings
+    }
+  }, []);
+
+  // Add a listener for localStorage changes (in case settings are updated in another tab)
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === LOCAL_STORAGE_KEY && event.newValue) {
+        try {
+          setAdminSettings(JSON.parse(event.newValue));
+          // If user is already logged in, update their role based on new settings
+          if (activeAccount) {
+            const updatedUser = mapAccountToUser(activeAccount, JSON.parse(event.newValue));
+            setCurrentUser(updatedUser);
+          }
+        } catch (error) {
+          console.error("Error parsing updated admin settings:", error);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [activeAccount]);
 
   // Convert MSAL account to our User type
-  const mapAccountToUser = (account: AccountInfo): User => {
+  const mapAccountToUser = (account: AccountInfo, settings: AdminSettings = adminSettings): User => {
     // Determine user role based on email or group membership
     let role: 'user' | 'admin' = 'user';
     
     // Check if user is an admin based on their email
-    if (ADMIN_CONFIGURATION.adminEmails.includes(account.username.toLowerCase())) {
+    if (settings.adminEmails.includes(account.username.toLowerCase())) {
       role = 'admin';
     }
     
     // Also check for admin group membership in token claims
     const groups = account.idTokenClaims?.groups as string[] | undefined;
-    if (groups && groups.some(group => ADMIN_CONFIGURATION.adminGroups.includes(group))) {
+    if (groups && groups.some(group => settings.adminGroups.includes(group))) {
       role = 'admin';
     }
 
@@ -110,7 +159,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchUserData();
-  }, [instance, activeAccount]);
+  }, [instance, activeAccount, adminSettings]);
 
   // Interactive login - use redirect for better SPA compatibility
   const login = async () => {

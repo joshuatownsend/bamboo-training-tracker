@@ -17,6 +17,7 @@ import AdminReports from "./pages/AdminReports";
 import PositionManagement from "./pages/PositionManagement";
 import TrainingImpact from "./pages/TrainingImpact";
 import TrainingRequirementManagement from "./pages/TrainingRequirementManagement";
+import AdminSettings from "./pages/AdminSettings";
 import UserProvider from "./contexts/UserContext";
 import MsalContextProvider from "./contexts/MsalContext";
 import Login from "./pages/Login";
@@ -70,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/admin/positions" element={<AdminRoute><PositionManagement /></AdminRoute>} />
         <Route path="/admin/training-impact" element={<AdminRoute><TrainingImpact /></AdminRoute>} />
         <Route path="/admin/requirements" element={<AdminRoute><TrainingRequirementManagement /></AdminRoute>} />
+        <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -10,6 +10,7 @@ import {
   Settings,
   User,
   X,
+  Shield,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -161,6 +162,12 @@ export default function Sidebar() {
                     active={location.pathname === "/admin/training-impact"}
                     icon={<BarChartHorizontal className="h-4 w-4" />} 
                     label="Training Impact" 
+                  />
+                  <SidebarLink 
+                    to="/admin/settings" 
+                    active={location.pathname === "/admin/settings"}
+                    icon={<Shield className="h-4 w-4" />} 
+                    label="Admin Settings" 
                   />
                 </ul>
               </li>
