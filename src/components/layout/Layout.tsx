@@ -1,6 +1,6 @@
 
 import Sidebar from "./Sidebar";
-import { Header } from "./Header";
+import Header from "./Header";
 import { Outlet } from "react-router-dom";
 import { useMobile } from "@/hooks/useMobile";
 
