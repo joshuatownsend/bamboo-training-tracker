@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 interface NavItem {
   name: string;
@@ -32,113 +33,154 @@ interface NavItem {
   admin?: boolean;
 }
 
+interface NavSection {
+  title?: string;
+  items: NavItem[];
+}
+
 const Sidebar = () => {
   const { currentUser: user, logout: signOut, isAdmin } = useUser();
 
-  const navigationItems: NavItem[] = [
+  const navigationSections: NavSection[] = [
     {
-      name: "Dashboard",
-      href: "/",
-      icon: LayoutDashboard,
+      title: "Overview",
+      items: [
+        {
+          name: "Dashboard",
+          href: "/",
+          icon: LayoutDashboard,
+        },
+      ],
     },
     {
-      name: "My Trainings",
-      href: "/my-trainings",
-      icon: Book,
+      title: "My Profile",
+      items: [
+        {
+          name: "My Trainings",
+          href: "/my-trainings",
+          icon: Book,
+        },
+        {
+          name: "My Qualifications",
+          href: "/my-qualifications",
+          icon: Shield,
+        },
+        {
+          name: "Required Trainings",
+          href: "/required-trainings",
+          icon: FileText,
+        },
+      ],
     },
     {
-      name: "My Qualifications",
-      href: "/my-qualifications",
-      icon: Shield,
+      title: "Records",
+      items: [
+        {
+          name: "Employees",
+          href: "/employees",
+          icon: Users,
+        },
+        {
+          name: "Trainings",
+          href: "/trainings",
+          icon: BookCheck,
+        },
+      ],
     },
     {
-      name: "Required Trainings",
-      href: "/required-trainings",
-      icon: FileText,
-    },
-    {
-      name: "Employees",
-      href: "/employees",
-      icon: Users,
-    },
-    {
-      name: "Trainings",
-      href: "/trainings",
-      icon: BookCheck,
-    },
-    {
-      name: "Admin Reports",
-      href: "/admin/reports",
-      icon: BarChart3,
-      admin: true,
-    },
-    {
-      name: "Position Management",
-      href: "/admin/positions",
-      icon: Users,
-      admin: true,
-    },
-    {
-      name: "Training Requirements",
-      href: "/admin/requirements",
-      icon: Book,
-      admin: true,
-    },
-    {
-      name: "Training Impact",
-      href: "/admin/training-impact",
-      icon: BarChart3,
-      admin: true,
-    },
-    {
-      name: "Admin Settings",
-      href: "/admin",
-      icon: Settings,
-      admin: true,
-    },
-    {
-      name: "BambooHR Troubleshooting",
-      href: "/bamboo-troubleshooting",
-      icon: AlertTriangle,
-      admin: true,
+      title: "Administration",
+      items: [
+        {
+          name: "Admin Reports",
+          href: "/admin/reports",
+          icon: BarChart3,
+          admin: true,
+        },
+        {
+          name: "Position Management",
+          href: "/admin/positions",
+          icon: Users,
+          admin: true,
+        },
+        {
+          name: "Training Requirements",
+          href: "/admin/requirements",
+          icon: Book,
+          admin: true,
+        },
+        {
+          name: "Training Impact",
+          href: "/admin/training-impact",
+          icon: BarChart3,
+          admin: true,
+        },
+        {
+          name: "Admin Settings",
+          href: "/admin",
+          icon: Settings,
+          admin: true,
+        },
+        {
+          name: "BambooHR Troubleshooting",
+          href: "/bamboo-troubleshooting",
+          icon: AlertTriangle,
+          admin: true,
+        },
+      ],
     },
   ];
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 border-r py-4 w-64">
-      <div className="px-6 mb-8">
+    <div className="flex flex-col h-full bg-black text-white border-r py-4 w-64">
+      <div className="px-6 mb-4 bg-company-yellow text-black py-3">
         <Link to="/" className="flex items-center text-2xl font-bold">
           <LayoutDashboard className="mr-2 h-6 w-6" />
           Training Portal
         </Link>
       </div>
 
-      <nav className="flex-grow px-6">
-        {navigationItems.map((item) => {
-          if (item.admin && !isAdmin) {
-            return null;
-          }
-
+      <nav className="flex-grow px-4 overflow-y-auto">
+        {navigationSections.map((section, index) => {
+          // Filter out admin sections/items if user is not admin
+          const filteredItems = section.items.filter(item => !item.admin || isAdmin);
+          
+          // Skip rendering this section if all items are filtered out
+          if (filteredItems.length === 0) return null;
+          
           return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className="flex items-center px-3 py-2 text-gray-700 rounded-md hover:bg-gray-200 hover:text-gray-900"
-            >
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.name}
-            </Link>
+            <div key={section.title || `section-${index}`} className="mb-6">
+              {section.title && (
+                <h2 className="text-company-grey text-xs uppercase font-semibold tracking-wider mb-2 px-3">
+                  {section.title}
+                </h2>
+              )}
+              <div className="space-y-1">
+                {filteredItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center px-3 py-2 text-gray-300 rounded-md hover:bg-gray-800 hover:text-company-yellow"
+                  >
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+              {index < navigationSections.length - 1 && filteredItems.length > 0 && (
+                <Separator className="my-4 bg-gray-700" />
+              )}
+            </div>
           );
         })}
       </nav>
 
-      <div className="px-6 mt-8">
+      <div className="px-6 mt-4 pt-4 border-t border-gray-700">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start px-3 py-2">
+            <Button variant="ghost" className="w-full justify-start px-3 py-2 text-white hover:bg-gray-800 hover:text-company-yellow">
               <div className="flex items-center space-x-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
+                <Avatar className="h-8 w-8 bg-gray-700">
+                  <AvatarFallback className="bg-gray-700 text-white">
                     {user?.email?.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
