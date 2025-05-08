@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { PlusCircle, Search, RefreshCw } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
-import { employees, trainings, trainingCompletions } from "@/lib/data";
+import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
 import { useState } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,10 +23,16 @@ const Employees = () => {
   const { isConfigured, useAllData } = useBambooHR();
   const { data, isLoading, error, refetch } = useAllData();
   
+  console.log('Employees page - BambooHR configured:', isConfigured);
+  console.log('BambooHR data loaded:', data ? 'Yes' : 'No');
+  if (data) {
+    console.log(`Employees: ${data.employees?.length || 0}, Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
+  }
+  
   // Use BambooHR data if available, otherwise fall back to mock data
-  const employeesData = isConfigured && data?.employees?.length ? data.employees : employees;
-  const trainingsData = isConfigured && data?.trainings?.length ? data.trainings : trainings;
-  const completionsData = isConfigured && data?.completions?.length ? data.completions : trainingCompletions;
+  const employeesData = isConfigured && data?.employees?.length ? data.employees : mockEmployees;
+  const trainingsData = isConfigured && data?.trainings?.length ? data.trainings : mockTrainings;
+  const completionsData = isConfigured && data?.completions?.length ? data.completions : mockCompletions;
   
   // Get unique departments for filter
   const departments = [...new Set(employeesData.map(e => e.department))];
@@ -41,6 +47,7 @@ const Employees = () => {
   });
   
   const handleRefresh = () => {
+    console.log('Manually refreshing BambooHR data');
     refetch();
   };
   

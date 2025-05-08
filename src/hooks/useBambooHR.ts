@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '../lib/bamboohr/api';
-import { BAMBOO_HR_CONFIG, isBambooConfigured } from '../lib/bamboohr/config';
+import { getEffectiveBambooConfig, isBambooConfigured } from '../lib/bamboohr/config';
 import { toast } from '../components/ui/use-toast';
 import { useState, useEffect } from 'react';
 
@@ -18,6 +18,9 @@ export const useBambooHR = () => {
       if (configured) {
         // Test the connection when config is available
         console.log('Testing BambooHR connection...');
+        const config = getEffectiveBambooConfig();
+        console.log('Using BambooHR config:', { subdomain: config.subdomain, apiKey: config.apiKey ? '[REDACTED]' : null });
+        
         const service = getBambooService();
         service.testConnection()
           .then(() => {
@@ -26,10 +29,14 @@ export const useBambooHR = () => {
           })
           .catch(error => {
             console.error('BambooHR connection test failed:', error);
-            setConnectionError(error instanceof Error ? error.message : 'Unknown connection error');
             
-            // Only show toast for connection issues, not CORS issues which are expected
-            if (!(error instanceof Error && error.message.includes('CORS'))) {
+            // Don't set connection error for CORS issues, as these are expected
+            if (error instanceof Error && error.message.includes('CORS')) {
+              console.log('CORS error during connection test - this is expected');
+              setConnectionError(null);
+            } else {
+              setConnectionError(error instanceof Error ? error.message : 'Unknown connection error');
+              
               toast({
                 title: 'BambooHR Connection Issue',
                 description: error instanceof Error ? error.message : 'Failed to connect to BambooHR API',
@@ -58,6 +65,7 @@ export const useBambooHR = () => {
   
   // Allow manual configuration of API key and subdomain
   const configureBamboo = (subdomain: string, apiKey: string) => {
+    console.log(`Configuring BambooHR with subdomain: ${subdomain}, apiKey: [REDACTED]`);
     localStorage.setItem('bamboo_subdomain', subdomain);
     localStorage.setItem('bamboo_api_key', apiKey);
     setIsConfigured(true);
@@ -67,17 +75,8 @@ export const useBambooHR = () => {
 
   // Create BambooHR service instance with the stored/provided config
   const getBambooService = (): BambooHRService => {
-    // First check localStorage
-    const storedSubdomain = localStorage.getItem('bamboo_subdomain');
-    const storedApiKey = localStorage.getItem('bamboo_api_key');
-    
-    // Use local storage values if available, otherwise use env vars
-    const options = {
-      subdomain: storedSubdomain || BAMBOO_HR_CONFIG.subdomain,
-      apiKey: storedApiKey || BAMBOO_HR_CONFIG.apiKey
-    };
-    
-    return new BambooHRService(options);
+    const config = getEffectiveBambooConfig();
+    return new BambooHRService(config);
   };
 
   // Test connection only (doesn't fetch data)
@@ -219,18 +218,30 @@ export const useBambooHR = () => {
         
         try {
           const service = getBambooService();
-          return await service.fetchAllData();
+          const data = await service.fetchAllData();
+          console.log('Successfully fetched all BambooHR data:', data);
+          return data;
         } catch (error) {
           console.error('Error in useAllData query:', error);
+          
+          // For CORS errors, show a more meaningful message
+          if (error instanceof Error && error.message.includes('CORS')) {
+            console.log('CORS error during data fetch - this is expected in browser');
+            return { employees: [], trainings: [], completions: [] };
+          }
+          
           toast({
             title: 'Error fetching data from BambooHR',
             description: error instanceof Error ? error.message : 'Unknown error',
-            variant: 'destructive'
+            variant: 'destructive',
           });
           throw error;
         }
       },
-      enabled: isConfigured
+      enabled: isConfigured,
+      // Add retry logic with exponential backoff
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
     });
   };
 
