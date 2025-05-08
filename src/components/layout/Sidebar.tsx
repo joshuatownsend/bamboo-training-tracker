@@ -15,6 +15,7 @@ import { NavLink, useLocation } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/useMobile";
+import { useUser } from "@/contexts/UserContext";
 
 interface SidebarLinkProps {
   to: string;
@@ -40,6 +41,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({ to, icon, label, active }) =>
 export default function Sidebar() {
   const { isMobile, setIsMobile } = useMobile();
   const location = useLocation();
+  const { isAdmin } = useUser();
 
   return (
     <>
@@ -130,37 +132,39 @@ export default function Sidebar() {
               </ul>
             </li>
             
-            <li className="mb-6">
-              <h3 className="mb-2 text-sm text-company-grey uppercase font-medium">
-                Administration
-              </h3>
-              <ul className="space-y-1">
-                <SidebarLink 
-                  to="/admin/reports" 
-                  active={location.pathname === "/admin/reports"}
-                  icon={<FileBarChart className="h-4 w-4" />} 
-                  label="Reports" 
-                />
-                <SidebarLink 
-                  to="/admin/positions" 
-                  active={location.pathname === "/admin/positions"}
-                  icon={<Briefcase className="h-4 w-4" />} 
-                  label="Positions" 
-                />
-                <SidebarLink 
-                  to="/admin/requirements" 
-                  active={location.pathname === "/admin/requirements"}
-                  icon={<ClipboardCheck className="h-4 w-4" />} 
-                  label="Requirements" 
-                />
-                <SidebarLink 
-                  to="/admin/training-impact" 
-                  active={location.pathname === "/admin/training-impact"}
-                  icon={<BarChartHorizontal className="h-4 w-4" />} 
-                  label="Training Impact" 
-                />
-              </ul>
-            </li>
+            {isAdmin && (
+              <li className="mb-6">
+                <h3 className="mb-2 text-sm text-company-grey uppercase font-medium">
+                  Administration
+                </h3>
+                <ul className="space-y-1">
+                  <SidebarLink 
+                    to="/admin/reports" 
+                    active={location.pathname === "/admin/reports"}
+                    icon={<FileBarChart className="h-4 w-4" />} 
+                    label="Reports" 
+                  />
+                  <SidebarLink 
+                    to="/admin/positions" 
+                    active={location.pathname === "/admin/positions"}
+                    icon={<Briefcase className="h-4 w-4" />} 
+                    label="Positions" 
+                  />
+                  <SidebarLink 
+                    to="/admin/requirements" 
+                    active={location.pathname === "/admin/requirements"}
+                    icon={<ClipboardCheck className="h-4 w-4" />} 
+                    label="Requirements" 
+                  />
+                  <SidebarLink 
+                    to="/admin/training-impact" 
+                    active={location.pathname === "/admin/training-impact"}
+                    icon={<BarChartHorizontal className="h-4 w-4" />} 
+                    label="Training Impact" 
+                  />
+                </ul>
+              </li>
+            )}
           </ul>
         </nav>
       </div>

@@ -42,6 +42,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requireAdmin?: boole
   }
 
   if (requireAdmin && !isAdmin) {
+    // If admin access is required but user is not admin, redirect to dashboard
     return <Navigate to="/" replace />;
   }
 
