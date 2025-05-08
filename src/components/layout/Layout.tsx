@@ -14,7 +14,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <div className={`flex flex-1 flex-col ${isMobile ? 'w-full' : 'ml-64'}`}>
+      <div className={`flex flex-1 flex-col ${isMobile ? 'w-full' : 'ml-4'}`}>
         <Header />
         <main className="flex-1 p-6">
           {children || <Outlet />}
