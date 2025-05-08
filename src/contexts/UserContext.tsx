@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useMsal } from "./MsalContext";
 import { loginRequest } from "../lib/authConfig";
@@ -6,6 +5,23 @@ import { InteractionType, PopupRequest, RedirectRequest, AuthenticationResult, A
 import { useMsalAuthentication } from "@azure/msal-react";
 import { User } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
+
+// Define the admin configuration - these can be easily updated
+const ADMIN_CONFIGURATION = {
+  // Admin email addresses that should have administrator privileges
+  adminEmails: [
+    'admin@avfrd.org', 
+    'chief@avfrd.org',
+    'president@avfrd.org',
+    'training@avfrd.org'
+  ],
+  // Azure AD groups that grant admin access (group IDs or names)
+  adminGroups: [
+    'avfrd-admins',
+    'avfrd-officers',
+    'training-committee'
+  ]
+};
 
 interface UserContextType {
   currentUser: User | null;
@@ -32,35 +48,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Convert MSAL account to our User type
   const mapAccountToUser = (account: AccountInfo): User => {
-    // Determine user role based on email domain or membership in admin groups
-    // This is a simplified example - in a real app, you might:
-    // 1. Use Microsoft Graph API to check group membership
-    // 2. Look up roles in your own database
-    // 3. Check claims in the ID token if custom claims are configured
-    
+    // Determine user role based on email or group membership
     let role: 'user' | 'admin' = 'user';
     
-    // Check if user is an admin based on email
-    // In a real application, you would likely use Azure AD groups or app roles
-    const adminEmails = [
-      'admin@avfrd.org', 
-      'chief@avfrd.org',
-      'president@avfrd.org',
-      'training@avfrd.org'
-    ];
-    
-    // Simple role assignment logic - look for known admin emails
-    if (adminEmails.includes(account.username.toLowerCase())) {
+    // Check if user is an admin based on their email
+    if (ADMIN_CONFIGURATION.adminEmails.includes(account.username.toLowerCase())) {
       role = 'admin';
     }
     
-    // You can also check for groups from claims if you've configured Azure AD to include them
+    // Also check for admin group membership in token claims
     const groups = account.idTokenClaims?.groups as string[] | undefined;
-    if (groups && (
-      groups.includes('avfrd-admins') || 
-      groups.includes('avfrd-officers') ||
-      groups.includes('training-committee')
-    )) {
+    if (groups && groups.some(group => ADMIN_CONFIGURATION.adminGroups.includes(group))) {
       role = 'admin';
     }
 
