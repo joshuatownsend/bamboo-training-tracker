@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '@/lib/bamboohr/api';
@@ -45,7 +44,7 @@ const useBambooHR = () => {
       setIsLoading(false);
     }
   }, [isConfigured, getBambooService]);
-
+  
   // React Query hook to fetch all BambooHR data
   const useAllData = () => {
     return useQuery({

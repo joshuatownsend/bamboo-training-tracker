@@ -1,8 +1,8 @@
-
 export interface BambooApiOptions {
   subdomain: string;
   apiKey: string;
   useProxy?: boolean;
+  useEdgeFunction?: boolean;
 }
 
 export interface BambooEmployee {
