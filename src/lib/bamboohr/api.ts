@@ -46,15 +46,99 @@ class BambooHRApiClient {
   }
 
   async fetchAllEmployees(): Promise<Employee[]> {
-    return this.client.fetchFromBamboo('/employees/directory');
+    try {
+      const data = await this.client.fetchFromBamboo('/employees/directory');
+      console.log("Raw employees data:", data);
+      
+      if (Array.isArray(data)) {
+        return this.mapEmployeeData(data);
+      } else if (data && typeof data === 'object' && data.employees) {
+        return this.mapEmployeeData(data.employees);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      throw error;
+    }
+  }
+  
+  private mapEmployeeData(data: any[]): Employee[] {
+    return data.map(emp => ({
+      id: emp.id?.toString() || '',
+      name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+      position: emp.jobTitle?.name || emp.jobTitle || '',
+      department: emp.department?.name || emp.department || '',
+      division: emp.division?.name || emp.division || '',
+      email: emp.workEmail || '',
+      hireDate: emp.hireDate || '',
+    }));
   }
 
   async fetchAllTrainings(): Promise<Training[]> {
-    return this.client.fetchFromBamboo('/custom_reports/report?id=40');
+    try {
+      console.log("Fetching trainings from BambooHR...");
+      const data = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+      console.log("Raw trainings data:", data);
+      
+      if (Array.isArray(data)) {
+        return this.mapTrainingData(data);
+      } else if (data && typeof data === 'object') {
+        // Try to find training data in different possible structures
+        const trainingArray = data.trainings || data.data || data.rows || [];
+        return this.mapTrainingData(trainingArray);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching trainings:", error);
+      throw error;
+    }
+  }
+  
+  private mapTrainingData(data: any[]): Training[] {
+    return data.map(training => ({
+      id: training.id?.toString() || '',
+      title: training.name || training.title || '',
+      type: training.type || 'Unknown',
+      category: training.category || 'General',
+      description: training.description || '',
+      durationHours: parseFloat(training.duration) || 0,
+      requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+    }));
   }
 
   async fetchAllCompletions(): Promise<TrainingCompletion[]> {
-    return this.client.fetchFromBamboo('/custom_reports/report?id=41');
+    try {
+      const data = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
+      console.log("Raw completions data:", data);
+      
+      if (Array.isArray(data)) {
+        return this.mapCompletionData(data);
+      } else if (data && typeof data === 'object') {
+        // Try to find completion data in different possible structures
+        const completionsArray = data.completions || data.data || data.rows || [];
+        return this.mapCompletionData(completionsArray);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching completions:", error);
+      throw error;
+    }
+  }
+  
+  private mapCompletionData(data: any[]): TrainingCompletion[] {
+    return data.map(completion => ({
+      id: completion.id?.toString() || '',
+      employeeId: completion.employeeId?.toString() || '',
+      trainingId: completion.trainingId?.toString() || '',
+      completionDate: completion.completedDate || '',
+      expirationDate: completion.expirationDate || undefined,
+      status: completion.status || 'completed',
+      score: completion.score ? parseFloat(completion.score) : undefined,
+      certificateUrl: completion.certificateUrl || undefined,
+    }));
   }
 
   async fetchAllData(): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {

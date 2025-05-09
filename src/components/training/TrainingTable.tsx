@@ -27,7 +27,7 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
                 <div>
                   <div className="font-medium">{training.title}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {training.description}
+                    {training.description || "No description available"}
                   </div>
                 </div>
               </TableCell>
@@ -35,18 +35,22 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
                 <Badge 
                   variant={training.type === "Compliance" ? "destructive" : "outline"}
                 >
-                  {training.type}
+                  {training.type || "Unknown"}
                 </Badge>
               </TableCell>
-              <TableCell>{training.category}</TableCell>
-              <TableCell>{training.durationHours} hours</TableCell>
+              <TableCell>{training.category || "Uncategorized"}</TableCell>
+              <TableCell>{training.durationHours || 0} hours</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
-                  {training.requiredFor.map((dept) => (
-                    <Badge key={dept} variant="secondary" className="text-xs">
-                      {dept}
-                    </Badge>
-                  ))}
+                  {training.requiredFor && training.requiredFor.length > 0 ? (
+                    training.requiredFor.map((dept) => (
+                      <Badge key={dept} variant="secondary" className="text-xs">
+                        {dept}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Not specified</span>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

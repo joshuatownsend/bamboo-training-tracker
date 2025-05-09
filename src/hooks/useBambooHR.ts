@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import BambooHRApiClient from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 import { useToast } from '@/hooks/use-toast';
+import { Training } from '@/lib/types';
 
 const useBambooHR = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -63,6 +64,31 @@ const useBambooHR = () => {
     }
   }, [isConfigured, getBambooService, toast]);
   
+  // Fetch trainings specifically
+  const fetchTrainings = useCallback(async (): Promise<Training[]> => {
+    if (!isConfigured) {
+      setError('BambooHR is not configured.');
+      return [];
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const service = getBambooService();
+      const trainings = await service.getTrainings();
+      console.log("Trainings fetched from BambooHR:", trainings.length);
+      return trainings;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error("Error fetching trainings:", errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConfigured, getBambooService]);
+  
   // React Query hook to fetch all BambooHR data
   const useAllData = () => {
     return useQuery({
@@ -106,13 +132,26 @@ const useBambooHR = () => {
     });
   };
   
+  // React Query hook to fetch just trainings
+  const useTrainings = () => {
+    return useQuery({
+      queryKey: ['bamboohr', 'trainings'],
+      queryFn: fetchTrainings,
+      enabled: isConfigured,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+  };
+  
   return {
     isLoading,
     error,
     fetchData,
+    fetchTrainings,
     isConfigured,
     getBambooService,
-    useAllData
+    useAllData,
+    useTrainings
   };
 };
 
