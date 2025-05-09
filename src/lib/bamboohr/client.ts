@@ -17,10 +17,12 @@ export class BambooHRClient {
   private edgeFunctionUrl: string;
 
   constructor(options: BambooApiOptions) {
-    this.subdomain = options.subdomain;
-    this.apiKey = options.apiKey;
+    this.subdomain = options.subdomain || '';
+    this.apiKey = options.apiKey || '';
     this.useEdgeFunction = options.useEdgeFunction || false;
     this.edgeFunctionUrl = options.edgeFunctionUrl || '';
+    
+    console.log(`BambooHR Client initialized - Using Edge Function: ${this.useEdgeFunction}`);
   }
 
   // Return the raw response for advanced parsing
@@ -35,16 +37,15 @@ export class BambooHRClient {
       console.log(`Using Edge Function URL: ${url}`);
       
       // ALWAYS add subdomain as a query param for diagnostic purposes
-      // This ensures the Edge Function knows which subdomain we're trying to use
-      // even though it will likely use the server-configured subdomain
       if (!url.includes('?')) {
         url += `?subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       } else {
         url += `&subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       }
       
-      console.log(`Final Edge Function URL with params: ${url}`);
       // No auth headers needed for Edge Function - it uses environment variables
+      // But we'll add a simple auth check header to help the edge function debug issues
+      headers.append("X-Client-Auth-Check", "true");
     } else {
       // Direct API access (legacy approach, will likely fail in browser due to CORS)
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
@@ -62,8 +63,6 @@ export class BambooHRClient {
 
     // Print full URL for debugging (removing API key for security)
     console.log(`BambooHR API request: ${method} ${url}`);
-    console.log(`Using Edge Function: ${this.useEdgeFunction}`);
-    console.log(`Using Subdomain: ${this.subdomain}`);
     
     try {
       console.log(`Sending request to BambooHR API: ${method} ${url}`);
@@ -76,7 +75,6 @@ export class BambooHRClient {
       });
       
       console.log(`Response status: ${response.status}`);
-      console.log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`);
       
       return response;
     } catch (error) {
@@ -107,7 +105,7 @@ export class BambooHRClient {
         // Try to parse as JSON if it might be JSON
         try {
           const errorJson = JSON.parse(responseText);
-          throw new Error(`BambooHR API error (${response.status}): ${errorJson.error || JSON.stringify(errorJson)}`);
+          throw new Error(`BambooHR API error (${response.status}): ${JSON.stringify(errorJson)}`);
         } catch (parseError) {
           // If not parseable as JSON, return the text directly
           throw new Error(`BambooHR API error (${response.status}): ${responseText || 'Unknown error'}`);

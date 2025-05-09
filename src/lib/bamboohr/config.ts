@@ -8,12 +8,12 @@ export const getBambooConfig = () => {
   // First try localStorage (for user-configured settings)
   const subdomain = localStorage.getItem('bamboohr_subdomain');
   const apiKey = localStorage.getItem('bamboohr_apiKey');
-  const useEdgeFunction = localStorage.getItem('bamboohr_useEdgeFunction') === 'true';
+  const useEdgeFunction = localStorage.getItem('bamboohr_useEdgeFunction') === 'false' ? false : true;
   
   return {
-    subdomain: subdomain || '',
+    subdomain: subdomain || 'avfrd', // Default to avfrd if not specified
     apiKey: apiKey || '',
-    useEdgeFunction: useEdgeFunction || true, // Default to true for edge function
+    useEdgeFunction: useEdgeFunction, // Default to true for edge function
     // Use the Edge Function URL from environment or a default
     edgeFunctionUrl: 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/bamboohr',
   };
@@ -61,5 +61,5 @@ export const storeSubdomainLocally = (subdomain: string): void => {
 
 // Get the locally stored subdomain (for UI reference only)
 export const getLocalSubdomain = (): string => {
-  return localStorage.getItem('bamboo_subdomain') || '';
+  return localStorage.getItem('bamboo_subdomain') || 'avfrd';
 };

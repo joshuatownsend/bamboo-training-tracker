@@ -15,7 +15,7 @@ const useBambooHR = () => {
   // Get a configured BambooHR service instance
   const getBambooService = useCallback(() => {
     const config = getEffectiveBambooConfig();
-    if (!config.subdomain && !config.useEdgeFunction) {
+    if (!config.useEdgeFunction && !config.subdomain) {
       throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings or use Edge Function.');
     }
     return new BambooHRApiClient({

@@ -7,7 +7,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-auth-check",
 };
 
 serve(async (req) => {
@@ -29,10 +29,9 @@ serve(async (req) => {
     const querySubdomain = url.searchParams.get("subdomain");
     const subdomain = serverSubdomain || querySubdomain || '';
     
-    // For security, we'll log if a different subdomain is being used than the server's default
-    if (querySubdomain && querySubdomain !== serverSubdomain) {
-      console.log(`WARNING: Using query parameter subdomain (${querySubdomain}) instead of server-configured subdomain (${serverSubdomain || 'not set'})`);
-    }
+    // Log if client sent auth check header (just for diagnostic purposes)
+    const clientAuthCheck = req.headers.get("X-Client-Auth-Check");
+    console.log(`Client Auth Check Header present: ${!!clientAuthCheck}`);
 
     console.log(`Processing request with subdomain: ${subdomain}`);
     console.log(`API Key present: ${!!apiKey}`);
@@ -78,6 +77,8 @@ serve(async (req) => {
 
     // Create headers for BambooHR API
     const headers = new Headers();
+    
+    // This is the critical part - add proper BambooHR authentication
     headers.append("Authorization", `Basic ${btoa(`${apiKey}:`)}`);
     headers.append("Accept", "application/json");
     
@@ -87,7 +88,7 @@ serve(async (req) => {
     }
     
     try {
-      console.log(`Sending request to BambooHR API: ${req.method} ${targetUrl}`);
+      console.log(`Sending request to BambooHR API with auth: ${req.method} ${targetUrl}`);
       
       const response = await fetch(targetUrl, {
         method: req.method,
@@ -97,7 +98,6 @@ serve(async (req) => {
       });
       
       console.log(`BambooHR responded with status: ${response.status}`);
-      console.log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`);
 
       // Read response body
       const responseBody = await response.text();
