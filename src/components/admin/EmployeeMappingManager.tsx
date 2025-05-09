@@ -1,17 +1,18 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmployeeMapping } from '@/hooks/useEmployeeMapping';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import useBambooHR from '@/hooks/useBambooHR';
-import { Search, Plus, Trash2, RefreshCw, Save, Database, CloudSun } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from "@/contexts/UserContext";
 import { supabase } from '@/integrations/supabase/client';
+import { SearchBar } from './employee-mapping/SearchBar';
+import { ActionButtons } from './employee-mapping/ActionButtons';
+import { NewMappingForm } from './employee-mapping/NewMappingForm';
+import { MappingsTable } from './employee-mapping/MappingsTable';
+import { NoMappingsAlert } from './employee-mapping/NoMappingsAlert';
+import { LoadingState } from './employee-mapping/LoadingState';
 
 const EmployeeMappingManager = () => {
   const [mappings, setMappings] = useState<EmployeeMapping[]>([]);
@@ -200,120 +201,39 @@ const EmployeeMappingManager = () => {
         <div className="flex flex-col space-y-4">
           {/* Search and reload controls */}
           <div className="flex justify-between flex-wrap gap-2">
-            <div className="relative w-full md:w-[300px]">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search mappings..."
-                className="w-full pl-8 bg-background"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadData}
-                disabled={loading || mappingLoading}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleAutoMap}
-                disabled={loading || mappingLoading}
-              >
-                <Database className="mr-2 h-4 w-4" />
-                Map from Local Cache
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleSyncFromBambooHR}
-                disabled={syncingEmployees}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black"
-              >
-                <CloudSun className={`mr-2 h-4 w-4 ${syncingEmployees ? 'animate-spin' : ''}`} />
-                Sync from BambooHR
-              </Button>
-            </div>
+            <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+            <ActionButtons 
+              loading={loading} 
+              mappingLoading={mappingLoading}
+              syncingEmployees={syncingEmployees}
+              onRefresh={loadData}
+              onAutoMap={handleAutoMap}
+              onSyncFromBambooHR={handleSyncFromBambooHR}
+            />
           </div>
 
           {/* Add new mapping form */}
-          <div className="flex flex-col md:flex-row gap-2">
-            <Input
-              placeholder="Email Address"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="flex-1"
-            />
-            <Input
-              placeholder="BambooHR Employee ID"
-              value={newEmployeeId}
-              onChange={(e) => setNewEmployeeId(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleSaveMapping}
-              disabled={!newEmail || !newEmployeeId || mappingLoading}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Mapping
-            </Button>
-          </div>
+          <NewMappingForm 
+            newEmail={newEmail}
+            setNewEmail={setNewEmail}
+            newEmployeeId={newEmployeeId}
+            setNewEmployeeId={setNewEmployeeId}
+            onSave={handleSaveMapping}
+            isLoading={mappingLoading}
+          />
 
           {/* Mappings table */}
           {loading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
+            <LoadingState />
           ) : (
             <>
               {filteredMappings.length === 0 ? (
-                <Alert>
-                  <AlertTitle>No mappings found</AlertTitle>
-                  <AlertDescription>
-                    {searchQuery ? 
-                      "No mappings match your search query. Try a different search or add a new mapping." :
-                      "There are no email to employee ID mappings yet. Add your first mapping above or use the Sync from BambooHR button."}
-                  </AlertDescription>
-                </Alert>
+                <NoMappingsAlert searchQuery={searchQuery} />
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email Address</TableHead>
-                        <TableHead>Employee ID</TableHead>
-                        <TableHead>Last Updated</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredMappings.map((mapping) => (
-                        <TableRow key={mapping.id}>
-                          <TableCell className="font-medium">{mapping.email}</TableCell>
-                          <TableCell>{mapping.bamboo_employee_id}</TableCell>
-                          <TableCell>{mapping.updated_at ? new Date(mapping.updated_at).toLocaleDateString() : 'N/A'}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteMapping(mapping.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <MappingsTable 
+                  mappings={filteredMappings}
+                  onDelete={handleDeleteMapping}
+                />
               )}
             </>
           )}
