@@ -48,9 +48,15 @@ serve(async (req) => {
       );
     }
 
-    // Parse the request URL to get the BambooHR endpoint
+    // Parse the request URL to get the BambooHR endpoint and optional subdomain override
     const url = new URL(req.url);
     const path = url.pathname;
+    
+    // Get subdomain from query parameter (if provided) or use the environment variable
+    let subdomain = url.searchParams.get('subdomain') || env.BAMBOOHR_SUBDOMAIN;
+    
+    // Remove subdomain from searchParams to avoid sending it to BambooHR API
+    url.searchParams.delete('subdomain');
     
     // Extract the part after /functions/v1/bamboohr
     const bambooEndpoint = path.includes('/bamboohr') 
@@ -70,13 +76,15 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Edge Function: Using subdomain: ${subdomain}`);
     console.log(`Edge Function: Extracted bambooEndpoint: ${bambooEndpoint}`);
     
     // Build the full BambooHR API URL
-    const apiUrl = buildBambooHRUrl(env.BAMBOOHR_SUBDOMAIN, bambooEndpoint);
+    const apiUrl = buildBambooHRUrl(subdomain, bambooEndpoint);
     
-    // Forward query parameters if any
-    const fullApiUrl = url.search ? `${apiUrl}${url.search}` : apiUrl;
+    // Forward remaining query parameters if any
+    const queryString = url.search.replace(/^\?subdomain=[^&]*&?/, '?').replace(/^\?$/, '');
+    const fullApiUrl = queryString && queryString !== '?' ? `${apiUrl}${queryString}` : apiUrl;
     
     console.log(`Edge Function: Making request to: ${fullApiUrl}`);
     
@@ -113,6 +121,7 @@ serve(async (req) => {
           error: "BambooHR returned HTML instead of JSON. This likely indicates an authentication issue.",
           status: response.status,
           statusText: response.statusText,
+          subdomain: subdomain,
           htmlPreview: htmlText.substring(0, 200) + "..."
         }),
         { 

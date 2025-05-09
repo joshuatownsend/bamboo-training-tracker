@@ -29,10 +29,16 @@ export class BambooHRClient {
     
     let url: string;
     
-    // Always use the Edge Function 
+    // Use the Edge Function 
     if (this.useEdgeFunction) {
       url = `${this.edgeFunctionUrl}${endpoint}`;
       console.log(`Using Edge Function URL: ${url}`);
+      // If using Edge Function, add subdomain as a query param so the function knows which company to access
+      if (!url.includes('?')) {
+        url += `?subdomain=${encodeURIComponent(this.subdomain)}`;
+      } else {
+        url += `&subdomain=${encodeURIComponent(this.subdomain)}`;
+      }
       // No auth headers needed for Edge Function - it uses environment variables
     } else {
       // Direct API access (legacy approach, will likely fail in browser due to CORS)
@@ -126,6 +132,12 @@ export class BambooHRClient {
     
     if (this.useEdgeFunction) {
       url = `${this.edgeFunctionUrl}${endpoint}`;
+      // Add subdomain as a query param for the Edge Function
+      if (!url.includes('?')) {
+        url += `?subdomain=${encodeURIComponent(this.subdomain)}`;
+      } else {
+        url += `&subdomain=${encodeURIComponent(this.subdomain)}`;
+      }
     } else {
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
       const authHeader = "Basic " + btoa(`${this.apiKey}:`);

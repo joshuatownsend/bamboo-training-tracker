@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Server, Database } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { getEffectiveBambooConfig, getLocalSubdomain, storeSubdomainLocally } from '@/lib/bamboohr/config';
 import { BambooHRClient } from '@/lib/bamboohr/client';
 import { testBambooHREndpoints } from '@/lib/bamboohr/apiTester';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,19 @@ const BambooTroubleshootingDetail = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [subdomain, setSubdomain] = useState(() => getEffectiveBambooConfig().subdomain || '');
+  const [subdomain, setSubdomain] = useState(() => getLocalSubdomain() || '');
+
+  useEffect(() => {
+    // If we're using Edge Function but have no locally stored subdomain reference,
+    // add a reminder to populate the subdomain field
+    if (getEffectiveBambooConfig().useEdgeFunction && !subdomain) {
+      toast({
+        title: "BambooHR Subdomain",
+        description: "Please enter your BambooHR subdomain for better diagnostics. This is stored locally for reference only.",
+        duration: 5000
+      });
+    }
+  }, [subdomain]);
 
   const updateSubdomain = () => {
     if (!subdomain) {
@@ -26,7 +39,9 @@ const BambooTroubleshootingDetail = () => {
     }
 
     const cleanedSubdomain = subdomain.replace(/\.bamboohr\.com$/i, '');
-    localStorage.setItem('bamboo_subdomain', cleanedSubdomain);
+    storeSubdomainLocally(cleanedSubdomain);
+    setSubdomain(cleanedSubdomain);
+    
     toast({
       title: "Subdomain Updated",
       description: `Subdomain updated to "${cleanedSubdomain}". Run the tests again to verify.`,
@@ -41,15 +56,21 @@ const BambooTroubleshootingDetail = () => {
     try {
       const config = getEffectiveBambooConfig();
       
-      if (!config.subdomain && !config.useEdgeFunction) {
+      if (!config.useEdgeFunction && !config.subdomain) {
         throw new Error('BambooHR configuration is missing. Please configure your API credentials or enable Edge Function.');
+      }
+      
+      // If using Edge Function but no subdomain is provided for testing
+      if (config.useEdgeFunction && !subdomain) {
+        throw new Error('Please enter your BambooHR subdomain in the field above to run diagnostic tests. This helps with troubleshooting.');
       }
       
       // Create a client with current settings
       const client = new BambooHRClient({
-        subdomain: config.subdomain,
+        subdomain: subdomain, // Use the locally entered subdomain for testing
         apiKey: config.apiKey,
-        useEdgeFunction: config.useEdgeFunction
+        useEdgeFunction: config.useEdgeFunction,
+        edgeFunctionUrl: config.edgeFunctionUrl
       });
       
       const testResults = await testBambooHREndpoints(client);
@@ -70,7 +91,9 @@ const BambooTroubleshootingDetail = () => {
         <CardHeader>
           <CardTitle>Connection Settings</CardTitle>
           <CardDescription>
-            Adjust your connection settings before running the API tests.
+            {getEffectiveBambooConfig().useEdgeFunction 
+              ? "Enter your BambooHR subdomain below to help with diagnostics. This is stored locally for reference only."
+              : "Adjust your connection settings before running the API tests."}
           </CardDescription>
         </CardHeader>
         
@@ -91,6 +114,11 @@ const BambooTroubleshootingDetail = () => {
               <p className="text-xs text-muted-foreground mt-1">
                 This is the prefix in your BambooHR URL: https://<strong>[your-company]</strong>.bamboohr.com
               </p>
+              {getEffectiveBambooConfig().useEdgeFunction && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Note: When using Edge Function mode, this subdomain is used for diagnostics only. Your actual subdomain is stored securely in Supabase secrets.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -275,8 +303,8 @@ const BambooTroubleshootingDetail = () => {
         
         <CardFooter className="flex justify-between bg-muted/20 border-t p-4">
           <div className="text-sm text-muted-foreground">
-            <p>Subdomain: <code>{getEffectiveBambooConfig().subdomain || 'Not set'}</code></p>
-            <p>API Key: <code>{getEffectiveBambooConfig().apiKey ? '••••••••' : 'Not set'}</code></p>
+            <p>Mode: <code>{getEffectiveBambooConfig().useEdgeFunction ? 'Edge Function' : 'Direct API'}</code></p>
+            <p>Diagnostic Subdomain: <code>{subdomain || 'Not set'}</code></p>
             <p>Edge Function: <code>{getEffectiveBambooConfig().useEdgeFunction ? 'Enabled' : 'Disabled'}</code></p>
           </div>
           <Button variant="outline" size="sm" asChild>

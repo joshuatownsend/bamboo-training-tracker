@@ -1,3 +1,4 @@
+
 /**
  * Configuration for BambooHR API integration
  */
@@ -48,4 +49,17 @@ export const getEffectiveBambooConfig = () => {
 export const setUseEdgeFunction = (useEdgeFunction: boolean): void => {
   localStorage.setItem('bamboohr_useEdgeFunction', useEdgeFunction.toString());
   console.log('BambooHR Edge Function setting updated:', useEdgeFunction);
+};
+
+// Store a subdomain locally for better UX in diagnostic pages
+export const storeSubdomainLocally = (subdomain: string): void => {
+  if (subdomain) {
+    localStorage.setItem('bamboo_subdomain', subdomain);
+    console.log('BambooHR subdomain stored locally for reference:', subdomain);
+  }
+};
+
+// Get the locally stored subdomain (for UI reference only)
+export const getLocalSubdomain = (): string => {
+  return localStorage.getItem('bamboo_subdomain') || '';
 };
