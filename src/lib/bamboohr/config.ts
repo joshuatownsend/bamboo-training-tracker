@@ -9,10 +9,14 @@ export const getBambooConfig = () => {
   const apiKey = localStorage.getItem('bamboohr_apiKey');
   const useEdgeFunction = localStorage.getItem('bamboohr_useEdgeFunction') === 'true';
   
+  // Legacy property - keeping for backward compatibility
+  const useProxy = localStorage.getItem('bamboohr_use_proxy') === 'true';
+  
   return {
     subdomain: subdomain || '',
     apiKey: apiKey || '',
     useEdgeFunction: useEdgeFunction,
+    useProxy: useProxy,
     // Use the Edge Function URL from environment or a default
     edgeFunctionUrl: 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1',
   };

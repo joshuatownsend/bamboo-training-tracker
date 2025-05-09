@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { AlertCircle, CheckCircle, AlertTriangle, HelpCircle, ExternalLink } from 'lucide-react';
-import { BAMBOO_HR_CONFIG, isBambooConfigured, getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { isBambooConfigured, getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BambooHRClient } from '@/lib/bamboohr/client';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
