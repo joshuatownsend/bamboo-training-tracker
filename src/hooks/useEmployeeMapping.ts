@@ -65,6 +65,19 @@ const useEmployeeMapping = () => {
 
       console.log(`Saving employee mapping: ${email} -> ${employeeId}`);
       
+      // Check if the user is authenticated before trying to save
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        const errorMessage = 'You must be authenticated to save employee mappings';
+        setError(errorMessage);
+        toast({
+          title: "Authentication Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
       const { error } = await supabase
         .from('employee_mappings')
         .upsert({ 
@@ -77,7 +90,13 @@ const useEmployeeMapping = () => {
 
       if (error) {
         console.error('Error saving employee mapping:', error);
-        throw error;
+        toast({
+          title: "Error Saving Mapping",
+          description: error.message,
+          variant: "destructive"
+        });
+        setError(error.message);
+        return false;
       }
 
       toast({
@@ -115,6 +134,19 @@ const useEmployeeMapping = () => {
 
       console.log(`Saving bulk employee mappings: ${mappings.length} records`);
       
+      // Check if the user is authenticated before trying to save
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        const errorMessage = 'You must be authenticated to save employee mappings';
+        setError(errorMessage);
+        toast({
+          title: "Authentication Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
       const formattedMappings = mappings.map(m => ({
         email: m.email.toLowerCase(),
         bamboo_employee_id: m.employeeId,
@@ -129,7 +161,13 @@ const useEmployeeMapping = () => {
 
       if (error) {
         console.error('Error saving bulk employee mappings:', error);
-        throw error;
+        toast({
+          title: "Error Saving Mappings",
+          description: error.message,
+          variant: "destructive"
+        });
+        setError(error.message);
+        return false;
       }
 
       toast({
@@ -169,6 +207,12 @@ const useEmployeeMapping = () => {
 
       if (error) {
         console.error('Error fetching employee mappings:', error);
+        toast({
+          title: "Error Fetching Mappings",
+          description: error.message,
+          variant: "destructive"
+        });
+        setError(error.message);
         throw error;
       }
 
@@ -182,7 +226,66 @@ const useEmployeeMapping = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
+
+  // Delete an employee mapping
+  const deleteEmployeeMapping = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log(`Deleting employee mapping with ID: ${id}`);
+      
+      // Check if the user is authenticated before trying to delete
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        const errorMessage = 'You must be authenticated to delete employee mappings';
+        setError(errorMessage);
+        toast({
+          title: "Authentication Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      const { error } = await supabase
+        .from('employee_mappings')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting employee mapping:', error);
+        toast({
+          title: "Error Deleting Mapping",
+          description: error.message,
+          variant: "destructive"
+        });
+        setError(error.message);
+        return false;
+      }
+
+      toast({
+        title: "Mapping Deleted",
+        description: "Successfully deleted the employee mapping",
+      });
+
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      
+      toast({
+        title: "Error Deleting Mapping",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   return {
     isLoading,
@@ -190,7 +293,8 @@ const useEmployeeMapping = () => {
     getEmployeeIdByEmail,
     saveEmployeeMapping,
     saveBulkEmployeeMappings,
-    getAllEmployeeMappings
+    getAllEmployeeMappings,
+    deleteEmployeeMapping
   };
 };
 

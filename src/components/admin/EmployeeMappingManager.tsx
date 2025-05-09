@@ -27,6 +27,7 @@ const EmployeeMappingManager = () => {
     getAllEmployeeMappings,
     saveEmployeeMapping,
     saveBulkEmployeeMappings,
+    deleteEmployeeMapping,
     isLoading: mappingLoading
   } = useEmployeeMapping();
   
@@ -122,6 +123,14 @@ const EmployeeMappingManager = () => {
         title: "Auto-Mapping Complete",
         description: `Created ${newMappings.length} mappings automatically`,
       });
+    }
+  };
+
+  // Handle deleting a mapping
+  const handleDeleteMapping = async (id: string) => {
+    const success = await deleteEmployeeMapping(id);
+    if (success) {
+      loadData(); // Refresh the list
     }
   };
 
@@ -237,13 +246,7 @@ const EmployeeMappingManager = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // Future functionality for deletion
-                                toast({
-                                  title: "Not Implemented",
-                                  description: "Deletion functionality will be added in a future update",
-                                });
-                              }}
+                              onClick={() => handleDeleteMapping(mapping.id)}
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
