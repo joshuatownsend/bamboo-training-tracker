@@ -124,7 +124,7 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     
     try {
       // Call the database function that the cron job would call
-      // The function doesn't expect any parameters, so we need to call it without parameters
+      // The function doesn't expect any parameters, so no need to pass anything
       const { data, error } = await supabase.rpc('sync_employee_mappings_job');
       
       if (error) {
