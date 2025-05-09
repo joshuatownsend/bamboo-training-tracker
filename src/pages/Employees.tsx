@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { PlusCircle, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -22,16 +22,30 @@ import { employees as mockEmployees, trainings as mockTrainings, trainingComplet
 const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   
   // Get data from BambooHR or use mock data as fallback
   const { isConfigured, useAllData } = useBambooHR();
-  const { data, isLoading, error, refetch } = useAllData();
+  const { data, isLoading, error, refetch, status } = useAllData();
   
-  console.log('Employees page - BambooHR configured:', isConfigured);
-  console.log('BambooHR data loaded:', data ? 'Yes' : 'No');
-  if (data) {
-    console.log(`Employees: ${data.employees?.length || 0}, Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
-  }
+  // Debug logging
+  useEffect(() => {
+    console.log('Employees page - Status:', status);
+    console.log('Employees page - BambooHR configured:', isConfigured);
+    console.log('BambooHR data loaded:', data ? 'Yes' : 'No');
+    console.log('Is Loading:', isLoading);
+    console.log('Error:', error);
+    
+    if (isLoading) {
+      setLoadingMessage("Loading data from BambooHR...");
+    } else {
+      setLoadingMessage(null);
+    }
+    
+    if (data) {
+      console.log(`Employees: ${data.employees?.length || 0}, Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
+    }
+  }, [data, isConfigured, isLoading, error, status]);
   
   // Use BambooHR data if available, otherwise fall back to mock data
   const employeesData: Employee[] = (isConfigured && data?.employees && data.employees.length > 0) ? data.employees : mockEmployees;
@@ -52,11 +66,14 @@ const Employees = () => {
   
   const handleRefresh = () => {
     console.log('Manually refreshing BambooHR data');
+    setLoadingMessage("Refreshing data from BambooHR...");
     refetch();
   };
 
   // Check if we're actually using mock data despite having BambooHR configured
   const usingMockDataDespiteConfig = isConfigured && (!data?.employees || data.employees.length === 0);
+  
+  console.log('Rendering Employees page with filtered employees count:', filteredEmployees.length);
   
   return (
     <div className="space-y-6">
@@ -79,6 +96,15 @@ const Employees = () => {
           <p className="text-sm">
             BambooHR integration is not configured. Using mock data. 
             Administrators can configure BambooHR in the Admin Settings.
+          </p>
+        </div>
+      )}
+      
+      {loadingMessage && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md mb-4">
+          <p className="text-sm flex items-center">
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            {loadingMessage}
           </p>
         </div>
       )}
@@ -164,11 +190,19 @@ const Employees = () => {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <EmployeeTable 
-          employees={filteredEmployees} 
-          trainings={trainingsData}
-          completions={completionsData}
-        />
+        <>
+          {filteredEmployees.length > 0 ? (
+            <EmployeeTable 
+              employees={filteredEmployees} 
+              trainings={trainingsData}
+              completions={completionsData}
+            />
+          ) : (
+            <div className="rounded-md border bg-white p-8 text-center">
+              <p className="text-muted-foreground">No employees found matching your filters</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

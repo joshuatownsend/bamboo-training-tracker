@@ -13,13 +13,14 @@ const useBambooHR = () => {
   // Get a configured BambooHR service instance
   const getBambooService = useCallback(() => {
     const config = getEffectiveBambooConfig();
-    if (!config.subdomain || !config.apiKey) {
-      throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings.');
+    if (!config.subdomain && !config.useEdgeFunction) {
+      throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings or use Edge Function.');
     }
     return new BambooHRService({
       subdomain: config.subdomain,
       apiKey: config.apiKey,
-      useEdgeFunction: config.useEdgeFunction
+      useEdgeFunction: config.useEdgeFunction,
+      edgeFunctionUrl: config.edgeFunctionUrl
     });
   }, []);
   
@@ -36,10 +37,12 @@ const useBambooHR = () => {
     try {
       const service = getBambooService();
       const data = await service.fetchAllData();
+      console.log("Data fetched from BambooHR:", data ? "Success" : "No data");
       return data || { employees: [], trainings: [], completions: [] };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
+      console.error("Error fetching BambooHR data:", errorMessage);
       return { employees: [], trainings: [], completions: [] };
     } finally {
       setIsLoading(false);
@@ -58,6 +61,7 @@ const useBambooHR = () => {
         try {
           const service = getBambooService();
           const result = await service.fetchAllData();
+          console.log("Query fetched data:", result ? "Success" : "No data");
           return result || { employees: [], trainings: [], completions: [] };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -65,7 +69,7 @@ const useBambooHR = () => {
           throw new Error(errorMessage);
         }
       },
-      enabled: true // Always enable the query, but return empty data if not configured
+      enabled: isConfigured // Only run the query if BambooHR is configured
     });
   };
   

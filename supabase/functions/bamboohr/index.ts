@@ -45,11 +45,9 @@ serve(async (req) => {
     const apiUrl = buildBambooHRUrl(env.BAMBOOHR_SUBDOMAIN, bambooEndpoint);
     
     // Forward query parameters if any
-    if (url.search) {
-      apiUrl + url.search;
-    }
+    const fullApiUrl = url.search ? `${apiUrl}${url.search}` : apiUrl;
     
-    console.log(`Making request to: ${apiUrl}`);
+    console.log(`Making request to: ${fullApiUrl}`);
     
     // Create headers for BambooHR API
     const headers = new Headers();
@@ -69,7 +67,7 @@ serve(async (req) => {
     }
     
     // Make the request to BambooHR API
-    const response = await fetch(apiUrl, {
+    const response = await fetch(fullApiUrl, {
       method: req.method,
       headers: headers,
       body: req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined,
