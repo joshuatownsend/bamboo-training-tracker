@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRApiClient from '@/lib/bamboohr/api';
@@ -6,6 +5,7 @@ import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/con
 import { useToast } from '@/hooks/use-toast';
 import { Training, UserTraining } from '@/lib/types';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
+import { getBambooService, prefetchBambooHRData } from '@/services/dataCacheService';
 
 const useBambooHR = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -64,7 +64,7 @@ const useBambooHR = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, getBambooService, toast]);
+  }, [isConfigured, toast]);
   
   // Fetch trainings specifically
   const fetchTrainings = useCallback(async (): Promise<Training[]> => {
@@ -89,7 +89,7 @@ const useBambooHR = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, getBambooService]);
+  }, [isConfigured]);
   
   // Fetch trainings for a specific employee
   const fetchUserTrainings = useCallback(async (employeeId: string): Promise<UserTraining[]> => {
@@ -115,7 +115,7 @@ const useBambooHR = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, getBambooService]);
+  }, [isConfigured]);
   
   // React Query hook to fetch all BambooHR data
   const useAllData = () => {
@@ -126,7 +126,11 @@ const useBambooHR = () => {
           console.log('BambooHR is not configured, returning empty data');
           return { employees: [], trainings: [], completions: [] };
         }
+        
         try {
+          // Try to prefetch data in background if not available in cache
+          prefetchBambooHRData().catch(console.error);
+          
           const service = getBambooService();
           const result = await service.fetchAllData();
           console.log("Query fetched data:", result ? "Success" : "No data");
@@ -157,6 +161,7 @@ const useBambooHR = () => {
       enabled: isConfigured, // Only run the query if BambooHR is configured
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false, // Don't refetch on window focus
+      placeholderData: { employees: [], trainings: [], completions: [] },
     });
   };
   

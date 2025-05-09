@@ -7,42 +7,50 @@ import useBambooHR from "@/hooks/useBambooHR";
 import { useToast } from "@/hooks/use-toast";
 import { TrainingStatistics } from "@/lib/types";
 import { calculateTrainingStatistics } from "@/utils/calculateStatistics";
+import { prefetchBambooHRData } from "@/services/dataCacheService";
 
 const Dashboard = () => {
   const { useAllData } = useBambooHR();
-  const { data, isLoading, error } = useAllData();
+  const { data, isLoading, error, refetch } = useAllData();
   const { toast } = useToast();
   const [stats, setStats] = useState<TrainingStatistics | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Process BambooHR data to generate statistics
   useEffect(() => {
     if (data && data.employees && data.trainings) {
+      setIsCalculating(true);
+      
       console.log("Dashboard received data from BambooHR:", {
         employees: data.employees.length,
         trainings: data.trainings.length,
         completions: data.completions?.length || 0
       });
       
-      // Log more details about completions to debug
-      console.log("Completions data type:", typeof data.completions);
-      console.log("Is completions an array?", Array.isArray(data.completions));
-      
-      if (Array.isArray(data.completions) && data.completions.length > 0) {
-        console.log("Sample completion data:", data.completions[0]);
-      } else {
-        console.warn("No completions data received from BambooHR or data is not an array");
-      }
-      
-      const statistics = calculateTrainingStatistics(
-        data.employees, 
-        data.trainings, 
-        data.completions || []
-      );
-      
-      console.log("Calculated statistics:", statistics);
-      setStats(statistics);
+      // Use setTimeout to avoid blocking UI while calculating stats
+      setTimeout(() => {
+        try {
+          const statistics = calculateTrainingStatistics(
+            data.employees, 
+            data.trainings, 
+            data.completions || []
+          );
+          
+          console.log("Calculated statistics:", statistics);
+          setStats(statistics);
+        } catch (err) {
+          console.error("Error calculating statistics:", err);
+          toast({
+            title: "Error calculating statistics",
+            description: "There was an error processing the training data",
+            variant: "destructive"
+          });
+        } finally {
+          setIsCalculating(false);
+        }
+      }, 10); // Small delay to let the UI render
     }
-  }, [data]);
+  }, [data, toast]);
 
   // Show error toast if BambooHR data fetch fails
   useEffect(() => {
@@ -55,14 +63,27 @@ const Dashboard = () => {
     }
   }, [error, toast]);
 
-  // If loading, show skeleton UI
-  if (isLoading) {
+  // Prefetch data when dashboard loads
+  useEffect(() => {
+    prefetchBambooHRData();
+  }, []);
+
+  // If loading or calculating, show skeleton UI
+  if (isLoading || isCalculating) {
     return <DashboardSkeleton />;
   }
   
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Training Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Training Dashboard</h1>
+        <button 
+          onClick={() => refetch()} 
+          className="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+        >
+          Refresh Data
+        </button>
+      </div>
       
       <DashboardStats 
         employeeCount={data?.employees?.length || 0}

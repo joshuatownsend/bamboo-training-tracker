@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Login from "./pages/Login";
@@ -21,8 +20,32 @@ import BambooConnectionTest from "./pages/BambooConnectionTest";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import { UserProvider } from './contexts/UserContext';
+import { QueryClient } from '@tanstack/react-query';
+import { initializeQueryClient, startBackgroundRefresh } from '@/services/dataCacheService';
+import { useEffect } from 'react';
+
+// Initialize the query client at the app level
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 30 * 60 * 1000, // 30 minutes
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// Initialize our cache service with the query client
+initializeQueryClient(queryClient);
 
 function App() {
+  // Start background refresh when the app loads
+  useEffect(() => {
+    const cleanup = startBackgroundRefresh();
+    return cleanup;
+  }, []);
+
   return (
     <UserProvider>
       <Router>
