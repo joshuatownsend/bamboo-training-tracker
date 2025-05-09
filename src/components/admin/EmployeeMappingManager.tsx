@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { EmployeeMapping } from '@/hooks/useEmployeeMapping';
@@ -181,8 +182,8 @@ const EmployeeMappingManager = () => {
     
     try {
       // Call the database function that the cron job would call
-      // We're calling it without parameters as our function doesn't require any
-      const { data, error } = await supabase.rpc('sync_employee_mappings_job', {});
+      // The function expects an empty object, not a string parameter
+      const { data, error } = await supabase.rpc('sync_employee_mappings_job');
       
       if (error) {
         console.error("Error manually running sync job:", error);
