@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,10 +48,12 @@ export default function AdminReports() {
     ? data.employees 
     : [];
   
-  // Filter employees based on search
-  const filteredEmployees = employees.filter((employee) =>
-    employee.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
+  // Filter employees based on search - optimize to avoid performance issues
+  const filteredEmployees = debouncedSearch.trim() === ""
+    ? employees.slice(0, 50) // Only show first 50 when no search
+    : employees.filter((employee) =>
+        employee.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      ).slice(0, 50); // Limit to 50 results
   
   // Get the selected employee
   const selectedEmployeeData = employees.find((e) => e.id === selectedEmployee);
@@ -152,24 +153,34 @@ export default function AdminReports() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row">
-                {/* Replace the dropdown with a combobox for better performance */}
+                {/* Fix the dropdown to prevent UI freezes */}
                 <div className="relative flex-1">
-                  <Popover open={open} onOpenChange={setOpen}>
+                  <Popover open={open} onOpenChange={(newOpen) => {
+                    // Reset search when opening to avoid performance issues
+                    if (newOpen && !open) {
+                      setEmployeeSearch("");
+                    }
+                    setOpen(newOpen);
+                  }}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
                         className="w-full justify-between"
+                        onClick={(e) => {
+                          // Prevent propagation to avoid double triggering
+                          e.stopPropagation();
+                        }}
                       >
                         {selectedEmployee
-                          ? employees.find((employee) => employee.id === selectedEmployee)?.name
+                          ? employees.find((employee) => employee.id === selectedEmployee)?.name || "Select an employee..."
                           : "Select an employee..."}
                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
+                      <Command shouldFilter={false}>
                         <CommandInput 
                           placeholder="Search employees..." 
                           value={employeeSearch}
@@ -178,7 +189,7 @@ export default function AdminReports() {
                         <CommandEmpty>
                           {isLoading ? "Loading..." : "No employees found."}
                         </CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-auto">
+                        <CommandGroup className="max-h-[250px] overflow-y-auto">
                           {isLoading ? (
                             <>
                               <CommandItem disabled>
@@ -192,7 +203,7 @@ export default function AdminReports() {
                               </CommandItem>
                             </>
                           ) : (
-                            filteredEmployees.slice(0, 50).map((employee) => (
+                            filteredEmployees.map((employee) => (
                               <CommandItem
                                 key={employee.id}
                                 value={employee.name}
@@ -208,10 +219,10 @@ export default function AdminReports() {
                               </CommandItem>
                             ))
                           )}
-                          {filteredEmployees.length > 50 && (
+                          {employees.length > 50 && filteredEmployees.length === 50 && (
                             <CommandItem disabled>
                               <span className="text-xs text-muted-foreground">
-                                + {filteredEmployees.length - 50} more employees. Please refine your search.
+                                + {employees.length - 50} more employees. Please refine your search.
                               </span>
                             </CommandItem>
                           )}
@@ -222,6 +233,7 @@ export default function AdminReports() {
                 </div>
               </div>
 
+              {/* Keep existing code for the employee details section */}
               {isLoading && !selectedEmployeeData ? (
                 <div className="pt-4 space-y-4">
                   <Skeleton className="h-8 w-3/4" />
@@ -285,6 +297,7 @@ export default function AdminReports() {
           </Card>
         </TabsContent>
         
+        {/* Keep existing code for other tabs */}
         <TabsContent value="position-qualified" className="space-y-4">
           <Card>
             <CardHeader>
