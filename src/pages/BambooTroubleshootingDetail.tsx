@@ -1,13 +1,11 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Server, Database } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { getEffectiveBambooConfig, setUseProxyFlag } from '@/lib/bamboohr/config';
+import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 import { BambooHRClient } from '@/lib/bamboohr/client';
 import { testBambooHREndpoints } from '@/lib/bamboohr/apiTester';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 
@@ -15,53 +13,7 @@ const BambooTroubleshootingDetail = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [useProxy, setUseProxy] = useState(() => {
-    const config = getEffectiveBambooConfig();
-    return config.useProxy ?? true;
-  });
   const [subdomain, setSubdomain] = useState(() => getEffectiveBambooConfig().subdomain || '');
-
-  // Handle proxy toggle
-  const handleProxyToggle = (checked: boolean) => {
-    setUseProxy(checked);
-    setUseProxyFlag(checked);
-    localStorage.setItem('bamboo_use_proxy', checked.toString());
-    toast({
-      title: "Proxy Setting Updated",
-      description: checked 
-        ? "Now using the server-side proxy to access BambooHR API." 
-        : "Now attempting to access BambooHR API directly (may cause CORS errors).",
-      duration: 3000
-    });
-  };
-
-  const runApiTests = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const config = getEffectiveBambooConfig();
-      
-      if (!config.subdomain || !config.apiKey) {
-        throw new Error('BambooHR configuration is missing. Please configure your API credentials first.');
-      }
-      
-      // Create a client with current settings - updated to use Edge Function
-      const client = new BambooHRClient({
-        subdomain: config.subdomain,
-        apiKey: config.apiKey,
-        useEdgeFunction: !config.useProxy // Use Edge Function when not using the proxy
-      });
-      
-      const testResults = await testBambooHREndpoints(client);
-      setResults(testResults);
-    } catch (error) {
-      console.error('Error running API tests:', error);
-      setError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const updateSubdomain = () => {
     if (!subdomain) {
@@ -80,6 +32,34 @@ const BambooTroubleshootingDetail = () => {
       description: `Subdomain updated to "${cleanedSubdomain}". Run the tests again to verify.`,
       duration: 3000
     });
+  };
+
+  const runApiTests = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const config = getEffectiveBambooConfig();
+      
+      if (!config.subdomain && !config.useEdgeFunction) {
+        throw new Error('BambooHR configuration is missing. Please configure your API credentials or enable Edge Function.');
+      }
+      
+      // Create a client with current settings
+      const client = new BambooHRClient({
+        subdomain: config.subdomain,
+        apiKey: config.apiKey,
+        useEdgeFunction: config.useEdgeFunction
+      });
+      
+      const testResults = await testBambooHREndpoints(client);
+      setResults(testResults);
+    } catch (error) {
+      console.error('Error running API tests:', error);
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -110,22 +90,6 @@ const BambooTroubleshootingDetail = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 This is the prefix in your BambooHR URL: https://<strong>[your-company]</strong>.bamboohr.com
-              </p>
-            </div>
-            
-            <div className="md:w-1/3">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="proxy-mode" 
-                  checked={useProxy} 
-                  onCheckedChange={handleProxyToggle} 
-                />
-                <Label htmlFor="proxy-mode" className="font-medium">
-                  Use Server-side Proxy
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Toggle to use proxy when accessing the BambooHR API (recommended)
               </p>
             </div>
           </div>
@@ -313,7 +277,7 @@ const BambooTroubleshootingDetail = () => {
           <div className="text-sm text-muted-foreground">
             <p>Subdomain: <code>{getEffectiveBambooConfig().subdomain || 'Not set'}</code></p>
             <p>API Key: <code>{getEffectiveBambooConfig().apiKey ? '••••••••' : 'Not set'}</code></p>
-            <p>Proxy: <code>{getEffectiveBambooConfig().useProxy ? 'Enabled' : 'Disabled'}</code></p>
+            <p>Edge Function: <code>{getEffectiveBambooConfig().useEdgeFunction ? 'Enabled' : 'Disabled'}</code></p>
           </div>
           <Button variant="outline" size="sm" asChild>
             <a 

@@ -1,3 +1,4 @@
+
 /**
  * BambooHRClient provides the low-level API communication with BambooHR.
  * It handles authentication, request formatting, and error handling.
@@ -28,8 +29,8 @@ export class BambooHRClient {
     
     let url: string;
     
+    // Always use the Edge Function 
     if (this.useEdgeFunction) {
-      // Use our Edge Function - ensure we have the full path
       url = `${this.edgeFunctionUrl}${endpoint}`;
       console.log(`Using Edge Function URL: ${url}`);
       // No auth headers needed for Edge Function - it uses environment variables
@@ -124,7 +125,7 @@ export class BambooHRClient {
     let url: string;
     
     if (this.useEdgeFunction) {
-      url = `${this.edgeFunctionUrl}/bamboohr${endpoint}`;
+      url = `${this.edgeFunctionUrl}${endpoint}`;
     } else {
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
       const authHeader = "Basic " + btoa(`${this.apiKey}:`);
