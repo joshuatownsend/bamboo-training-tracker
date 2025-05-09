@@ -137,12 +137,23 @@ export class BambooHRClient {
         }
         
         // Similarly for training reports
-        if (endpoint.includes('custom_reports/report')) {
-          console.log('BambooHR custom report structure:', 
+        if (endpoint.includes('training/record/employee')) {
+          console.log('BambooHR user training response structure:', 
             Array.isArray(parsedResponse) 
               ? `Array with ${parsedResponse.length} items` 
               : `Object with keys: ${Object.keys(parsedResponse).join(', ')}`
           );
+          
+          // If it's an object but not an array, it might be keyed by training ID
+          if (!Array.isArray(parsedResponse) && typeof parsedResponse === 'object') {
+            const recordCount = Object.keys(parsedResponse).length;
+            console.log(`Found ${recordCount} training records in object format`);
+            
+            if (recordCount > 0) {
+              const firstKey = Object.keys(parsedResponse)[0];
+              console.log(`Sample training record (key ${firstKey}):`, parsedResponse[firstKey]);
+            }
+          }
         }
         
         return parsedResponse;

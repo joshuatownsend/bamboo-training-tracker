@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRApiClient from '@/lib/bamboohr/api';
@@ -99,6 +100,7 @@ const useBambooHR = () => {
     setError(null);
     
     try {
+      console.log("Attempting to fetch trainings for employee ID:", employeeId);
       const service = getBambooService();
       const trainings = await service.getUserTrainings(employeeId);
       console.log(`User trainings fetched from BambooHR for employee ${employeeId}:`, trainings.length);
@@ -172,7 +174,11 @@ const useBambooHR = () => {
     return useQuery({
       queryKey: ['bamboohr', 'userTrainings', employeeId],
       queryFn: async () => {
-        if (!employeeId) return [];
+        if (!employeeId) {
+          console.log("No employeeId provided for user trainings fetch");
+          return [];
+        }
+        console.log(`Fetching user trainings for employeeId: ${employeeId}`);
         return fetchUserTrainings(employeeId);
       },
       enabled: isConfigured && !!employeeId,

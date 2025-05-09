@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,12 @@ export default function MyTrainings() {
   
   const employeeId = currentUser?.employeeId;
   
+  // Add logging to debug the employee ID
+  useEffect(() => {
+    console.log("Current user:", currentUser);
+    console.log("Employee ID being used for training fetch:", employeeId);
+  }, [currentUser, employeeId]);
+  
   const {
     data: userTrainings = [],
     isLoading,
@@ -37,6 +43,14 @@ export default function MyTrainings() {
     refetch,
     isRefetching,
   } = useUserTrainings(employeeId);
+  
+  // Add logging to see what data we're getting back
+  useEffect(() => {
+    console.log("User trainings fetched:", userTrainings);
+    if (error) {
+      console.error("Error fetching user trainings:", error);
+    }
+  }, [userTrainings, error]);
   
   // Handle refresh button click
   const handleRefresh = async () => {

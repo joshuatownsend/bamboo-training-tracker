@@ -1,3 +1,4 @@
+
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './client';
@@ -115,8 +116,17 @@ export default class BambooHRService {
   // Get trainings for a specific employee
   async getUserTrainings(employeeId: string): Promise<UserTraining[]> {
     try {
+      console.log(`Attempting to fetch trainings for employee ID: ${employeeId}`);
+      
+      if (!employeeId) {
+        console.error("No employee ID provided for getUserTrainings");
+        return [];
+      }
+      
       // Use the correct endpoint for employee training records
       const endpoint = `/training/record/employee/${employeeId}?trainingTypeId=0`;
+      console.log(`Using endpoint for user trainings: ${endpoint}`);
+      
       const trainingData = await this.client.fetchFromBamboo(endpoint);
       console.log("Raw user trainings data from BambooHR:", trainingData);
       
@@ -130,6 +140,8 @@ export default class BambooHRService {
       // Handle the object format where IDs are keys
       if (trainingData && typeof trainingData === 'object' && !Array.isArray(trainingData)) {
         const trainingsArray = Object.values(trainingData);
+        console.log(`Found ${trainingsArray.length} training records for user`);
+        
         return trainingsArray.map((record: any) => ({
           id: record.id?.toString() || '',
           employeeId: record.employeeId?.toString() || '',
