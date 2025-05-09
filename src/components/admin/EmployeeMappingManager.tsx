@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmployeeMapping } from '@/hooks/useEmployeeMapping';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import useBambooHR from '@/hooks/useBambooHR';
-import { Search, Plus, Trash2, RefreshCw, Save, Database, CloudSync } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw, Save, Database, CloudSun } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from "@/contexts/UserContext";
 import { supabase } from '@/integrations/supabase/client';
@@ -160,7 +159,7 @@ const EmployeeMappingManager = () => {
         toast({
           title: "Sync Issue",
           description: data.message || "Unknown issue during sync",
-          variant: "warning"
+          variant: "default"
         });
       }
     } catch (error) {
@@ -237,7 +236,7 @@ const EmployeeMappingManager = () => {
                 disabled={syncingEmployees}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black"
               >
-                <CloudSync className={`mr-2 h-4 w-4 ${syncingEmployees ? 'animate-spin' : ''}`} />
+                <CloudSun className={`mr-2 h-4 w-4 ${syncingEmployees ? 'animate-spin' : ''}`} />
                 Sync from BambooHR
               </Button>
             </div>
