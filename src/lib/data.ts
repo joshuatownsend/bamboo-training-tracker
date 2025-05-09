@@ -14,6 +14,7 @@ export const employees: Employee[] = [
     name: "John Doe",
     position: "Firefighter",
     department: "Fire Operations",
+    division: "Engine Company",
     email: "john.doe@avfrd.org",
     hireDate: "2020-06-15"
   },
@@ -22,6 +23,7 @@ export const employees: Employee[] = [
     name: "Jane Smith",
     position: "EMT",
     department: "Emergency Medical",
+    division: "Ambulance",
     email: "jane.smith@avfrd.org",
     hireDate: "2019-03-22"
   },
@@ -30,6 +32,7 @@ export const employees: Employee[] = [
     name: "Michael Johnson",
     position: "Captain",
     department: "Fire Operations",
+    division: "Command",
     email: "michael.johnson@avfrd.org",
     hireDate: "2015-11-08"
   },
@@ -38,6 +41,7 @@ export const employees: Employee[] = [
     name: "Sarah Williams",
     position: "Paramedic",
     department: "Emergency Medical",
+    division: "Advanced Life Support",
     email: "sarah.williams@avfrd.org",
     hireDate: "2018-09-30"
   },
@@ -46,6 +50,7 @@ export const employees: Employee[] = [
     name: "Robert Brown",
     position: "Lieutenant",
     department: "Fire Operations",
+    division: "Truck Company",
     email: "robert.brown@avfrd.org",
     hireDate: "2017-07-12"
   }
