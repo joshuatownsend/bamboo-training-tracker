@@ -6,41 +6,9 @@ import { AccountInfo } from "@azure/msal-browser";
 import { User } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
 import useEmployeeMapping from "@/hooks/useEmployeeMapping";
-import { supabase } from "@/integrations/supabase/client";
-
-// Local storage key for admin settings
-const LOCAL_STORAGE_KEY = "avfrd_admin_settings";
-
-// Default admin configuration - will be used if no settings are found
-const DEFAULT_ADMIN_CONFIGURATION = {
-  // Admin email addresses that should have administrator privileges
-  adminEmails: [
-    'admin@avfrd.org', 
-    'chief@avfrd.org',
-    'president@avfrd.org',
-    'training@avfrd.org',
-    'jtownsend@avfrd.net'
-  ],
-  // Azure AD groups that grant admin access (group IDs or names)
-  adminGroups: [
-    'training-portal-admins',
-    'training-committee'
-  ]
-};
-
-interface AdminSettings {
-  adminEmails: string[];
-  adminGroups: string[];
-}
-
-interface UserContextType {
-  currentUser: User | null;
-  isLoading: boolean;
-  isAdmin: boolean;
-  login: () => Promise<void>;
-  logout: () => void;
-  refreshEmployeeId: () => Promise<string | null>;
-}
+import { UserContextType, AdminSettings } from "./types/userTypes";
+import { LOCAL_STORAGE_KEY, DEFAULT_ADMIN_CONFIGURATION, loadAdminSettings } from "./config/adminSettings";
+import { mapAccountToUser } from "./helpers/userMappingHelper";
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
@@ -61,18 +29,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // Load admin settings from localStorage
   useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedSettings) {
-        setAdminSettings(JSON.parse(savedSettings));
-      } else {
-        // Initialize settings if none exist
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN_CONFIGURATION));
-      }
-    } catch (error) {
-      console.error("Error loading admin settings:", error);
-      // In case of error, use default settings
-    }
+    const settings = loadAdminSettings();
+    setAdminSettings(settings);
   }, []);
 
   // Add a listener for localStorage changes (in case settings are updated in another tab)
@@ -85,7 +43,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (activeAccount) {
             // Use async/await with an immediate function execution
             (async () => {
-              const updatedUser = await mapAccountToUser(activeAccount, JSON.parse(event.newValue));
+              const updatedUser = await mapAccountToUser(
+                activeAccount, 
+                JSON.parse(event.newValue), 
+                getEmployeeIdByEmail
+              );
               setCurrentUser(updatedUser);
             })();
           }
@@ -99,36 +61,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [activeAccount]);
-
-  // Convert MSAL account to our User type
-  const mapAccountToUser = async (account: AccountInfo, settings: AdminSettings = adminSettings): Promise<User> => {
-    // Determine user role based on email or group membership
-    let role: 'user' | 'admin' = 'user';
-    
-    // Check if user is an admin based on their email
-    if (settings.adminEmails.includes(account.username.toLowerCase())) {
-      role = 'admin';
-    }
-    
-    // Also check for admin group membership in token claims
-    const groups = account.idTokenClaims?.groups as string[] | undefined;
-    if (groups && groups.some(group => settings.adminGroups.includes(group))) {
-      role = 'admin';
-    }
-
-    // Try to get the BambooHR employee ID from our mapping
-    const employeeId = await getEmployeeIdByEmail(account.username);
-    console.log(`Mapped employee ID for ${account.username}:`, employeeId);
-
-    return {
-      id: account.localAccountId,
-      name: account.name || "Unknown User",
-      email: account.username,
-      role: role,
-      employeeId: employeeId || account.localAccountId // Use the mapped ID if available, otherwise fall back to the account ID
-    };
-  };
+  }, [activeAccount, getEmployeeIdByEmail]);
 
   // Refresh the employee ID mapping for the current user
   const refreshEmployeeId = async (): Promise<string | null> => {
@@ -139,7 +72,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const employeeId = await getEmployeeIdByEmail(currentUser.email);
       if (employeeId) {
-        // Fix: Properly handle the async result
         setCurrentUser(prev => prev ? { ...prev, employeeId } : null);
         return employeeId;
       }
@@ -157,7 +89,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         if (activeAccount) {
           // We already have an account, convert it to our User type
-          const user = await mapAccountToUser(activeAccount);
+          const user = await mapAccountToUser(activeAccount, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
           
           // Notify the user of their role (just for demonstration)
@@ -172,7 +104,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               // Set active account to the first one
               instance.setActiveAccount(accounts[0]);
-              const user = await mapAccountToUser(accounts[0]);
+              const user = await mapAccountToUser(accounts[0], adminSettings, getEmployeeIdByEmail);
               setCurrentUser(user);
             } catch (error) {
               // Silent token acquisition failed
@@ -190,7 +122,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchUserData();
-  }, [instance, activeAccount, adminSettings]);
+  }, [instance, activeAccount, adminSettings, getEmployeeIdByEmail]);
 
   // Interactive login - use redirect for better SPA compatibility
   const login = async () => {
@@ -205,7 +137,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...loginRequest,
             account: accounts[0],
           });
-          const user = await mapAccountToUser(response.account);
+          const user = await mapAccountToUser(response.account, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
           return;
         } catch (error) {
