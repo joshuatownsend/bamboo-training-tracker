@@ -1,3 +1,4 @@
+
 // BambooHR API proxy edge function
 // This function proxies requests to BambooHR API to avoid CORS issues and keep API keys secure
 
@@ -24,6 +25,27 @@ serve(async (req) => {
   const path = url.pathname.replace(/^\/bamboohr/, "");
   console.log(`BambooHR Edge Function received request: ${req.method} ${url}`);
   
+  // Special endpoint to check if secrets are properly configured
+  if (path === "/check-secrets") {
+    console.log("Checking secrets configuration...");
+    
+    // Check for existence of environment variables
+    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+    const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        secrets: {
+          BAMBOOHR_SUBDOMAIN: !!subdomain,
+          BAMBOOHR_API_KEY: !!apiKey
+        },
+        timestamp: new Date().toISOString()
+      }),
+      { headers: corsHeaders, status: 200 }
+    );
+  }
+  
   try {
     // Get BambooHR credentials from environment variables
     const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || url.searchParams.get("subdomain") || "";
@@ -33,7 +55,13 @@ serve(async (req) => {
     if (!subdomain || !apiKey) {
       console.error("Missing BambooHR credentials");
       return new Response(
-        JSON.stringify({ error: "Missing BambooHR credentials in environment variables" }),
+        JSON.stringify({ 
+          error: "Missing BambooHR credentials in environment variables", 
+          details: {
+            BAMBOOHR_SUBDOMAIN: !!subdomain,
+            BAMBOOHR_API_KEY: !!apiKey
+          }
+        }),
         { headers: corsHeaders, status: 500 }
       );
     }

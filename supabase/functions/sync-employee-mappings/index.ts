@@ -15,6 +15,18 @@ const corsHeaders = {
 const MINIMUM_INTERVAL_MS = 60000; // 1 minute
 let lastSyncTime = 0;
 
+// Function to check if edge function secrets are configured
+function getSecretStatus() {
+  // Check if required environment variables are set
+  const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+  const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+  
+  return {
+    BAMBOOHR_SUBDOMAIN: !!subdomain,
+    BAMBOOHR_API_KEY: !!apiKey
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -22,6 +34,22 @@ serve(async (req) => {
   }
 
   try {
+    // Special endpoint for checking secrets
+    const url = new URL(req.url);
+    if (url.pathname.endsWith("/check")) {
+      const secretStatus = getSecretStatus();
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          secrets: secretStatus,
+          allSecretsConfigured: Object.values(secretStatus).every(Boolean),
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+    
     // Check if this is an authorized request
     // You can implement more robust auth checking if needed
     const authHeader = req.headers.get('authorization');
@@ -52,10 +80,15 @@ serve(async (req) => {
     const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
     
-    if (!subdomain || !apiKey) {
-      console.error("Missing BambooHR credentials in environment variables");
+    // Check if secrets are configured
+    const secretStatus = getSecretStatus();
+    if (!secretStatus.BAMBOOHR_SUBDOMAIN || !secretStatus.BAMBOOHR_API_KEY) {
+      console.error("Missing BambooHR credentials in environment variables:", secretStatus);
       return new Response(
-        JSON.stringify({ error: "Server configuration error: Missing BambooHR credentials" }),
+        JSON.stringify({ 
+          error: "Server configuration error: Missing BambooHR credentials", 
+          secretStatus 
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }

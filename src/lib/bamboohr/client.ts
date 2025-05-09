@@ -1,4 +1,3 @@
-
 /**
  * BambooHRClient provides the low-level API communication with BambooHR.
  * It handles authentication, request formatting, and error handling.
@@ -89,6 +88,34 @@ export class BambooHRClient {
     } catch (error) {
       console.error(`Error in BambooHR API call to ${endpoint}:`, error);
       throw error;
+    }
+  }
+
+  // Method to check if edge function secrets are configured
+  async checkEdgeFunctionSecrets() {
+    if (!this.useEdgeFunction) {
+      return { secretsConfigured: false, error: "Not using Edge Function" };
+    }
+
+    try {
+      const response = await this.fetchRawResponse('/check-secrets');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error checking Edge Function secrets:', errorText);
+        return { secretsConfigured: false, error: errorText };
+      }
+      
+      const data = await response.json();
+      return { 
+        secretsConfigured: data.secrets.BAMBOOHR_SUBDOMAIN && data.secrets.BAMBOOHR_API_KEY,
+        secrets: data.secrets
+      };
+    } catch (error) {
+      console.error('Error checking Edge Function secrets:', error);
+      return { 
+        secretsConfigured: false, 
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
   }
 

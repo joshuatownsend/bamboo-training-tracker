@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, RefreshCw, Server, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, Server, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { BambooHRClient } from '@/lib/bamboohr/client';
@@ -23,14 +23,17 @@ const BambooConnectionTest: React.FC = () => {
     BAMBOOHR_SUBDOMAIN: false,
     BAMBOOHR_API_KEY: false,
   });
+  const [isCheckingSecrets, setIsCheckingSecrets] = useState(false);
   const { toast } = useToast();
 
   // Get the current config
   const config = getEffectiveBambooConfig();
   
   const checkEdgeFunctionSecrets = async () => {
+    setIsCheckingSecrets(true);
+    
     try {
-      // We're going to make a special call to the Edge Function to check if secrets are set
+      // Create a client specifically for checking secrets
       const client = new BambooHRClient({
         subdomain: config.subdomain,
         apiKey: config.apiKey,
@@ -38,19 +41,43 @@ const BambooConnectionTest: React.FC = () => {
         edgeFunctionUrl: config.edgeFunctionUrl
       });
       
-      const response = await client.fetchRawResponse('/check-secrets');
-      const data = await response.json();
+      console.log("Checking Edge Function secrets...");
       
-      if (data && data.secrets) {
-        setSecretsInfo(data.secrets);
+      const result = await client.checkEdgeFunctionSecrets();
+      console.log("Secret check result:", result);
+      
+      if (result.secrets) {
+        setSecretsInfo(result.secrets);
+        
+        // Show toast with result
+        if (result.secretsConfigured) {
+          toast({
+            title: "Secrets Verification",
+            description: "BambooHR secrets are properly configured in Supabase Edge Function",
+            variant: "default"
+          });
+        } else {
+          toast({
+            title: "Secrets Verification Failed",
+            description: "One or more BambooHR secrets are missing in Supabase Edge Function",
+            variant: "destructive"
+          });
+        }
       }
     } catch (err) {
       console.error("Error checking Edge Function secrets:", err);
+      toast({
+        title: "Secret Check Failed",
+        description: err instanceof Error ? err.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCheckingSecrets(false);
     }
   };
   
   // Check secrets when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     if (config.useEdgeFunction) {
       checkEdgeFunctionSecrets();
     }
@@ -160,7 +187,12 @@ const BambooConnectionTest: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="font-medium">BAMBOOHR_SUBDOMAIN</div>
-                  {secretsInfo.BAMBOOHR_SUBDOMAIN ? (
+                  {isCheckingSecrets ? (
+                    <div className="flex items-center text-gray-500">
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Checking...
+                    </div>
+                  ) : secretsInfo.BAMBOOHR_SUBDOMAIN ? (
                     <div className="flex items-center text-green-600">
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Secret is set
@@ -174,7 +206,12 @@ const BambooConnectionTest: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <div className="font-medium">BAMBOOHR_API_KEY</div>
-                  {secretsInfo.BAMBOOHR_API_KEY ? (
+                  {isCheckingSecrets ? (
+                    <div className="flex items-center text-gray-500">
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Checking...
+                    </div>
+                  ) : secretsInfo.BAMBOOHR_API_KEY ? (
                     <div className="flex items-center text-green-600">
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Secret is set
@@ -187,25 +224,76 @@ const BambooConnectionTest: React.FC = () => {
                   )}
                 </div>
               </div>
-              <Alert className="bg-white border-amber-200">
-                <AlertTitle>Important</AlertTitle>
-                <AlertDescription>
-                  For the Edge Function to work correctly, both BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY must be set in your Supabase project secrets.
-                  <div className="mt-2">
-                    <Button asChild size="sm" variant="outline" className="bg-white">
-                      <a 
-                        href="https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="flex items-center"
+              
+              {!secretsInfo.BAMBOOHR_SUBDOMAIN || !secretsInfo.BAMBOOHR_API_KEY ? (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertTitle>Missing Secrets</AlertTitle>
+                  <AlertDescription>
+                    <p className="mt-2">
+                      One or both required secrets are missing in your Supabase Edge Function environment.
+                      Please set these secrets in your Supabase project to enable BambooHR integration.
+                    </p>
+                    <div className="mt-2">
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={checkEdgeFunctionSecrets}
+                        disabled={isCheckingSecrets}
                       >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Manage Secrets in Supabase
-                      </a>
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
+                        {isCheckingSecrets ? (
+                          <>
+                            <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          "Check Again"
+                        )}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert className="bg-white border-green-200">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertTitle>All Required Secrets Configured</AlertTitle>
+                  <AlertDescription>
+                    Both BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY are properly set in your Supabase Edge Function environment.
+                    <div className="mt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-white border-green-200 text-green-700"
+                        onClick={checkEdgeFunctionSecrets}
+                        disabled={isCheckingSecrets}
+                      >
+                        {isCheckingSecrets ? (
+                          <>
+                            <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          "Refresh Status"
+                        )}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="border-t border-gray-200 pt-4">
+                <Button asChild size="sm" variant="outline" className="bg-white">
+                  <a 
+                    href="https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Manage Secrets in Supabase
+                  </a>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
