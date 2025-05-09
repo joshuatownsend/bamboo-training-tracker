@@ -43,9 +43,15 @@ export class BambooHRClient {
         url += `&subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       }
       
-      // When using Edge Function, we don't add the auth header since 
-      // the Edge Function will use its own credentials from environment variables
+      // When using Edge Function, we add an auth check header
+      // The Edge Function will use its own credentials from environment variables
       headers.append("X-Client-Auth-Check", "true");
+      
+      // Add X-BambooHR-Auth header with the API key for the Edge Function to use
+      // This helps with debugging and lets the edge function know we're authorized
+      if (this.apiKey) {
+        headers.append("X-BambooHR-Auth", "present");
+      }
     } else {
       // Direct API access (legacy approach, will likely fail in browser due to CORS)
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;

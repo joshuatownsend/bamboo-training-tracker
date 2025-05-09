@@ -53,6 +53,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
     
     if (!subdomain || !apiKey) {
+      console.error("Missing BambooHR credentials in environment variables");
       return new Response(
         JSON.stringify({ error: "Server configuration error: Missing BambooHR credentials" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -78,6 +79,9 @@ serve(async (req) => {
         "Accept": "application/json",
       },
     };
+    
+    // Log the authorization header being used (with sensitive parts redacted)
+    console.log(`Using Authorization header: Basic ${btoa(`${apiKey.substring(0, 3)}...:`)} for subdomain ${subdomain}`);
     
     // Fetch employee directory from BambooHR
     console.log(`Fetching employee directory from BambooHR (${subdomain})...`);
