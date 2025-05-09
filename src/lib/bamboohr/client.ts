@@ -117,8 +117,35 @@ export class BambooHRClient {
 
       // Try to parse the response as JSON
       const responseText = await response.text();
+      
+      // Log the raw response for debugging
+      console.log(`Raw BambooHR response from ${endpoint}:`, responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''));
+      
       try {
-        return JSON.parse(responseText);
+        const parsedResponse = JSON.parse(responseText);
+        
+        // If this is the employees endpoint, log additional debug info about the structure
+        if (endpoint.includes('employees/directory')) {
+          if (Array.isArray(parsedResponse)) {
+            console.log(`BambooHR returned an array of ${parsedResponse.length} employees`);
+            if (parsedResponse.length > 0) {
+              console.log('First employee sample structure:', JSON.stringify(parsedResponse[0], null, 2));
+            }
+          } else {
+            console.log('BambooHR response structure (not an array):', Object.keys(parsedResponse));
+          }
+        }
+        
+        // Similarly for training reports
+        if (endpoint.includes('custom_reports/report')) {
+          console.log('BambooHR custom report structure:', 
+            Array.isArray(parsedResponse) 
+              ? `Array with ${parsedResponse.length} items` 
+              : `Object with keys: ${Object.keys(parsedResponse).join(', ')}`
+          );
+        }
+        
+        return parsedResponse;
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', responseText.substring(0, 200));
         

@@ -75,13 +75,23 @@ export function EmployeeTable({
                   .map((n) => n[0])
                   .join("")
               : "??";
+
+            // Format the hire date with proper error handling
+            let formattedHireDate = 'Unknown';
+            try {
+              if (employee.hireDate && employee.hireDate.trim() !== '') {
+                formattedHireDate = format(new Date(employee.hireDate), "MMM d, yyyy");
+              }
+            } catch (error) {
+              console.warn(`Invalid hire date format for employee ${employee.id}:`, employee.hireDate);
+            }
               
             return (
               <TableRow key={employee.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>{initials}</AvatarFallback>
+                    <Avatar className="h-8 w-8 bg-yellow-200 text-black border border-yellow-400">
+                      <AvatarFallback className="bg-yellow-200 text-black">{initials}</AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="font-medium">{employee.name || 'Unknown'}</div>
@@ -90,7 +100,7 @@ export function EmployeeTable({
                   </div>
                 </TableCell>
                 <TableCell>{employee.department || 'Unassigned'}</TableCell>
-                <TableCell>{employee.hireDate ? format(new Date(employee.hireDate), "MMM d, yyyy") : 'Unknown'}</TableCell>
+                <TableCell>{formattedHireDate}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${badgeColor}`} />

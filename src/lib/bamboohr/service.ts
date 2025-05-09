@@ -1,3 +1,4 @@
+
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion } from '@/lib/types';
 import { BambooApiOptions } from './client';
@@ -35,7 +36,33 @@ export default class BambooHRService {
   // Get all employees from BambooHR
   async getEmployees(): Promise<Employee[]> {
     try {
-      return this.client.fetchFromBamboo('/employees/directory');
+      const directoryData = await this.client.fetchFromBamboo('/employees/directory');
+      console.log("Raw employees data from BambooHR:", directoryData);
+      
+      // Transform BambooHR data to our Employee interface
+      if (Array.isArray(directoryData)) {
+        return directoryData.map((emp: any) => ({
+          id: emp.id?.toString() || '',
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+          position: emp.jobTitle?.name || emp.jobTitle || '',
+          department: emp.department?.name || emp.department || '',
+          email: emp.workEmail || '',
+          hireDate: emp.hireDate || '',
+        }));
+      } else if (directoryData && typeof directoryData === 'object') {
+        // Handle case where response might have employees in a nested structure
+        const employees = directoryData.employees || [];
+        return employees.map((emp: any) => ({
+          id: emp.id?.toString() || '',
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+          position: emp.jobTitle?.name || emp.jobTitle || '',
+          department: emp.department?.name || emp.department || '',
+          email: emp.workEmail || '',
+          hireDate: emp.hireDate || '',
+        }));
+      }
+      
+      return [];
     } catch (error) {
       console.error("Error getting employees from BambooHR:", error);
       throw error;
@@ -45,7 +72,35 @@ export default class BambooHRService {
   // Get all training data from BambooHR
   async getTrainings(): Promise<Training[]> {
     try {
-      return this.client.fetchFromBamboo('/custom_reports/report?id=40');
+      const trainingsData = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+      console.log("Raw trainings data from BambooHR:", trainingsData);
+      
+      // If the report exists, transform to our Training interface
+      if (Array.isArray(trainingsData)) {
+        return trainingsData.map((training: any) => ({
+          id: training.id?.toString() || '',
+          title: training.name || training.title || '',
+          type: training.type || 'Unknown',
+          category: training.category || 'General',
+          description: training.description || '',
+          durationHours: parseFloat(training.duration) || 0,
+          requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+        }));
+      } else if (trainingsData && typeof trainingsData === 'object') {
+        // Handle case where API returns trainings in a different format
+        const trainings = trainingsData.trainings || trainingsData.data || [];
+        return trainings.map((training: any) => ({
+          id: training.id?.toString() || '',
+          title: training.name || training.title || '',
+          type: training.type || 'Unknown',
+          category: training.category || 'General',
+          description: training.description || '',
+          durationHours: parseFloat(training.duration) || 0,
+          requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+        }));
+      }
+      
+      return [];
     } catch (error) {
       console.error("Error getting trainings from BambooHR:", error);
       throw error;
@@ -64,23 +119,98 @@ export default class BambooHRService {
         throw new Error("BambooHR connection test failed. Please check your API credentials.");
       }
       
-      const employees = await this.client.fetchFromBamboo('/employees/directory');
-      console.log(`Fetched ${employees?.length || 0} employees from BambooHR`);
+      // Fetch raw employees data
+      const rawEmployeesData = await this.client.fetchFromBamboo('/employees/directory');
+      console.log(`Fetched raw employee data from BambooHR:`, rawEmployeesData);
+      
+      // Process employees data
+      let employees: Employee[] = [];
+      if (Array.isArray(rawEmployeesData)) {
+        employees = rawEmployeesData.map((emp: any) => ({
+          id: emp.id?.toString() || '',
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+          position: emp.jobTitle?.name || emp.jobTitle || '',
+          department: emp.department?.name || emp.department || '',
+          email: emp.workEmail || '',
+          hireDate: emp.hireDate || '',
+        }));
+      } else if (rawEmployeesData && typeof rawEmployeesData === 'object') {
+        const employeesArray = rawEmployeesData.employees || [];
+        employees = employeesArray.map((emp: any) => ({
+          id: emp.id?.toString() || '',
+          name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+          position: emp.jobTitle?.name || emp.jobTitle || '',
+          department: emp.department?.name || emp.department || '',
+          email: emp.workEmail || '',
+          hireDate: emp.hireDate || '',
+        }));
+      }
+      
+      console.log(`Processed ${employees.length} employees from BambooHR`);
       
       // We might not have custom reports
       let trainings: Training[] = [];
       let completions: TrainingCompletion[] = [];
       
       try {
-        trainings = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
-        console.log(`Fetched ${trainings?.length || 0} trainings from BambooHR`);
+        const rawTrainingsData = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+        console.log(`Fetched raw trainings data from BambooHR:`, rawTrainingsData);
+        
+        if (Array.isArray(rawTrainingsData)) {
+          trainings = rawTrainingsData.map((training: any) => ({
+            id: training.id?.toString() || '',
+            title: training.name || training.title || '',
+            type: training.type || 'Unknown',
+            category: training.category || 'General',
+            description: training.description || '',
+            durationHours: parseFloat(training.duration) || 0,
+            requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+          }));
+        } else if (rawTrainingsData && typeof rawTrainingsData === 'object') {
+          const trainingsArray = rawTrainingsData.trainings || rawTrainingsData.data || [];
+          trainings = trainingsArray.map((training: any) => ({
+            id: training.id?.toString() || '',
+            title: training.name || training.title || '',
+            type: training.type || 'Unknown',
+            category: training.category || 'General',
+            description: training.description || '',
+            durationHours: parseFloat(training.duration) || 0,
+            requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+          }));
+        }
+        console.log(`Processed ${trainings.length} trainings from BambooHR`);
       } catch (trainingsError) {
         console.warn("Could not fetch trainings from BambooHR:", trainingsError);
       }
       
       try {
-        completions = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
-        console.log(`Fetched ${completions?.length || 0} training completions from BambooHR`);
+        const rawCompletionsData = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
+        console.log(`Fetched ${rawCompletionsData?.length || 0} training completions from BambooHR`);
+        
+        if (Array.isArray(rawCompletionsData)) {
+          completions = rawCompletionsData.map((completion: any) => ({
+            id: completion.id?.toString() || '',
+            employeeId: completion.employeeId?.toString() || '',
+            trainingId: completion.trainingId?.toString() || '',
+            completionDate: completion.completedDate || '',
+            expirationDate: completion.expirationDate || undefined,
+            status: completion.status || 'completed',
+            score: completion.score ? parseFloat(completion.score) : undefined,
+            certificateUrl: completion.certificateUrl || undefined,
+          }));
+        } else if (rawCompletionsData && typeof rawCompletionsData === 'object') {
+          const completionsArray = rawCompletionsData.completions || rawCompletionsData.data || [];
+          completions = completionsArray.map((completion: any) => ({
+            id: completion.id?.toString() || '',
+            employeeId: completion.employeeId?.toString() || '',
+            trainingId: completion.trainingId?.toString() || '',
+            completionDate: completion.completedDate || '',
+            expirationDate: completion.expirationDate || undefined,
+            status: completion.status || 'completed',
+            score: completion.score ? parseFloat(completion.score) : undefined,
+            certificateUrl: completion.certificateUrl || undefined,
+          }));
+        }
       } catch (completionsError) {
         console.warn("Could not fetch training completions from BambooHR:", completionsError);
       }

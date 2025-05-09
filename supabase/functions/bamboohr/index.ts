@@ -125,6 +125,14 @@ serve(async (req) => {
         )
       );
       
+      // Special handling for trainings and employee data
+      if (path.includes('custom_reports/report')) {
+        console.log(`Processing custom report request: ${path}`);
+        // Print report ID for debugging
+        const reportId = url.searchParams.get('id');
+        console.log(`Requesting report ID: ${reportId}`);
+      }
+
       const response = await fetch(targetUrl, {
         method: req.method,
         headers,
@@ -133,6 +141,9 @@ serve(async (req) => {
       });
       
       console.log(`BambooHR responded with status: ${response.status}`);
+      console.log(`Response headers:`, 
+        JSON.stringify([...response.headers.entries()])
+      );
 
       // Read response body
       const responseBody = await response.text();
@@ -166,6 +177,27 @@ serve(async (req) => {
             status: 401,
           }
         );
+      }
+      
+      // For trainings and employee data, log more details
+      if (path.includes('employees/directory') || path.includes('custom_reports/report')) {
+        try {
+          const jsonResponse = JSON.parse(responseBody);
+          console.log(`JSON structure keys: ${Object.keys(jsonResponse).join(', ')}`);
+          
+          if (Array.isArray(jsonResponse)) {
+            console.log(`Response is an array with ${jsonResponse.length} items`);
+            if (jsonResponse.length > 0) {
+              console.log("Sample first item keys:", Object.keys(jsonResponse[0]).join(", "));
+            }
+          } else if (jsonResponse.employees) {
+            console.log(`Found employees array with ${jsonResponse.employees.length} items`);
+          } else if (jsonResponse.data) {
+            console.log(`Found data array with ${jsonResponse.data.length} items`);
+          }
+        } catch (e) {
+          console.log("Could not parse response as JSON for additional logging");
+        }
       }
       
       // Log the response body preview for debugging
