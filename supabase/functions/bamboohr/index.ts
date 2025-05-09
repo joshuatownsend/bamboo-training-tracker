@@ -17,9 +17,13 @@ serve(async (req) => {
   }
 
   try {
-    // Get subdomain from env var
+    // Get subdomain and API key from env vars
     const serverSubdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+    
+    // Debug logging to help diagnose the issue
+    console.log(`BAMBOOHR_SUBDOMAIN env var: ${serverSubdomain ? "Set" : "Not set"}`);
+    console.log(`BAMBOOHR_API_KEY env var: ${apiKey ? "Set" : "Not set"}`);
     
     // Get the URL and query params
     const url = new URL(req.url);
@@ -75,11 +79,15 @@ serve(async (req) => {
     const targetUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${path}${url.search ? url.search : ""}`;
     console.log(`Forwarding to BambooHR API: ${req.method} ${targetUrl}`);
 
-    // Create headers for BambooHR API
+    // Create headers for BambooHR API with authentication
     const headers = new Headers();
     
     // This is the critical part - add proper BambooHR authentication
-    headers.append("Authorization", `Basic ${btoa(`${apiKey}:`)}`);
+    // Base64 encode API key with empty username as per BambooHR docs
+    const authHeader = `Basic ${btoa(`${apiKey}:`)}`;
+    headers.append("Authorization", authHeader);
+    console.log("Added Authorization header");
+    
     headers.append("Accept", "application/json");
     
     // If we're doing a POST or PUT, add content type
@@ -89,6 +97,15 @@ serve(async (req) => {
     
     try {
       console.log(`Sending request to BambooHR API with auth: ${req.method} ${targetUrl}`);
+      
+      // Log the headers we're sending (without the actual API key)
+      console.log("Headers being sent:", 
+        JSON.stringify(
+          Object.fromEntries([...headers.entries()].map(([key, value]) => 
+            key.toLowerCase() === 'authorization' ? [key, '***'] : [key, value]
+          ))
+        )
+      );
       
       const response = await fetch(targetUrl, {
         method: req.method,
@@ -133,23 +150,15 @@ serve(async (req) => {
         );
       }
       
-      // Try to parse as JSON if it looks like JSON
-      let jsonResponse;
-      if (contentType.includes('application/json')) {
-        try {
-          jsonResponse = JSON.parse(responseBody);
-          console.log("Successfully parsed JSON response");
-        } catch (e) {
-          console.error("Failed to parse JSON response:", e);
-        }
-      }
+      // Log the response body preview for debugging
+      console.log("Response body preview:", responseBody.substring(0, 200) + (responseBody.length > 200 ? "..." : ""));
       
       // Return the response from BambooHR
       return new Response(responseBody, {
         status: response.status,
         headers: {
           ...corsHeaders,
-          "Content-Type": contentType,
+          "Content-Type": contentType || "application/json",
         },
       });
 
@@ -174,8 +183,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({
-        error: `Error processing BambooHR request: ${error.message}`,
-        stack: error.stack
+        error: `Error processing BambooHR request: ${error instanceof Error ? error.message : String(error)}`,
+        stack: error instanceof Error ? error.stack : undefined
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

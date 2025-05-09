@@ -3,13 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { isBambooConfigured, getEffectiveBambooConfig, setUseEdgeFunction } from '@/lib/bamboohr/config';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import useBambooHR from '@/hooks/useBambooHR';
 
 const BambooHRConfig: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [isUsingEdgeFunction, setIsUsingEdgeFunction] = useState<boolean>(true);
+  const [isTestingConnection, setIsTestingConnection] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'error'>('untested');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  const { getBambooService } = useBambooHR();
 
   useEffect(() => {
     // Check if BambooHR is already configured
@@ -40,6 +46,39 @@ const BambooHRConfig: React.FC = () => {
     setTimeout(() => {
       window.location.reload();
     }, 1500);
+  };
+  
+  const testConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('untested');
+    setErrorMessage(null);
+    
+    try {
+      const service = getBambooService();
+      const success = await service.testConnection();
+      
+      setConnectionStatus(success ? 'success' : 'error');
+      
+      if (success) {
+        toast({
+          title: 'Connection Successful',
+          description: 'Successfully connected to BambooHR API.',
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage(message);
+      
+      toast({
+        title: 'Connection Failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
   };
 
   return (
@@ -74,7 +113,7 @@ const BambooHRConfig: React.FC = () => {
               <li><strong>BAMBOOHR_SUBDOMAIN</strong> - Your BambooHR company subdomain</li>
               <li><strong>BAMBOOHR_API_KEY</strong> - Your BambooHR API key</li>
             </ul>
-            <p className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -84,7 +123,38 @@ const BambooHRConfig: React.FC = () => {
                 Open Supabase Secrets Manager
                 <ExternalLink className="h-3 w-3 ml-1" />
               </Button>
-            </p>
+              
+              <Button
+                variant={connectionStatus === 'success' ? "outline" : "default"}
+                size="sm"
+                onClick={testConnection}
+                disabled={isTestingConnection}
+                className={connectionStatus === 'success' ? "bg-green-100 text-green-800" : ""}
+              >
+                {isTestingConnection ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : connectionStatus === 'success' ? (
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                {isTestingConnection ? "Testing..." : connectionStatus === 'success' ? "Connection Verified" : "Test Connection"}
+              </Button>
+            </div>
+            
+            {connectionStatus === 'error' && errorMessage && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                <p className="font-semibold">Connection Error:</p>
+                <p className="mt-1">{errorMessage}</p>
+              </div>
+            )}
+            
+            {connectionStatus === 'success' && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm">
+                <p className="font-semibold">Connection Successful!</p>
+                <p className="mt-1">Your BambooHR credentials are valid and working.</p>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
 
