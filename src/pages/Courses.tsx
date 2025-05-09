@@ -8,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { AlertCircle, PlusCircle, Search } from "lucide-react";
+import { AlertCircle, Search } from "lucide-react";
 import TrainingTable from "@/components/training/TrainingTable";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -23,29 +23,31 @@ const Courses = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { isConfigured } = useBambooHR();
   
-  // Fetch trainings from BambooHR
+  // Fetch trainings from BambooHR using the correct endpoint
   const { data: bambooData, isLoading, isError, error } = useQuery({
     queryKey: ['bamboohr', 'trainings'],
     queryFn: async () => {
       const bamboo = new (await import('@/lib/bamboohr/api')).default({
         subdomain: 'avfrd',
         apiKey: '',
-        useEdgeFunction: true
+        useEdgeFunction: true,
+        edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
       });
       return bamboo.fetchAllTrainings();
     },
     enabled: isConfigured
   });
   
-  // Use the trainings from BambooHR or fall back to mock data if not available
+  // Use the trainings from BambooHR or fall back to empty array if not available
   const trainings = (bambooData && Array.isArray(bambooData)) ? bambooData : [];
   
   // Get unique types and categories for filtering
   const types = trainings.length > 0 
-    ? [...new Set(trainings.map(t => t.type))]
+    ? [...new Set(trainings.map(t => t.type).filter(Boolean))]
     : [];
+    
   const categories = trainings.length > 0 
-    ? [...new Set(trainings.map(t => t.category))]
+    ? [...new Set(trainings.map(t => t.category).filter(Boolean))]
     : [];
   
   // Filter trainings based on search, type, and category
@@ -63,7 +65,6 @@ const Courses = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Training Courses</h1>
-        {/* Button removed as per request */}
       </div>
       
       {isError && (
@@ -131,8 +132,8 @@ const Courses = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>No Training Data</AlertTitle>
               <AlertDescription>
-                No training courses were found in BambooHR. This could be because the custom report for trainings 
-                hasn't been set up in your BambooHR account, or it's not accessible through the API.
+                No training courses were found in BambooHR. This could be because the training types 
+                haven't been set up in your BambooHR account, or they're not accessible through the API.
               </AlertDescription>
             </Alert>
           ) : (

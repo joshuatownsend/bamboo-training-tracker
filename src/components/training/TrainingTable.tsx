@@ -35,7 +35,7 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
                 <Badge 
                   variant={training.type === "Compliance" ? "destructive" : "outline"}
                 >
-                  {training.type || "Unknown"}
+                  {training.type || "Standard"}
                 </Badge>
               </TableCell>
               <TableCell>{training.category || "Uncategorized"}</TableCell>

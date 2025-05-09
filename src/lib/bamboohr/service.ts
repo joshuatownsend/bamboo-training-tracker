@@ -70,21 +70,22 @@ export default class BambooHRService {
     }
   }
   
-  // Get all training data from BambooHR
+  // Get all training data from BambooHR using the correct endpoint
   async getTrainings(): Promise<Training[]> {
     try {
-      const trainingsData = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+      // Use the correct endpoint for training types
+      const trainingsData = await this.client.fetchFromBamboo('/training/type');
       console.log("Raw trainings data from BambooHR:", trainingsData);
       
-      // If the report exists, transform to our Training interface
+      // Transform the response data to our Training interface
       if (Array.isArray(trainingsData)) {
         return trainingsData.map((training: any) => ({
           id: training.id?.toString() || '',
-          title: training.name || training.title || '',
-          type: training.type || 'Unknown',
+          title: training.name || '',
+          type: training.type || 'Standard',
           category: training.category || 'General',
           description: training.description || '',
-          durationHours: parseFloat(training.duration) || 0,
+          durationHours: parseFloat(training.hours) || 0,
           requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
         }));
       } else if (trainingsData && typeof trainingsData === 'object') {
@@ -92,11 +93,11 @@ export default class BambooHRService {
         const trainings = trainingsData.trainings || trainingsData.data || [];
         return trainings.map((training: any) => ({
           id: training.id?.toString() || '',
-          title: training.name || training.title || '',
-          type: training.type || 'Unknown',
+          title: training.name || '',
+          type: training.type || 'Standard',
           category: training.category || 'General',
           description: training.description || '',
-          durationHours: parseFloat(training.duration) || 0,
+          durationHours: parseFloat(training.hours) || 0,
           requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
         }));
       }
@@ -151,33 +152,33 @@ export default class BambooHRService {
       
       console.log(`Processed ${employees.length} employees from BambooHR`);
       
-      // We might not have custom reports
       let trainings: Training[] = [];
       let completions: TrainingCompletion[] = [];
       
       try {
-        const rawTrainingsData = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+        // Use the correct endpoint for training types
+        const rawTrainingsData = await this.client.fetchFromBamboo('/training/type');
         console.log(`Fetched raw trainings data from BambooHR:`, rawTrainingsData);
         
         if (Array.isArray(rawTrainingsData)) {
           trainings = rawTrainingsData.map((training: any) => ({
             id: training.id?.toString() || '',
-            title: training.name || training.title || '',
-            type: training.type || 'Unknown',
+            title: training.name || '',
+            type: training.type || 'Standard',
             category: training.category || 'General',
             description: training.description || '',
-            durationHours: parseFloat(training.duration) || 0,
+            durationHours: parseFloat(training.hours) || 0,
             requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
           }));
         } else if (rawTrainingsData && typeof rawTrainingsData === 'object') {
           const trainingsArray = rawTrainingsData.trainings || rawTrainingsData.data || [];
           trainings = trainingsArray.map((training: any) => ({
             id: training.id?.toString() || '',
-            title: training.name || training.title || '',
-            type: training.type || 'Unknown',
+            title: training.name || '',
+            type: training.type || 'Standard',
             category: training.category || 'General',
             description: training.description || '',
-            durationHours: parseFloat(training.duration) || 0,
+            durationHours: parseFloat(training.hours) || 0,
             requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
           }));
         }

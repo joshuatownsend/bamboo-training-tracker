@@ -78,7 +78,8 @@ class BambooHRApiClient {
   async fetchAllTrainings(): Promise<Training[]> {
     try {
       console.log("Fetching trainings from BambooHR...");
-      const data = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+      // Use the correct endpoint for training types
+      const data = await this.client.fetchFromBamboo('/training/type');
       console.log("Raw trainings data:", data);
       
       if (Array.isArray(data)) {
@@ -99,11 +100,11 @@ class BambooHRApiClient {
   private mapTrainingData(data: any[]): Training[] {
     return data.map(training => ({
       id: training.id?.toString() || '',
-      title: training.name || training.title || '',
-      type: training.type || 'Unknown',
+      title: training.name || '',
+      type: training.type || 'Standard',
       category: training.category || 'General',
       description: training.description || '',
-      durationHours: parseFloat(training.duration) || 0,
+      durationHours: parseFloat(training.hours) || 0,
       requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
     }));
   }
