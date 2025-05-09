@@ -6,10 +6,10 @@ import { useState, useEffect } from 'react';
  * Useful for preventing excessive rerenders with text inputs
  * 
  * @param value The value to debounce
- * @param delay The delay in milliseconds (default: 500ms)
+ * @param delay The delay in milliseconds (default: 750ms)
  * @returns The debounced value
  */
-export function useDebounce<T>(value: T, delay: number = 500): T {
+export function useDebounce<T>(value: T, delay: number = 750): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
