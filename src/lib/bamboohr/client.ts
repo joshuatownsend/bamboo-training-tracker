@@ -6,16 +6,19 @@
 export class BambooHRClient {
   private apiKey: string;
   private subdomain: string;
-  private useProxy: boolean;
+  private useEdgeFunction: boolean;
+  private edgeFunctionUrl: string;
 
   constructor(options: { 
     subdomain: string; 
     apiKey: string; 
-    useProxy?: boolean;
+    useEdgeFunction?: boolean;
+    edgeFunctionUrl?: string;
   }) {
-    this.apiKey = options.apiKey;
     this.subdomain = options.subdomain;
-    this.useProxy = options.useProxy ?? true; // Default to using the proxy
+    this.apiKey = options.apiKey;
+    this.useEdgeFunction = options.useEdgeFunction ?? true; // Default to using Edge Function
+    this.edgeFunctionUrl = options.edgeFunctionUrl || import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || '';
   }
 
   // Return the raw response for advanced parsing
@@ -24,13 +27,12 @@ export class BambooHRClient {
     
     let url: string;
     
-    if (this.useProxy) {
-      // Use our proxy endpoint
-      url = `/api/bamboohr/api/gateway.php/${this.subdomain}/v1${endpoint}`;
-      // Add auth header that the server will forward
-      headers.append("X-BambooHR-ApiKey", this.apiKey);
+    if (this.useEdgeFunction) {
+      // Use our Edge Function
+      url = `${this.edgeFunctionUrl}/bamboohr${endpoint}`;
+      // No auth headers needed for Edge Function - it uses environment variables
     } else {
-      // Direct API access (will fail in browser due to CORS)
+      // Direct API access (legacy approach, will likely fail in browser due to CORS)
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
       // Base64 encode API key with empty username as per BambooHR docs
       const authHeader = "Basic " + btoa(`${this.apiKey}:`);
@@ -45,13 +47,12 @@ export class BambooHRClient {
 
     // Print full URL for debugging (removing API key for security)
     console.log(`BambooHR API request: ${method} ${url}`);
-    console.log(`Using proxy: ${this.useProxy}`);
-    console.log(`Subdomain: ${this.subdomain}`);
+    console.log(`Using Edge Function: ${this.useEdgeFunction}`);
     
     // Log headers (redacting sensitive info)
     const headerObj: Record<string, string> = {};
     headers.forEach((value, key) => {
-      headerObj[key] = key === 'Authorization' || key === 'X-BambooHR-ApiKey' ? '[REDACTED]' : value;
+      headerObj[key] = key === 'Authorization' ? '[REDACTED]' : value;
     });
     console.log('Request headers:', headerObj);
     
@@ -62,8 +63,7 @@ export class BambooHRClient {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
-        // Explicitly set credentials mode based on proxy usage
-        credentials: this.useProxy ? 'same-origin' : 'omit',
+        credentials: 'omit', // Don't send cookies
       });
       
       return response;
@@ -89,20 +89,7 @@ export class BambooHRClient {
         if (contentType && contentType.includes('text/html')) {
           console.error('Received HTML response instead of JSON:', responseText.substring(0, 200) + '...');
           
-          // Look for specific patterns in the HTML to provide better diagnostics
-          if (responseText.includes('login') || responseText.includes('<!DOCTYPE')) {
-            // Extract the page title which might contain useful error info
-            const titleMatch = responseText.match(/<title>(.*?)<\/title>/);
-            const title = titleMatch ? titleMatch[1] : 'Login page';
-            
-            throw new Error(`BambooHR returned a ${title} page instead of JSON data. This typically indicates: 
-            1. Incorrect subdomain - "${this.subdomain}" might not be valid 
-            2. Invalid API key - Please verify your API key is current
-            3. Authentication issues - Your API key may not have sufficient permissions
-            4. API endpoint format - The endpoint "${endpoint}" may not be correctly formatted`);
-          } else {
-            throw new Error(`BambooHR API returned HTML instead of JSON. This usually indicates authentication issues or incorrect subdomain.`);
-          }
+          throw new Error(`BambooHR authentication failed. Edge Function returned HTML instead of JSON data.`);
         }
         
         // Try to parse as JSON if it might be JSON
@@ -124,7 +111,7 @@ export class BambooHRClient {
         
         // If response starts with HTML, it's likely redirecting to login
         if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
-          throw new Error(`BambooHR returned an HTML page instead of JSON. This suggests the subdomain "${this.subdomain}" is incorrect or your API key is invalid. Please verify both in the BambooHR settings.`);
+          throw new Error(`BambooHR authentication error. Please check your credentials in the Supabase environment variables.`);
         }
         
         throw new Error(`Invalid JSON response from BambooHR API: ${(parseError as Error).message}`);
@@ -141,9 +128,8 @@ export class BambooHRClient {
     
     let url: string;
     
-    if (this.useProxy) {
-      url = `/api/bamboohr/api/gateway.php/${this.subdomain}/v1${endpoint}`;
-      headers.append("X-BambooHR-ApiKey", this.apiKey);
+    if (this.useEdgeFunction) {
+      url = `${this.edgeFunctionUrl}/bamboohr${endpoint}`;
     } else {
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
       const authHeader = "Basic " + btoa(`${this.apiKey}:`);
@@ -158,7 +144,7 @@ export class BambooHRClient {
       const response = await fetch(url, {
         method: 'HEAD',  // Use HEAD to just check if resource exists
         headers,
-        credentials: this.useProxy ? 'same-origin' : 'omit',
+        credentials: 'omit',
       });
       
       return response.ok;
