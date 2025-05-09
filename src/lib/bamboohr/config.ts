@@ -13,7 +13,7 @@ export const getBambooConfig = () => {
   return {
     subdomain: subdomain || '',
     apiKey: apiKey || '',
-    useEdgeFunction: useEdgeFunction,
+    useEdgeFunction: useEdgeFunction || true, // Default to true for edge function
     // Use the Edge Function URL from environment or a default
     edgeFunctionUrl: 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/bamboohr',
   };
