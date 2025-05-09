@@ -1,3 +1,4 @@
+
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './types';
@@ -162,22 +163,26 @@ class BambooHRService {
     try {
       console.log("Fetching training completions from BambooHR...");
       
-      // Try to use the training completion report if available (report ID 41)
+      // First try to use the training completion custom report if available
       try {
+        console.log("Trying to get completions from custom report ID 41...");
         const reportData = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
         console.log("Completions from custom report:", reportData);
         
         if (reportData && Array.isArray(reportData) && reportData.length > 0) {
-          console.log("Using training completion report data");
+          console.log("Successfully retrieved training completion data from report");
           return this.mapCompletionData(reportData);
+        } else {
+          console.log("Custom report returned empty or invalid data, falling back to employee records");
         }
       } catch (reportError) {
         console.warn("Could not fetch training completion report:", reportError);
       }
       
       // Fallback: gather training records for all employees
+      console.log("Falling back to gathering completions from individual employee records...");
       const employees = await this.getEmployees();
-      console.log(`Falling back to individual employee training records for ${employees.length} employees`);
+      console.log(`Will fetch training records for ${employees.length} employees`);
       
       const allCompletions: TrainingCompletion[] = [];
       
@@ -187,6 +192,7 @@ class BambooHRService {
           const employeeTrainings = await this.getUserTrainings(employee.id);
           console.log(`Found ${employeeTrainings.length} trainings for employee ${employee.id}`);
           
+          // Convert user trainings to training completions format
           const employeeCompletions = employeeTrainings
             .filter(training => training.completionDate) // Only include completed trainings
             .map(training => ({
@@ -230,13 +236,16 @@ class BambooHRService {
     try {
       console.log("Fetching all BambooHR data...");
       
-      const [employees, trainings, completions] = await Promise.all([
+      const [employees, trainings] = await Promise.all([
         this.getEmployees(),
         this.getTrainings(),
-        this.getCompletions(),
       ]);
       
-      console.log(`Fetched ${employees.length} employees, ${trainings.length} trainings, ${completions.length} completions`);
+      console.log(`Fetched ${employees.length} employees, ${trainings.length} trainings`);
+      
+      // Now fetch completions after we have employees and trainings
+      const completions = await this.getCompletions();
+      console.log(`Fetched ${completions.length} completions`);
       
       return {
         employees,

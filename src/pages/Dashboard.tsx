@@ -23,11 +23,14 @@ const Dashboard = () => {
         completions: data.completions?.length || 0
       });
       
-      // Log the raw completions data to debug
-      console.log("Raw completions data:", data.completions);
+      // Log more details about completions to debug
+      console.log("Completions data type:", typeof data.completions);
+      console.log("Is completions an array?", Array.isArray(data.completions));
       
-      if (!data.completions || data.completions.length === 0) {
-        console.warn("No completions data received from BambooHR");
+      if (Array.isArray(data.completions) && data.completions.length > 0) {
+        console.log("Sample completion data:", data.completions[0]);
+      } else {
+        console.warn("No completions data received from BambooHR or data is not an array");
       }
       
       const statistics = calculateTrainingStatistics(

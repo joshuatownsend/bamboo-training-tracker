@@ -1,4 +1,3 @@
-
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -9,12 +8,21 @@ export const calculateTrainingStatistics = (
   trainings: Training[], 
   completions: TrainingCompletion[]
 ): TrainingStatistics => {
+  // Log what we're receiving to debug
+  console.log("Calculating statistics with:", {
+    employees: employees.length,
+    trainings: trainings.length,
+    completions: completions?.length || 0
+  });
+  
+  console.log("First few completions:", completions?.slice(0, 3));
+  
   // Calculate basic statistics
   const totalTrainings = trainings.length;
   
-  // Check if completions is an array and not empty before filtering
+  // Count completed trainings - this is the value that's showing as 0
   const completedTrainings = Array.isArray(completions) 
-    ? completions.filter(c => c.status === "completed").length 
+    ? completions.length 
     : 0;
     
   const expiredTrainings = Array.isArray(completions)
@@ -25,14 +33,16 @@ export const calculateTrainingStatistics = (
     ? completions.filter(c => c.status === "due").length
     : 0;
 
-  // Calculate completion rate
-  const completionRate = totalTrainings > 0 
-    ? (completedTrainings / totalTrainings) * 100 
+  // Calculate completion rate based on total possible completions (employees × trainings)
+  // We're changing this calculation to reflect actual completion rate against all possible completions
+  const totalPossibleCompletions = employees.length * trainings.length;
+  const completionRate = totalPossibleCompletions > 0 
+    ? (completedTrainings / totalPossibleCompletions) * 100 
     : 0;
 
-  console.log(`Calculated statistics - Total: ${totalTrainings}, Completed: ${completedTrainings}, Rate: ${completionRate}%`);
+  console.log(`Calculated statistics - Trainings: ${totalTrainings}, Completed: ${completedTrainings}, Rate: ${completionRate.toFixed(2)}%`);
   
-  // Calculate division statistics instead of department statistics
+  // Calculate division statistics 
   const departmentStats = calculateDivisionStats(employees, trainings, completions);
   
   return {
@@ -75,7 +85,6 @@ export const calculateDivisionStats = (
     
     // Count completed trainings
     const completedCount = completionsArray.filter(c => 
-      c.status === "completed" && 
       divisionEmployees.some(e => e.id === c.employeeId) &&
       requiredTrainings.some(t => t.id === c.trainingId)
     ).length;

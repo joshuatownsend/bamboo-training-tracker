@@ -17,13 +17,14 @@ export function RecentCompletions({
   trainings
 }: RecentCompletionsProps) {
   // Log data for debugging
-  console.log("Recent completions data:", { 
+  console.log("RecentCompletions component received:", { 
     completionsCount: completions?.length || 0, 
     employeesCount: employees?.length || 0,
     trainingsCount: trainings?.length || 0
   });
   
   if (!completions?.length) {
+    console.warn("No completions data provided to RecentCompletions component");
     return (
       <Card>
         <CardHeader>
@@ -40,7 +41,6 @@ export function RecentCompletions({
 
   // Get most recent completions
   const recentCompletions = [...completions]
-    .filter(c => c.status === "completed" && c.completionDate)
     .sort((a, b) => 
       new Date(b.completionDate).getTime() - new Date(a.completionDate).getTime()
     )
