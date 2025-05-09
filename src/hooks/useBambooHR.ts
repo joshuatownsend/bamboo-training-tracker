@@ -1,10 +1,9 @@
-
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRApiClient from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 import { useToast } from '@/hooks/use-toast';
-import { Training } from '@/lib/types';
+import { Training, UserTraining } from '@/lib/types';
 
 const useBambooHR = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -89,6 +88,31 @@ const useBambooHR = () => {
     }
   }, [isConfigured, getBambooService]);
   
+  // Fetch trainings for a specific employee
+  const fetchUserTrainings = useCallback(async (employeeId: string): Promise<UserTraining[]> => {
+    if (!isConfigured) {
+      setError('BambooHR is not configured.');
+      return [];
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const service = getBambooService();
+      const trainings = await service.getUserTrainings(employeeId);
+      console.log(`User trainings fetched from BambooHR for employee ${employeeId}:`, trainings.length);
+      return trainings;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error("Error fetching user trainings:", errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConfigured, getBambooService]);
+  
   // React Query hook to fetch all BambooHR data
   const useAllData = () => {
     return useQuery({
@@ -143,15 +167,31 @@ const useBambooHR = () => {
     });
   };
   
+  // React Query hook to fetch user trainings
+  const useUserTrainings = (employeeId?: string) => {
+    return useQuery({
+      queryKey: ['bamboohr', 'userTrainings', employeeId],
+      queryFn: async () => {
+        if (!employeeId) return [];
+        return fetchUserTrainings(employeeId);
+      },
+      enabled: isConfigured && !!employeeId,
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+  };
+  
   return {
     isLoading,
     error,
     fetchData,
     fetchTrainings,
+    fetchUserTrainings,
     isConfigured,
     getBambooService,
     useAllData,
-    useTrainings
+    useTrainings,
+    useUserTrainings
   };
 };
 

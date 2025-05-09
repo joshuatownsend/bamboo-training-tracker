@@ -1,5 +1,5 @@
 import { BambooHRClient } from './client';
-import { Employee, Training, TrainingCompletion } from '@/lib/types';
+import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import BambooHRService from './service';
 
 interface BambooHRServiceOptions {
@@ -42,6 +42,11 @@ class BambooHRApiClient {
   // Get all trainings
   async getTrainings(): Promise<Training[]> {
     return this.service.getTrainings();
+  }
+
+  // Get trainings for a specific employee
+  async getUserTrainings(employeeId: string): Promise<UserTraining[]> {
+    return this.service.getUserTrainings(employeeId);
   }
 
   async fetchAllEmployees(): Promise<Employee[]> {

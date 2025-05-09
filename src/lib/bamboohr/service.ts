@@ -1,6 +1,5 @@
-
 import { BambooHRClient } from './client';
-import { Employee, Training, TrainingCompletion } from '@/lib/types';
+import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './client';
 
 // Add a new diagnostic test that directly calls the BambooHR edge function
@@ -109,6 +108,45 @@ export default class BambooHRService {
       return [];
     } catch (error) {
       console.error("Error getting trainings from BambooHR:", error);
+      throw error;
+    }
+  }
+  
+  // Get trainings for a specific employee
+  async getUserTrainings(employeeId: string): Promise<UserTraining[]> {
+    try {
+      // Use the correct endpoint for employee training records
+      const endpoint = `/training/record/employee/${employeeId}?trainingTypeId=0`;
+      const trainingData = await this.client.fetchFromBamboo(endpoint);
+      console.log("Raw user trainings data from BambooHR:", trainingData);
+      
+      // Get all training types for reference
+      const allTrainings = await this.getTrainings();
+      const trainingMap = allTrainings.reduce((map, training) => {
+        map[training.id] = training;
+        return map;
+      }, {} as Record<string, Training>);
+      
+      // Handle the object format where IDs are keys
+      if (trainingData && typeof trainingData === 'object' && !Array.isArray(trainingData)) {
+        const trainingsArray = Object.values(trainingData);
+        return trainingsArray.map((record: any) => ({
+          id: record.id?.toString() || '',
+          employeeId: record.employeeId?.toString() || '',
+          trainingId: record.type?.toString() || '',
+          completionDate: record.completed || '',
+          instructor: record.instructor || '',
+          notes: record.notes || '',
+          // Include training details if we can find them
+          trainingDetails: trainingMap[record.type] || null
+        }));
+      }
+      
+      // Return empty array if no data or unexpected format
+      console.warn("Unexpected user training data format:", trainingData);
+      return [];
+    } catch (error) {
+      console.error("Error getting user trainings from BambooHR:", error);
       throw error;
     }
   }

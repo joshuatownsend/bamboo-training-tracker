@@ -1,4 +1,3 @@
-
 export interface Employee {
   id: string;
   name: string;
@@ -73,4 +72,14 @@ export interface User {
   email: string;
   role: 'user' | 'admin';
   employeeId: string;
+}
+
+export interface UserTraining {
+  id: string;
+  employeeId: string;
+  trainingId: string;
+  completionDate: string;
+  instructor?: string;
+  notes?: string;
+  trainingDetails: Training | null;
 }

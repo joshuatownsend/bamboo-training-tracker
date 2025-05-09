@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,92 +11,132 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useUser } from "@/contexts/UserContext";
-import { trainings, trainingCompletions } from "@/lib/data";
-import { format } from "date-fns";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
+import useBambooHR from "@/hooks/useBambooHR";
+import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MyTrainings() {
   const { currentUser } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-
+  const { toast } = useToast();
+  
+  const {
+    useUserTrainings,
+    fetchUserTrainings,
+  } = useBambooHR();
+  
+  const employeeId = currentUser?.employeeId;
+  
+  const {
+    data: userTrainings = [],
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+  } = useUserTrainings(employeeId);
+  
+  // Handle refresh button click
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Refreshed Training Data",
+        description: "Your training records have been refreshed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error Refreshing Data",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Get unique categories for filter
-  const categories = [...new Set(trainings.map((t) => t.category))];
-
-  // Get user's training completions if user is logged in
-  const myCompletions = currentUser
-    ? trainingCompletions.filter((completion) => completion.employeeId === currentUser.employeeId)
-    : [];
-
-  // Map the completions to the full training details
-  const myTrainings = myCompletions.map((completion) => {
-    const trainingDetails = trainings.find((t) => t.id === completion.trainingId);
-    return {
-      ...trainingDetails,
-      completionDate: completion.completionDate,
-      expirationDate: completion.expirationDate,
-      status: completion.status,
-      score: completion.score,
-    };
-  });
-
+  const categories = [...new Set(userTrainings.map((t) => t.trainingDetails?.category).filter(Boolean))];
+  
   // Apply filters
-  const filteredTrainings = myTrainings.filter((training) => {
-    if (!training) return false;
+  const filteredTrainings = userTrainings.filter((training) => {
+    const title = training.trainingDetails?.title?.toLowerCase() || '';
+    const description = training.trainingDetails?.description?.toLowerCase() || '';
+    const notes = training.notes?.toLowerCase() || '';
     
-    const matchesSearch = training.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         training.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || training.category === categoryFilter;
+    const matchesSearch = 
+      title.includes(searchQuery.toLowerCase()) ||
+      description.includes(searchQuery.toLowerCase()) ||
+      notes.includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = categoryFilter === "all" || 
+      training.trainingDetails?.category === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
-
+  
   // Calculate statistics
-  const totalCompleted = myTrainings.filter(t => t && t.status === "completed").length;
-  const totalExpired = myTrainings.filter(t => t && t.status === "expired").length;
-  const totalDue = myTrainings.filter(t => t && t.status === "due").length;
+  const totalTrainings = userTrainings.length;
+  const categoryCounts = userTrainings.reduce((acc, training) => {
+    const category = training.trainingDetails?.category || 'Uncategorized';
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  // Find the top category
+  let topCategory = 'None';
+  let topCount = 0;
+  Object.entries(categoryCounts).forEach(([category, count]) => {
+    if (count > topCount) {
+      topCount = count;
+      topCategory = category;
+    }
+  });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">My Trainings</h1>
-        <p className="text-muted-foreground">
-          View and manage your training records imported from BambooHR
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">My Trainings</h1>
+          <p className="text-muted-foreground">
+            View your completed training records from BambooHR
+          </p>
+        </div>
+        <Button 
+          onClick={handleRefresh}
+          disabled={isLoading || isRefetching}
+          variant="outline"
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Completed Trainings</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Trainings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCompleted}</div>
+            <div className="text-2xl font-bold">{totalTrainings}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Expired Trainings</CardTitle>
+            <CardTitle className="text-sm font-medium">Top Training Category</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">{totalExpired}</div>
+            <div className="text-2xl font-bold">{topCategory}</div>
+            {topCount > 0 && <div className="text-xs text-muted-foreground">{topCount} trainings</div>}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Due for Renewal</CardTitle>
+            <CardTitle className="text-sm font-medium">Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">{totalDue}</div>
+            <div className="text-2xl font-bold">{Object.keys(categoryCounts).length}</div>
           </CardContent>
         </Card>
       </div>
@@ -111,91 +152,44 @@ export default function MyTrainings() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {categories.length > 0 && (
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category || ''}>
+                  {category || 'Uncategorized'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Training Records</CardTitle>
           <CardDescription>
-            These are your completed and in-progress trainings
+            These are your completed training records from BambooHR
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Training</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Completion Date</TableHead>
-                <TableHead>Expiration</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Score</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTrainings.map((training, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{training?.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {training?.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{training?.category}</TableCell>
-                  <TableCell>
-                    {training?.completionDate
-                      ? format(new Date(training.completionDate), "MMM d, yyyy")
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    {training?.expirationDate
-                      ? format(new Date(training.expirationDate), "MMM d, yyyy")
-                      : "No Expiration"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        training?.status === "completed"
-                          ? "default"
-                          : training?.status === "expired"
-                          ? "destructive"
-                          : "outline"
-                      }
-                    >
-                      {training?.status === "completed"
-                        ? "Completed"
-                        : training?.status === "expired"
-                        ? "Expired"
-                        : "Due"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{training?.score ?? "N/A"}</TableCell>
-                </TableRow>
-              ))}
-              {filteredTrainings.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
-                    No training records found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mb-4"></div>
+              <p className="text-muted-foreground">Loading training records...</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <p className="text-red-500">Error loading training records</p>
+              <p className="text-sm text-muted-foreground mt-2">{error}</p>
+            </div>
+          ) : (
+            <UserTrainingsTable trainings={filteredTrainings} />
+          )}
         </CardContent>
       </Card>
     </div>
