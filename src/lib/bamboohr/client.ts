@@ -29,8 +29,9 @@ export class BambooHRClient {
     let url: string;
     
     if (this.useEdgeFunction) {
-      // Use our Edge Function
-      url = `${this.edgeFunctionUrl}/bamboohr${endpoint}`;
+      // Use our Edge Function - ensure we have the full path
+      url = `${this.edgeFunctionUrl}${endpoint}`;
+      console.log(`Using Edge Function URL: ${url}`);
       // No auth headers needed for Edge Function - it uses environment variables
     } else {
       // Direct API access (legacy approach, will likely fail in browser due to CORS)
@@ -49,13 +50,6 @@ export class BambooHRClient {
     // Print full URL for debugging (removing API key for security)
     console.log(`BambooHR API request: ${method} ${url}`);
     console.log(`Using Edge Function: ${this.useEdgeFunction}`);
-    
-    // Log headers (redacting sensitive info)
-    const headerObj: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      headerObj[key] = key === 'Authorization' ? '[REDACTED]' : value;
-    });
-    console.log('Request headers:', headerObj);
     
     try {
       console.log(`Sending request to BambooHR API: ${method} ${url}`);

@@ -1,69 +1,57 @@
-export const BAMBOO_HR_CONFIG = {
-  subdomain: import.meta.env.VITE_BAMBOO_SUBDOMAIN || '',
-  apiKey: import.meta.env.VITE_BAMBOO_API_KEY || '',
-  useEdgeFunction: true,
-  edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || ''
+/**
+ * Configuration for BambooHR API integration
+ */
+
+// Get configuration from environment or localStorage
+export const getBambooConfig = () => {
+  // First try localStorage (for user-configured settings)
+  const subdomain = localStorage.getItem('bamboohr_subdomain');
+  const apiKey = localStorage.getItem('bamboohr_apiKey');
+  const useEdgeFunction = localStorage.getItem('bamboohr_useEdgeFunction') === 'true';
+  
+  return {
+    subdomain: subdomain || '',
+    apiKey: apiKey || '',
+    useEdgeFunction: useEdgeFunction,
+    // Use the Edge Function URL from environment or a default
+    edgeFunctionUrl: 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1',
+  };
 };
 
-// Check if BambooHR is properly configured
-export const isBambooConfigured = (): boolean => {
-  // When using Edge Function, we don't need local config
-  if (BAMBOO_HR_CONFIG.useEdgeFunction && BAMBOO_HR_CONFIG.edgeFunctionUrl) {
-    console.log('BambooHR configured to use Edge Function:', BAMBOO_HR_CONFIG.edgeFunctionUrl);
+// Check if BambooHR is configured
+export const isBambooConfigured = () => {
+  const config = getBambooConfig();
+  
+  // If we're using Edge Function, we only need to check that flag
+  // as the credentials are stored on the server
+  if (config.useEdgeFunction) {
     return true;
   }
   
-  // Check both environment variables and localStorage (legacy approach)
-  const envConfigured = Boolean(BAMBOO_HR_CONFIG.subdomain && BAMBOO_HR_CONFIG.apiKey);
-  const localStorageConfigured = Boolean(
-    localStorage.getItem('bamboo_subdomain') && 
-    localStorage.getItem('bamboo_api_key')
-  );
-  
-  const isConfigured = envConfigured || localStorageConfigured;
-  console.log('BambooHR configuration check result:', isConfigured ? 'Configured' : 'Not configured');
-  console.log('  - Environment variables configured:', envConfigured);
-  console.log('  - LocalStorage configured:', localStorageConfigured);
-  
-  return isConfigured;
+  // Otherwise, check that we have both subdomain and API key
+  return !!(config.subdomain && config.apiKey);
 };
 
-// Get effective configuration (combining env vars and localStorage)
+// Get effective configuration (for client use)
 export const getEffectiveBambooConfig = () => {
-  // When using Edge Function, return Edge Function config
-  if (BAMBOO_HR_CONFIG.useEdgeFunction) {
-    return {
-      subdomain: 'managed-by-edge-function',
-      apiKey: 'managed-by-edge-function',
-      useEdgeFunction: true,
-      edgeFunctionUrl: BAMBOO_HR_CONFIG.edgeFunctionUrl || import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || ''
-    };
+  const config = getBambooConfig();
+  
+  // If Edge Function is enabled, ensure we have the URL
+  if (config.useEdgeFunction && !config.edgeFunctionUrl) {
+    console.error('Edge Function URL is missing');
   }
   
-  // Legacy approach (direct API connection)
-  const storedSubdomain = localStorage.getItem('bamboo_subdomain');
-  const storedApiKey = localStorage.getItem('bamboo_api_key');
-  const useProxyStr = localStorage.getItem('bamboo_use_proxy');
-  
-  // Default to using proxy if not specified
-  const useProxy = useProxyStr === null ? true : useProxyStr === 'true';
-  
-  return {
-    subdomain: storedSubdomain || BAMBOO_HR_CONFIG.subdomain,
-    apiKey: storedApiKey || BAMBOO_HR_CONFIG.apiKey,
-    useProxy,
-    useEdgeFunction: false
-  };
+  return config;
 };
 
 // Set the useEdgeFunction flag
 export const setUseEdgeFunction = (useEdgeFunction: boolean): void => {
-  localStorage.setItem('bamboo_use_edge_function', useEdgeFunction.toString());
+  localStorage.setItem('bamboohr_useEdgeFunction', useEdgeFunction.toString());
   console.log('BambooHR Edge Function setting updated:', useEdgeFunction);
 };
 
 // Set the useProxy flag in localStorage (legacy)
 export const setUseProxyFlag = (useProxy: boolean): void => {
-  localStorage.setItem('bamboo_use_proxy', useProxy.toString());
+  localStorage.setItem('bamboohr_use_proxy', useProxy.toString());
   console.log('BambooHR proxy setting updated:', useProxy);
 };

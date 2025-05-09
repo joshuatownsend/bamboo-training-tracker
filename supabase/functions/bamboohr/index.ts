@@ -7,6 +7,13 @@ interface Env {
   BAMBOOHR_API_KEY: string;
 }
 
+// CORS headers for browser compatibility
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
+
 // Function to build the BambooHR API URL
 function buildBambooHRUrl(subdomain: string, endpoint: string): string {
   return `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${endpoint}`;
@@ -14,6 +21,14 @@ function buildBambooHRUrl(subdomain: string, endpoint: string): string {
 
 // Main handler function for the Edge Function
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
+  }
+  
   try {
     const env = Deno.env.toObject() as Env;
     
@@ -25,21 +40,37 @@ serve(async (req) => {
         }),
         { 
           status: 500, 
-          headers: { "Content-Type": "application/json" } 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders
+          } 
         }
       );
     }
 
     // Parse the request URL to get the BambooHR endpoint
     const url = new URL(req.url);
-    const bambooEndpoint = url.pathname.replace('/bamboohr', '');
+    const path = url.pathname;
+    
+    // Extract the part after /functions/v1/bamboohr
+    const bambooEndpoint = path.includes('/bamboohr') 
+      ? path.substring(path.indexOf('/bamboohr') + '/bamboohr'.length) 
+      : path;
     
     if (!bambooEndpoint) {
       return new Response(
         JSON.stringify({ error: "No BambooHR endpoint specified" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { 
+          status: 400, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders 
+          } 
+        }
       );
     }
+    
+    console.log(`Edge Function: Extracted bambooEndpoint: ${bambooEndpoint}`);
     
     // Build the full BambooHR API URL
     const apiUrl = buildBambooHRUrl(env.BAMBOOHR_SUBDOMAIN, bambooEndpoint);
@@ -47,7 +78,7 @@ serve(async (req) => {
     // Forward query parameters if any
     const fullApiUrl = url.search ? `${apiUrl}${url.search}` : apiUrl;
     
-    console.log(`Making request to: ${fullApiUrl}`);
+    console.log(`Edge Function: Making request to: ${fullApiUrl}`);
     
     // Create headers for BambooHR API
     const headers = new Headers();
@@ -84,7 +115,13 @@ serve(async (req) => {
           statusText: response.statusText,
           htmlPreview: htmlText.substring(0, 200) + "..."
         }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        { 
+          status: 401, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders 
+          } 
+        }
       );
     }
     
@@ -99,7 +136,13 @@ serve(async (req) => {
           contentType,
           responsePreview: responseText.substring(0, 200) + "..."
         }),
-        { status: response.status, headers: { "Content-Type": "application/json" } }
+        { 
+          status: response.status, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders
+          } 
+        }
       );
     }
     
@@ -113,7 +156,7 @@ serve(async (req) => {
         status: response.status, 
         headers: { 
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // Allow CORS
+          ...corsHeaders
         }
       }
     );
@@ -126,7 +169,10 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { "Content-Type": "application/json" } 
+        headers: { 
+          "Content-Type": "application/json",
+          ...corsHeaders
+        }
       }
     );
   }
