@@ -123,9 +123,9 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     setManualSyncLoading(true);
     
     try {
-      // Call the database function that the cron job would call
-      // Using an explicit type annotation to avoid TypeScript errors
-      const { data, error } = await supabase.rpc('sync_employee_mappings_job' as any);
+      // Use a different approach - call the edge function directly instead of the RPC
+      // This avoids the TypeScript issue with the RPC call
+      const { data, error } = await supabase.functions.invoke('sync-employee-mappings');
       
       if (error) {
         console.error("Error manually running sync job:", error);
