@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, Server, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { BambooHRClient } from '@/lib/bamboohr/client';
@@ -19,10 +19,42 @@ const BambooConnectionTest: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [responseData, setResponseData] = useState<any>(null);
   const [endpointPath, setEndpointPath] = useState('/employees/directory');
+  const [secretsInfo, setSecretsInfo] = useState<{ [key: string]: boolean }>({
+    BAMBOOHR_SUBDOMAIN: false,
+    BAMBOOHR_API_KEY: false,
+  });
   const { toast } = useToast();
 
   // Get the current config
   const config = getEffectiveBambooConfig();
+  
+  const checkEdgeFunctionSecrets = async () => {
+    try {
+      // We're going to make a special call to the Edge Function to check if secrets are set
+      const client = new BambooHRClient({
+        subdomain: config.subdomain,
+        apiKey: config.apiKey,
+        useEdgeFunction: true,
+        edgeFunctionUrl: config.edgeFunctionUrl
+      });
+      
+      const response = await client.fetchRawResponse('/check-secrets');
+      const data = await response.json();
+      
+      if (data && data.secrets) {
+        setSecretsInfo(data.secrets);
+      }
+    } catch (err) {
+      console.error("Error checking Edge Function secrets:", err);
+    }
+  };
+  
+  // Check secrets when component mounts
+  React.useEffect(() => {
+    if (config.useEdgeFunction) {
+      checkEdgeFunctionSecrets();
+    }
+  }, []);
   
   const runTest = async () => {
     setIsLoading(true);
@@ -112,6 +144,73 @@ const BambooConnectionTest: React.FC = () => {
         </AlertDescription>
       </Alert>
       
+      {config.useEdgeFunction && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Server className="mr-2 h-5 w-5 text-amber-600" />
+              Edge Function Secret Check
+            </CardTitle>
+            <CardDescription>
+              Checking if required secrets are set in the Edge Function environment
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="font-medium">BAMBOOHR_SUBDOMAIN</div>
+                  {secretsInfo.BAMBOOHR_SUBDOMAIN ? (
+                    <div className="flex items-center text-green-600">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Secret is set
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-red-600">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Secret is missing
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <div className="font-medium">BAMBOOHR_API_KEY</div>
+                  {secretsInfo.BAMBOOHR_API_KEY ? (
+                    <div className="flex items-center text-green-600">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Secret is set
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-red-600">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Secret is missing
+                    </div>
+                  )}
+                </div>
+              </div>
+              <Alert className="bg-white border-amber-200">
+                <AlertTitle>Important</AlertTitle>
+                <AlertDescription>
+                  For the Edge Function to work correctly, both BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY must be set in your Supabase project secrets.
+                  <div className="mt-2">
+                    <Button asChild size="sm" variant="outline" className="bg-white">
+                      <a 
+                        href="https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Manage Secrets in Supabase
+                      </a>
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle>Connection Configuration</CardTitle>
@@ -166,7 +265,11 @@ const BambooConnectionTest: React.FC = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={runTest} disabled={isLoading}>
+          <Button 
+            onClick={runTest} 
+            disabled={isLoading} 
+            className="bg-yellow-500 hover:bg-yellow-600 text-black"
+          >
             {isLoading ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Testing...
@@ -212,6 +315,72 @@ const BambooConnectionTest: React.FC = () => {
           </CardContent>
         </Card>
       )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Status Summary</CardTitle>
+          <CardDescription>
+            BambooHR API connection troubleshooting step-by-step guide
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-4 list-decimal pl-6">
+            <li className="pl-2">
+              <h3 className="font-semibold mb-1">Edge Function Authentication</h3>
+              <p className="text-sm text-gray-700">
+                The Edge Function uses environment variables to authenticate with BambooHR. Ensure that both
+                BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY are set in your Supabase project secrets.
+              </p>
+              <div className="mt-2">
+                <Button asChild size="sm" variant="outline">
+                  <a 
+                    href="https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/functions/bamboohr/logs" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    View Edge Function Logs
+                  </a>
+                </Button>
+              </div>
+            </li>
+            <li className="pl-2">
+              <h3 className="font-semibold mb-1">Authentication Method</h3>
+              <p className="text-sm text-gray-700">
+                BambooHR uses Basic Authentication where the API key is used as the username and an empty string as the password. The
+                Edge Function is configured to use this authentication method automatically.
+              </p>
+            </li>
+            <li className="pl-2">
+              <h3 className="font-semibold mb-1">CORS Configuration</h3>
+              <p className="text-sm text-gray-700">
+                The Edge Function includes CORS headers to allow requests from your application. If you're still seeing CORS errors, 
+                check the browser console for more details.
+              </p>
+            </li>
+            <li className="pl-2">
+              <h3 className="font-semibold mb-1">BambooHR API Access</h3>
+              <p className="text-sm text-gray-700">
+                Make sure your BambooHR account has API access enabled and that the API key has the necessary permissions.
+              </p>
+              <div className="mt-2">
+                <Button asChild size="sm" variant="outline">
+                  <a 
+                    href="https://documentation.bamboohr.com/docs/getting-started" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    BambooHR API Documentation
+                  </a>
+                </Button>
+              </div>
+            </li>
+          </ol>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -43,13 +43,13 @@ export class BambooHRClient {
         url += `&subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       }
       
-      // No auth headers needed for Edge Function - it uses environment variables
-      // But we'll add a simple auth check header to help the edge function debug issues
+      // When using Edge Function, we don't add the auth header since 
+      // the Edge Function will use its own credentials from environment variables
       headers.append("X-Client-Auth-Check", "true");
     } else {
       // Direct API access (legacy approach, will likely fail in browser due to CORS)
       url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
-      // Base64 encode API key with empty username as per BambooHR docs
+      // Base64 encode API key with empty password as per BambooHR docs
       const authHeader = "Basic " + btoa(`${this.apiKey}:`);
       headers.append("Authorization", authHeader);
     }
@@ -66,6 +66,9 @@ export class BambooHRClient {
     
     try {
       console.log(`Sending request to BambooHR API: ${method} ${url}`);
+      console.log(`Headers: ${JSON.stringify([...headers.entries()].map(([key, value]) => 
+        key.toLowerCase() === 'authorization' ? [key, '[REDACTED]'] : [key, value]
+      ))}`);
       
       const response = await fetch(url, {
         method,

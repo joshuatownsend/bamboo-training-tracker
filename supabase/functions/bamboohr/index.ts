@@ -7,7 +7,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-auth-check",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-auth-check, x-bamboohr-auth",
 };
 
 serve(async (req) => {
@@ -36,16 +36,21 @@ serve(async (req) => {
     const querySubdomain = url.searchParams.get("subdomain");
     const subdomain = serverSubdomain || querySubdomain || '';
     
-    // Log if client sent auth check header (just for diagnostic purposes)
-    const clientAuthCheck = req.headers.get("X-Client-Auth-Check");
-    console.log(`Client Auth Check Header present: ${!!clientAuthCheck}`);
+    // Log ALL request headers for debugging (redacting sensitive values)
+    console.log("All request headers:");
+    for (const [key, value] of req.headers.entries()) {
+      console.log(`${key}: ${key.toLowerCase().includes('auth') ? '[REDACTED]' : value}`);
+    }
+
+    // Look for any auth-related headers
+    const hasAuthHeader = req.headers.has("Authorization");
+    const hasBambooAuthHeader = req.headers.has("X-BambooHR-Auth");
+    console.log(`Has Authorization header: ${hasAuthHeader}`);
+    console.log(`Has X-BambooHR-Auth header: ${hasBambooAuthHeader}`);
 
     console.log(`Processing request with subdomain: ${subdomain}`);
     console.log(`API Key present: ${!!apiKey}`);
-    console.log(`Request headers:`, Object.fromEntries([...req.headers.entries()].map(([k, v]) => 
-      k.toLowerCase() === 'authorization' ? [k, '[REDACTED]'] : [k, v]
-    )));
-
+    
     if (!subdomain || !apiKey) {
       console.error("Missing BambooHR credentials in environment variables");
       const missingItems = [];
@@ -72,6 +77,7 @@ serve(async (req) => {
 
     // Process URL - get the path that comes after /bamboohr
     let path = url.pathname.replace(/^\/bamboohr\/?/, "");
+    path = path.replace(/^\/functions\/v1\/bamboohr\/?/, "");
     
     // If no path is specified, default to employees/directory
     if (!path) {
@@ -98,7 +104,7 @@ serve(async (req) => {
     // IMPORTANT: BambooHR requires the API key as the username and an empty string as the password
     const authHeader = `Basic ${btoa(`${apiKey}:`)}`;
     headers.append("Authorization", authHeader);
-    console.log("Added Authorization header");
+    console.log("Added Authorization header for BambooHR API");
     
     headers.append("Accept", "application/json");
     
