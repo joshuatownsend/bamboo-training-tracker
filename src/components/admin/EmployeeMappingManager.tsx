@@ -22,6 +22,7 @@ const EmployeeMappingManager = () => {
   const [newEmail, setNewEmail] = useState('');
   const [newEmployeeId, setNewEmployeeId] = useState('');
   const [syncingEmployees, setSyncingEmployees] = useState(false);
+  const [manualSyncLoading, setManualSyncLoading] = useState(false);
   const { toast } = useToast();
   const { refreshEmployeeId } = useUser();
   
@@ -175,6 +176,49 @@ const EmployeeMappingManager = () => {
     }
   };
 
+  // Handle manual execution of the cron job function
+  const handleManualSync = async () => {
+    setManualSyncLoading(true);
+    
+    try {
+      // Call the database function that the cron job would call
+      const { data, error } = await supabase.rpc('sync_employee_mappings_job');
+      
+      if (error) {
+        console.error("Error manually running sync job:", error);
+        toast({
+          title: "Manual Sync Failed",
+          description: error.message || "Failed to manually run sync job",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("Manual sync response:", data);
+      
+      toast({
+        title: "Manual Sync Initiated",
+        description: "The sync job has been manually triggered. Check logs for results.",
+      });
+      
+      // Reload the data after a short delay to allow the sync to complete
+      setTimeout(() => {
+        loadData();
+        refreshEmployeeId(); // Refresh the current user's employee ID if relevant
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Exception during manual sync:", error);
+      toast({
+        title: "Manual Sync Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setManualSyncLoading(false);
+    }
+  };
+
   // Handle deleting a mapping
   const handleDeleteMapping = async (id: string) => {
     const success = await deleteEmployeeMapping(id);
@@ -209,6 +253,8 @@ const EmployeeMappingManager = () => {
               onRefresh={loadData}
               onAutoMap={handleAutoMap}
               onSyncFromBambooHR={handleSyncFromBambooHR}
+              onManualSync={handleManualSync}
+              manualSyncLoading={manualSyncLoading}
             />
           </div>
 

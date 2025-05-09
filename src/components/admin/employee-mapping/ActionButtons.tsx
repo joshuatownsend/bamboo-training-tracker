@@ -9,6 +9,8 @@ interface ActionButtonsProps {
   onRefresh: () => void;
   onAutoMap: () => void;
   onSyncFromBambooHR: () => void;
+  onManualSync?: () => void;
+  manualSyncLoading?: boolean;
 }
 
 export const ActionButtons = ({ 
@@ -17,7 +19,9 @@ export const ActionButtons = ({
   syncingEmployees, 
   onRefresh, 
   onAutoMap, 
-  onSyncFromBambooHR 
+  onSyncFromBambooHR,
+  onManualSync,
+  manualSyncLoading = false
 }: ActionButtonsProps) => {
   return (
     <div className="flex flex-wrap gap-2">
@@ -49,6 +53,17 @@ export const ActionButtons = ({
         <CloudSun className={`mr-2 h-4 w-4 ${syncingEmployees ? 'animate-spin' : ''}`} />
         Sync from BambooHR
       </Button>
+      {onManualSync && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onManualSync}
+          disabled={manualSyncLoading}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${manualSyncLoading ? 'animate-spin' : ''}`} />
+          Run Sync Job Now
+        </Button>
+      )}
     </div>
   );
 };
