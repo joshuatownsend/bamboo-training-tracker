@@ -17,11 +17,26 @@ const Dashboard = () => {
   // Process BambooHR data to generate statistics
   useEffect(() => {
     if (data && data.employees && data.trainings) {
+      console.log("Dashboard received data from BambooHR:", {
+        employees: data.employees.length,
+        trainings: data.trainings.length,
+        completions: data.completions?.length || 0
+      });
+      
+      // Log the raw completions data to debug
+      console.log("Raw completions data:", data.completions);
+      
+      if (!data.completions || data.completions.length === 0) {
+        console.warn("No completions data received from BambooHR");
+      }
+      
       const statistics = calculateTrainingStatistics(
         data.employees, 
         data.trainings, 
         data.completions || []
       );
+      
+      console.log("Calculated statistics:", statistics);
       setStats(statistics);
     }
   }, [data]);

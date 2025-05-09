@@ -16,6 +16,28 @@ export function RecentCompletions({
   employees,
   trainings
 }: RecentCompletionsProps) {
+  // Log data for debugging
+  console.log("Recent completions data:", { 
+    completionsCount: completions?.length || 0, 
+    employeesCount: employees?.length || 0,
+    trainingsCount: trainings?.length || 0
+  });
+  
+  if (!completions?.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Completions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[200px]">
+            <p className="text-sm text-muted-foreground">No recent completions found</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Get most recent completions
   const recentCompletions = [...completions]
     .filter(c => c.status === "completed" && c.completionDate)
@@ -23,6 +45,23 @@ export function RecentCompletions({
       new Date(b.completionDate).getTime() - new Date(a.completionDate).getTime()
     )
     .slice(0, 5);
+    
+  console.log(`Found ${recentCompletions.length} recent completions to display`);
+  
+  if (!recentCompletions.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Completions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[200px]">
+            <p className="text-sm text-muted-foreground">No completed trainings found</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
     
   return (
     <Card>
@@ -53,7 +92,7 @@ export function RecentCompletions({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(completion.completionDate), "MMM d, yyyy")}
+                    {completion.completionDate ? format(new Date(completion.completionDate), "MMM d, yyyy") : "No date"}
                   </span>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 </div>

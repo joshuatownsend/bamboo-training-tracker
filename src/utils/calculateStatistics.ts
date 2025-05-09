@@ -1,3 +1,4 @@
+
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -10,14 +11,26 @@ export const calculateTrainingStatistics = (
 ): TrainingStatistics => {
   // Calculate basic statistics
   const totalTrainings = trainings.length;
-  const completedTrainings = completions.filter(c => c.status === "completed").length;
-  const expiredTrainings = completions.filter(c => c.status === "expired").length;
-  const upcomingTrainings = completions.filter(c => c.status === "due").length;
   
+  // Check if completions is an array and not empty before filtering
+  const completedTrainings = Array.isArray(completions) 
+    ? completions.filter(c => c.status === "completed").length 
+    : 0;
+    
+  const expiredTrainings = Array.isArray(completions)
+    ? completions.filter(c => c.status === "expired").length
+    : 0;
+    
+  const upcomingTrainings = Array.isArray(completions)
+    ? completions.filter(c => c.status === "due").length
+    : 0;
+
   // Calculate completion rate
   const completionRate = totalTrainings > 0 
     ? (completedTrainings / totalTrainings) * 100 
     : 0;
+
+  console.log(`Calculated statistics - Total: ${totalTrainings}, Completed: ${completedTrainings}, Rate: ${completionRate}%`);
   
   // Calculate division statistics instead of department statistics
   const departmentStats = calculateDivisionStats(employees, trainings, completions);
@@ -57,8 +70,11 @@ export const calculateDivisionStats = (
     // Count total required trainings
     const totalRequired = divisionEmployees.length * requiredTrainings.length;
     
+    // Make sure completions is an array before filtering
+    const completionsArray = Array.isArray(completions) ? completions : [];
+    
     // Count completed trainings
-    const completedCount = completions.filter(c => 
+    const completedCount = completionsArray.filter(c => 
       c.status === "completed" && 
       divisionEmployees.some(e => e.id === c.employeeId) &&
       requiredTrainings.some(t => t.id === c.trainingId)
