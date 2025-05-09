@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmployeeMapping } from '@/hooks/useEmployeeMapping';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import useBambooHR from '@/hooks/useBambooHR';
-import { Search, Plus, Trash2, RefreshCw, Save } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw, Save, Database, CloudSync } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from "@/contexts/UserContext";
+import { supabase } from '@/integrations/supabase/client';
 
 const EmployeeMappingManager = () => {
   const [mappings, setMappings] = useState<EmployeeMapping[]>([]);
@@ -20,6 +21,7 @@ const EmployeeMappingManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newEmployeeId, setNewEmployeeId] = useState('');
+  const [syncingEmployees, setSyncingEmployees] = useState(false);
   const { toast } = useToast();
   const { refreshEmployeeId } = useUser();
   
@@ -126,6 +128,53 @@ const EmployeeMappingManager = () => {
     }
   };
 
+  // Handle syncing employee data from BambooHR via edge function
+  const handleSyncFromBambooHR = async () => {
+    setSyncingEmployees(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-employee-mappings');
+      
+      if (error) {
+        console.error("Error syncing employee mappings:", error);
+        toast({
+          title: "Sync Failed",
+          description: error.message || "Failed to sync employee mappings from BambooHR",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("Sync response:", data);
+      
+      if (data.success) {
+        toast({
+          title: "Sync Successful",
+          description: `Synced ${data.count} employee mappings from BambooHR`,
+        });
+        
+        // Reload the data to show updated mappings
+        loadData();
+        await refreshEmployeeId(); // Refresh the current user's employee ID if relevant
+      } else {
+        toast({
+          title: "Sync Issue",
+          description: data.message || "Unknown issue during sync",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      console.error("Exception during sync:", error);
+      toast({
+        title: "Sync Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncingEmployees(false);
+    }
+  };
+
   // Handle deleting a mapping
   const handleDeleteMapping = async (id: string) => {
     const success = await deleteEmployeeMapping(id);
@@ -151,7 +200,7 @@ const EmployeeMappingManager = () => {
       <CardContent>
         <div className="flex flex-col space-y-4">
           {/* Search and reload controls */}
-          <div className="flex justify-between">
+          <div className="flex justify-between flex-wrap gap-2">
             <div className="relative w-full md:w-[300px]">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -162,7 +211,7 @@ const EmployeeMappingManager = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -173,13 +222,23 @@ const EmployeeMappingManager = () => {
                 Refresh
               </Button>
               <Button
-                variant="default"
+                variant="secondary"
                 size="sm"
                 onClick={handleAutoMap}
                 disabled={loading || mappingLoading}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Auto-Map by Email
+                <Database className="mr-2 h-4 w-4" />
+                Map from Local Cache
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSyncFromBambooHR}
+                disabled={syncingEmployees}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+              >
+                <CloudSync className={`mr-2 h-4 w-4 ${syncingEmployees ? 'animate-spin' : ''}`} />
+                Sync from BambooHR
               </Button>
             </div>
           </div>
@@ -222,7 +281,7 @@ const EmployeeMappingManager = () => {
                   <AlertDescription>
                     {searchQuery ? 
                       "No mappings match your search query. Try a different search or add a new mapping." :
-                      "There are no email to employee ID mappings yet. Add your first mapping above."}
+                      "There are no email to employee ID mappings yet. Add your first mapping above or use the Sync from BambooHR button."}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -264,6 +323,9 @@ const EmployeeMappingManager = () => {
       <CardFooter className="flex justify-between">
         <div className="text-xs text-muted-foreground">
           {filteredMappings.length} mapping{filteredMappings.length !== 1 ? 's' : ''} found
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Last updated: {loading ? "Loading..." : new Date().toLocaleString()}
         </div>
       </CardFooter>
     </Card>
