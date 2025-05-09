@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion } from '@/lib/types';
 import { BambooApiOptions } from './client';
@@ -46,6 +45,7 @@ export default class BambooHRService {
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.jobTitle?.name || emp.jobTitle || '',
           department: emp.department?.name || emp.department || '',
+          division: emp.division?.name || emp.division || '',
           email: emp.workEmail || '',
           hireDate: emp.hireDate || '',
         }));
@@ -57,6 +57,7 @@ export default class BambooHRService {
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.jobTitle?.name || emp.jobTitle || '',
           department: emp.department?.name || emp.department || '',
+          division: emp.division?.name || emp.division || '',
           email: emp.workEmail || '',
           hireDate: emp.hireDate || '',
         }));
@@ -131,6 +132,7 @@ export default class BambooHRService {
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.jobTitle?.name || emp.jobTitle || '',
           department: emp.department?.name || emp.department || '',
+          division: emp.division?.name || emp.division || '',
           email: emp.workEmail || '',
           hireDate: emp.hireDate || '',
         }));
@@ -141,6 +143,7 @@ export default class BambooHRService {
           name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
           position: emp.jobTitle?.name || emp.jobTitle || '',
           department: emp.department?.name || emp.department || '',
+          division: emp.division?.name || emp.division || '',
           email: emp.workEmail || '',
           hireDate: emp.hireDate || '',
         }));

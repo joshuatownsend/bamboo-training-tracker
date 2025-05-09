@@ -8,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { PlusCircle, Search, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
+import { Search, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
 import { useState, useEffect } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -52,16 +52,16 @@ const Employees = () => {
   const trainingsData: Training[] = (isConfigured && data?.trainings && data.trainings.length > 0) ? data.trainings : mockTrainings;
   const completionsData: TrainingCompletion[] = (isConfigured && data?.completions && data.completions.length > 0) ? data.completions : mockCompletions;
   
-  // Get unique departments for filter
-  const departments = [...new Set(employeesData?.map(e => e.department).filter(Boolean))];
+  // Get unique divisions for filter
+  const divisions = [...new Set(employeesData?.map(e => e.division).filter(Boolean))];
   
-  // Filter employees based on search and department
+  // Filter employees based on search and division
   const filteredEmployees = employeesData?.filter(employee => {
     const matchesSearch = employee?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           employee?.position?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || employee?.department === departmentFilter;
+    const matchesDivision = departmentFilter === "all" || employee?.division === departmentFilter;
     
-    return matchesSearch && matchesDepartment;
+    return matchesSearch && matchesDivision;
   }) || [];
   
   const handleRefresh = () => {
@@ -83,10 +83,6 @@ const Employees = () => {
           <Button onClick={handleRefresh} variant="outline" disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
-          </Button>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Employee
           </Button>
         </div>
       </div>
@@ -180,13 +176,13 @@ const Employees = () => {
         </div>
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Departments" />
+            <SelectValue placeholder="All Divisions" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {departments.map((dept) => (
-              <SelectItem key={dept as string} value={dept as string}>
-                {dept as string}
+            <SelectItem value="all">All Divisions</SelectItem>
+            {divisions.map((div) => (
+              <SelectItem key={div as string} value={div as string}>
+                {div as string}
               </SelectItem>
             ))}
           </SelectContent>

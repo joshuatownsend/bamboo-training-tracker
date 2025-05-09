@@ -45,7 +45,7 @@ export function EmployeeTable({
             
             // Calculate training status with null checks
             const requiredTrainings = (trainings || []).filter(t => 
-              t.requiredFor?.includes(employee.department || '')
+              t.requiredFor?.includes(employee.division || '')
             );
             
             const employeeCompletions = (completions || []).filter(c => 
@@ -92,7 +92,7 @@ export function EmployeeTable({
                   </div>
                 </TableCell>
                 <TableCell>{employee.position || 'No Position'}</TableCell>
-                <TableCell>{employee.department || 'Unassigned'}</TableCell>
+                <TableCell>{employee.division || 'Unassigned'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${badgeColor}`} />
