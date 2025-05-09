@@ -29,15 +29,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function AdminReports() {
+  // Keep all state management at the top
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [requirementType, setRequirementType] = useState<"county" | "avfrd">("avfrd");
   const [activeTab, setActiveTab] = useState("employee-lookup");
   const [open, setOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   
-  // Debounce the search input to prevent excessive filtering
-  const debouncedSearch = useDebounce(employeeSearch, 300);
+  // Improved debouncing - longer delay for better performance
+  const debouncedSearch = useDebounce(employeeSearch, 500);
   
   // Get data from BambooHR
   const { isConfigured, useAllData } = useBambooHR();
@@ -48,14 +50,24 @@ export default function AdminReports() {
     ? data.employees 
     : [];
   
-  // Filter employees based on search - optimize to avoid performance issues
-  const filteredEmployees = debouncedSearch.trim() === ""
-    ? employees.slice(0, 50) // Only show first 50 when no search
-    : employees.filter((employee) =>
-        employee.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      ).slice(0, 50); // Limit to 50 results
+  // Optimized employee filtering function - memoize with useCallback to prevent recreation
+  const getFilteredEmployees = useCallback(() => {
+    // When no search term, return limited results
+    if (!debouncedSearch.trim()) {
+      return employees.slice(0, 20);
+    }
+    
+    // When searching, filter efficiently and limit results
+    return employees
+      .filter(employee => 
+        employee.name.toLowerCase().includes(debouncedSearch.toLowerCase()))
+      .slice(0, 30);
+  }, [employees, debouncedSearch]);
+
+  // Pre-compute filtered employees to improve render performance
+  const filteredEmployees = getFilteredEmployees();
   
-  // Get the selected employee
+  // Find the selected employee data
   const selectedEmployeeData = employees.find((e) => e.id === selectedEmployee);
   
   // Get qualification for selected employee
@@ -106,6 +118,15 @@ export default function AdminReports() {
   const handleRefresh = () => {
     refetch();
   };
+  
+  // Reset search when opening/closing the dropdown to avoid performance issues
+  useEffect(() => {
+    if (!open) {
+      // Delay clearing to prevent flashes during animation
+      const timer = setTimeout(() => setEmployeeSearch(""), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   return (
     <div className="space-y-6">
@@ -153,81 +174,73 @@ export default function AdminReports() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row">
-                {/* Fix the dropdown to prevent UI freezes */}
                 <div className="relative flex-1">
-                  <Popover open={open} onOpenChange={(newOpen) => {
-                    // Reset search when opening to avoid performance issues
-                    if (newOpen && !open) {
-                      setEmployeeSearch("");
-                    }
-                    setOpen(newOpen);
-                  }}>
+                  {/* Simplified employee selector with improved performance */}
+                  <Popover 
+                    open={open} 
+                    onOpenChange={setOpen}
+                  >
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
                         className="w-full justify-between"
-                        onClick={(e) => {
-                          // Prevent propagation to avoid double triggering
-                          e.stopPropagation();
-                        }}
                       >
                         {selectedEmployee
-                          ? employees.find((employee) => employee.id === selectedEmployee)?.name || "Select an employee..."
+                          ? selectedEmployeeData?.name || "Select an employee..."
                           : "Select an employee..."}
                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command shouldFilter={false}>
-                        <CommandInput 
-                          placeholder="Search employees..." 
+                      <div className="border-b px-3 py-2">
+                        <Input
+                          placeholder="Search employees..."
                           value={employeeSearch}
-                          onValueChange={setEmployeeSearch}
+                          onChange={(e) => {
+                            setEmployeeSearch(e.target.value);
+                            setIsSearching(true);
+                          }}
+                          className="h-8 w-full border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                         />
-                        <CommandEmpty>
-                          {isLoading ? "Loading..." : "No employees found."}
-                        </CommandEmpty>
-                        <CommandGroup className="max-h-[250px] overflow-y-auto">
-                          {isLoading ? (
-                            <>
-                              <CommandItem disabled>
-                                <Skeleton className="h-5 w-full" />
-                              </CommandItem>
-                              <CommandItem disabled>
-                                <Skeleton className="h-5 w-full" />
-                              </CommandItem>
-                              <CommandItem disabled>
-                                <Skeleton className="h-5 w-full" />
-                              </CommandItem>
-                            </>
-                          ) : (
-                            filteredEmployees.map((employee) => (
-                              <CommandItem
-                                key={employee.id}
-                                value={employee.name}
-                                onSelect={() => {
-                                  setSelectedEmployee(employee.id);
-                                  setOpen(false);
-                                }}
-                              >
-                                {employee.name}
-                                <span className="ml-2 text-sm text-muted-foreground">
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {isLoading ? (
+                          <div className="p-4 space-y-2">
+                            <Skeleton className="h-5 w-full" />
+                            <Skeleton className="h-5 w-full" />
+                            <Skeleton className="h-5 w-full" />
+                          </div>
+                        ) : filteredEmployees.length === 0 ? (
+                          <div className="py-6 text-center text-sm">
+                            {isSearching ? "No employee found." : "No employees available."}
+                          </div>
+                        ) : (
+                          filteredEmployees.map((employee) => (
+                            <div
+                              key={employee.id}
+                              className="cursor-pointer relative flex select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                              onClick={() => {
+                                setSelectedEmployee(employee.id);
+                                setOpen(false);
+                              }}
+                            >
+                              <span>{employee.name}</span>
+                              {employee.department && (
+                                <span className="ml-2 text-xs text-muted-foreground">
                                   {employee.department}
                                 </span>
-                              </CommandItem>
-                            ))
-                          )}
-                          {employees.length > 50 && filteredEmployees.length === 50 && (
-                            <CommandItem disabled>
-                              <span className="text-xs text-muted-foreground">
-                                + {employees.length - 50} more employees. Please refine your search.
-                              </span>
-                            </CommandItem>
-                          )}
-                        </CommandGroup>
-                      </Command>
+                              )}
+                            </div>
+                          ))
+                        )}
+                        {employees.length > filteredEmployees.length && debouncedSearch === "" && (
+                          <div className="p-2 text-xs text-center text-muted-foreground">
+                            Showing first {filteredEmployees.length} of {employees.length} employees. Type to search more.
+                          </div>
+                        )}
+                      </div>
                     </PopoverContent>
                   </Popover>
                 </div>
