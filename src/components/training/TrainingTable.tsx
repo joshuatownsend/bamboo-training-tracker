@@ -21,40 +21,48 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {trainings.map((training) => (
-            <TableRow key={training.id}>
-              <TableCell>
-                <div>
-                  <div className="font-medium">{training.title}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {training.description || "No description available"}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge 
-                  variant={training.type === "Compliance" ? "destructive" : "outline"}
-                >
-                  {training.type || "Standard"}
-                </Badge>
-              </TableCell>
-              <TableCell>{training.category || "Uncategorized"}</TableCell>
-              <TableCell>{training.durationHours || 0} hours</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {training.requiredFor && training.requiredFor.length > 0 ? (
-                    training.requiredFor.map((dept) => (
-                      <Badge key={dept} variant="secondary" className="text-xs">
-                        {dept}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Not specified</span>
-                  )}
-                </div>
+          {trainings.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                No training courses found. Try refreshing the data.
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            trainings.map((training) => (
+              <TableRow key={training.id}>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">{training.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {training.description || "No description available"}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={training.type === "Compliance" ? "destructive" : "outline"}
+                  >
+                    {training.type || "Standard"}
+                  </Badge>
+                </TableCell>
+                <TableCell>{training.category || "Uncategorized"}</TableCell>
+                <TableCell>{training.durationHours || 0} hours</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {training.requiredFor && training.requiredFor.length > 0 ? (
+                      training.requiredFor.map((dept) => (
+                        <Badge key={dept} variant="secondary" className="text-xs">
+                          {dept}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not specified</span>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>

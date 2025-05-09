@@ -8,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { AlertCircle, Search } from "lucide-react";
+import { AlertCircle, RefreshCw, Search } from "lucide-react";
 import TrainingTable from "@/components/training/TrainingTable";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,15 +16,19 @@ import { Training } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import useBambooHR from "@/hooks/useBambooHR";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const Courses = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { isConfigured } = useBambooHR();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Fetch trainings from BambooHR using the correct endpoint
-  const { data: bambooData, isLoading, isError, error } = useQuery({
+  const { data: bambooData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['bamboohr', 'trainings'],
     queryFn: async () => {
       const bamboo = new (await import('@/lib/bamboohr/api')).default({
@@ -60,11 +64,36 @@ const Courses = () => {
     
     return matchesSearch && matchesType && matchesCategory;
   });
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Refreshed Training Data",
+        description: "Training data has been refreshed from BambooHR.",
+      });
+    } catch (err) {
+      toast({
+        title: "Refresh Failed",
+        description: "Could not refresh training data. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Training Courses</h1>
+        <Button 
+          onClick={handleRefresh} 
+          variant="outline"
+          className="flex items-center gap-2"
+          disabled={isLoading}
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
       </div>
       
       {isError && (
@@ -134,6 +163,7 @@ const Courses = () => {
               <AlertDescription>
                 No training courses were found in BambooHR. This could be because the training types 
                 haven't been set up in your BambooHR account, or they're not accessible through the API.
+                Try clicking the Refresh button to update the data from BambooHR.
               </AlertDescription>
             </Alert>
           ) : (
