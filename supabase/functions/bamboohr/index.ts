@@ -12,6 +12,13 @@ const corsHeaders = {
   "Content-Type": "application/json"
 };
 
+// Helper function to clean up secret values
+const cleanSecret = (secret: string | null): string | null => {
+  if (!secret) return null;
+  // Remove any whitespace, newlines, carriage returns
+  return secret.trim().replace(/[\r\n]+/g, '');
+};
+
 // Handle requests
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -35,15 +42,21 @@ serve(async (req) => {
     console.log(`[${timestamp}] All environment keys: ${JSON.stringify(allEnvKeys)}`);
     
     // Try different case variations of the subdomain secret
-    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
-    const subdomainLower = Deno.env.get("bamboohr_subdomain");
-    const subdomainUpper = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+    // Clean each secret value to remove any whitespace/newlines
+    const subdomainRaw = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+    const subdomain = cleanSecret(subdomainRaw);
+    const subdomainLower = cleanSecret(Deno.env.get("bamboohr_subdomain"));
+    const subdomainUpper = cleanSecret(Deno.env.get("BAMBOOHR_SUBDOMAIN"));
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
     
+    // Log the raw value to help with debugging
+    console.log(`[${timestamp}] Raw BAMBOOHR_SUBDOMAIN value: "${subdomainRaw}"`);
+    console.log(`[${timestamp}] Cleaned BAMBOOHR_SUBDOMAIN value: "${subdomain}"`);
+    
     console.log(`[${timestamp}] Secret check detailed results:`);
-    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomain} (value: ${subdomain ? 'exists' : 'undefined'})`);
-    console.log(`[${timestamp}] - bamboohr_subdomain: ${!!subdomainLower} (value: ${subdomainLower ? 'exists' : 'undefined'})`);
-    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomainUpper} (value: ${subdomainUpper ? 'exists' : 'undefined'})`);
+    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomain} (value: ${subdomain ? `"${subdomain}"` : 'undefined'})`);
+    console.log(`[${timestamp}] - bamboohr_subdomain: ${!!subdomainLower} (value: ${subdomainLower ? `"${subdomainLower}"` : 'undefined'})`);
+    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomainUpper} (value: ${subdomainUpper ? `"${subdomainUpper}"` : 'undefined'})`);
     console.log(`[${timestamp}] - BAMBOOHR_API_KEY: ${!!apiKey} (value: ${apiKey ? '[REDACTED]' : 'undefined'})`);
     
     return new Response(
@@ -56,8 +69,11 @@ serve(async (req) => {
           BAMBOOHR_API_KEY: !!apiKey
         },
         environmentKeys: allEnvKeys,
+        rawSubdomainLength: subdomainRaw ? subdomainRaw.length : 0,
+        cleanedSubdomainLength: subdomain ? subdomain.length : 0,
+        rawCharCodes: subdomainRaw ? Array.from(subdomainRaw).map(c => c.charCodeAt(0)) : [],
         timestamp: timestamp,
-        deploymentVerification: "Debug function updated"
+        deploymentVerification: "Debug function updated with whitespace cleaning"
       }),
       { headers: corsHeaders, status: 200 }
     );
@@ -65,11 +81,12 @@ serve(async (req) => {
   
   try {
     // Get BambooHR credentials from environment variables
-    // Try multiple case variations in case that's the issue
-    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || Deno.env.get("bamboohr_subdomain") || url.searchParams.get("subdomain") || "";
+    // Clean the subdomain value to handle potential whitespace issues
+    const subdomainRaw = Deno.env.get("BAMBOOHR_SUBDOMAIN") || Deno.env.get("bamboohr_subdomain") || url.searchParams.get("subdomain") || "";
+    const subdomain = cleanSecret(subdomainRaw) || "";
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY") || Deno.env.get("bamboohr_api_key") || "";
     
-    console.log(`[${timestamp}] Using subdomain: ${subdomain || '(not found)'}`);
+    console.log(`[${timestamp}] Using subdomain: "${subdomain || '(not found)'}", raw length: ${subdomainRaw.length}, cleaned length: ${subdomain.length}`);
     
     // Check for required credentials
     if (!subdomain || !apiKey) {
