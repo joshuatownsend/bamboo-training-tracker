@@ -34,21 +34,21 @@ const Employees = () => {
   }
   
   // Use BambooHR data if available, otherwise fall back to mock data
-  const employeesData: Employee[] = isConfigured && data?.employees?.length ? data.employees : mockEmployees;
-  const trainingsData: Training[] = isConfigured && data?.trainings?.length ? data.trainings : mockTrainings;
-  const completionsData: TrainingCompletion[] = isConfigured && data?.completions?.length ? data.completions : mockCompletions;
+  const employeesData: Employee[] = (isConfigured && data?.employees && data.employees.length > 0) ? data.employees : mockEmployees;
+  const trainingsData: Training[] = (isConfigured && data?.trainings && data.trainings.length > 0) ? data.trainings : mockTrainings;
+  const completionsData: TrainingCompletion[] = (isConfigured && data?.completions && data.completions.length > 0) ? data.completions : mockCompletions;
   
   // Get unique departments for filter
-  const departments = [...new Set(employeesData.map(e => e.department))];
+  const departments = [...new Set(employeesData?.map(e => e.department).filter(Boolean))];
   
   // Filter employees based on search and department
-  const filteredEmployees = employeesData.filter(employee => {
-    const matchesSearch = employee.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          employee.position?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
+  const filteredEmployees = employeesData?.filter(employee => {
+    const matchesSearch = employee?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          employee?.position?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDepartment = departmentFilter === "all" || employee?.department === departmentFilter;
     
     return matchesSearch && matchesDepartment;
-  });
+  }) || [];
   
   const handleRefresh = () => {
     console.log('Manually refreshing BambooHR data');
@@ -56,7 +56,7 @@ const Employees = () => {
   };
 
   // Check if we're actually using mock data despite having BambooHR configured
-  const usingMockDataDespiteConfig = isConfigured && (!data?.employees?.length || data.employees.length === 0);
+  const usingMockDataDespiteConfig = isConfigured && (!data?.employees || data.employees.length === 0);
   
   return (
     <div className="space-y-6">

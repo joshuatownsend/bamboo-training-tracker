@@ -15,10 +15,11 @@ interface EmployeeTableProps {
 
 export function EmployeeTable({ 
   employees, 
-  trainings,
-  completions 
+  trainings = [],
+  completions = [],
 }: EmployeeTableProps) {
-  if (!employees || !employees.length) {
+  // Early return with message if no employees available
+  if (!employees || employees.length === 0) {
     return (
       <div className="rounded-md border bg-white p-8 text-center">
         <p className="text-muted-foreground">No employees found</p>
@@ -40,14 +41,17 @@ export function EmployeeTable({
         </TableHeader>
         <TableBody>
           {employees.map((employee) => {
-            // Calculate training status
-            const requiredTrainings = trainings.filter(t => 
-              t.requiredFor?.includes(employee.department || '')
-            ) || [];
+            // Ensure employee exists and has an ID before proceeding
+            if (!employee || !employee.id) return null;
             
-            const employeeCompletions = completions.filter(c => 
+            // Calculate training status with null checks
+            const requiredTrainings = (trainings || []).filter(t => 
+              t.requiredFor?.includes(employee.department || '')
+            );
+            
+            const employeeCompletions = (completions || []).filter(c => 
               c.employeeId === employee.id
-            ) || [];
+            );
             
             const completed = employeeCompletions.filter(c => 
               c.status === "completed"
@@ -64,7 +68,7 @@ export function EmployeeTable({
             if (progress < 70) badgeColor = "bg-red-500";
             else if (progress < 100) badgeColor = "bg-yellow-500";
             
-            // Get initials for avatar
+            // Get initials for avatar with safety checks
             const initials = employee.name
               ? employee.name
                   .split(" ")

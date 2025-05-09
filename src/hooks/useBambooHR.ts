@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '@/lib/bamboohr/api';
@@ -26,7 +27,7 @@ const useBambooHR = () => {
   const fetchData = useCallback(async () => {
     if (!isConfigured) {
       setError('BambooHR is not configured.');
-      return null;
+      return { employees: [], trainings: [], completions: [] };
     }
     
     setIsLoading(true);
@@ -35,11 +36,11 @@ const useBambooHR = () => {
     try {
       const service = getBambooService();
       const data = await service.fetchAllData();
-      return data;
+      return data || { employees: [], trainings: [], completions: [] };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      return null;
+      return { employees: [], trainings: [], completions: [] };
     } finally {
       setIsLoading(false);
     }
@@ -51,17 +52,20 @@ const useBambooHR = () => {
       queryKey: ['bamboohr', 'allData'],
       queryFn: async () => {
         if (!isConfigured) {
-          throw new Error('BambooHR is not configured.');
+          console.log('BambooHR is not configured, returning empty data');
+          return { employees: [], trainings: [], completions: [] };
         }
         try {
           const service = getBambooService();
-          return await service.fetchAllData();
+          const result = await service.fetchAllData();
+          return result || { employees: [], trainings: [], completions: [] };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+          console.error('Error in useAllData:', errorMessage);
           throw new Error(errorMessage);
         }
       },
-      enabled: isConfigured
+      enabled: true // Always enable the query, but return empty data if not configured
     });
   };
   
