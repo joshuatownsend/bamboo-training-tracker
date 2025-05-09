@@ -19,7 +19,7 @@ const useBambooHR = () => {
     return new BambooHRService({
       subdomain: config.subdomain,
       apiKey: config.apiKey,
-      useProxy: config.useProxy
+      useEdgeFunction: config.useEdgeFunction
     });
   }, []);
   

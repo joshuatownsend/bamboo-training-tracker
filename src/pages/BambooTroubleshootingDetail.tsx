@@ -46,11 +46,11 @@ const BambooTroubleshootingDetail = () => {
         throw new Error('BambooHR configuration is missing. Please configure your API credentials first.');
       }
       
-      // Create a client with current settings
+      // Create a client with current settings - updated to use Edge Function
       const client = new BambooHRClient({
         subdomain: config.subdomain,
         apiKey: config.apiKey,
-        useProxy: config.useProxy
+        useEdgeFunction: !config.useProxy // Use Edge Function when not using the proxy
       });
       
       const testResults = await testBambooHREndpoints(client);
