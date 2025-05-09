@@ -95,7 +95,7 @@ serve(async (req) => {
     const headers = new Headers();
     
     // This is the critical part - add proper BambooHR authentication
-    // Base64 encode API key with empty username as per BambooHR docs
+    // IMPORTANT: BambooHR requires the API key as the username and an empty string as the password
     const authHeader = `Basic ${btoa(`${apiKey}:`)}`;
     headers.append("Authorization", authHeader);
     console.log("Added Authorization header");
