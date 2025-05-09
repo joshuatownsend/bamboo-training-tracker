@@ -12,13 +12,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, AlertCircle } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Link } from "react-router-dom";
 
 export default function MyTrainings() {
-  const { currentUser } = useUser();
+  const { currentUser, isAdmin, refreshEmployeeId } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { toast } = useToast();
@@ -55,6 +57,16 @@ export default function MyTrainings() {
   // Handle refresh button click
   const handleRefresh = async () => {
     try {
+      // Try to refresh the employee ID mapping first
+      const newEmployeeId = await refreshEmployeeId();
+      if (newEmployeeId && newEmployeeId !== employeeId) {
+        toast({
+          title: "Employee ID Updated",
+          description: "Your employee ID mapping has been updated. Refreshing data...",
+        });
+      }
+      
+      // Then refetch the trainings
       await refetch();
       toast({
         title: "Refreshed Training Data",
@@ -107,6 +119,9 @@ export default function MyTrainings() {
     }
   });
 
+  // Check if employee ID is missing
+  const isMissingEmployeeId = !employeeId || employeeId === currentUser?.id;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -126,6 +141,21 @@ export default function MyTrainings() {
           Refresh
         </Button>
       </div>
+
+      {isMissingEmployeeId && (
+        <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Employee ID Not Found</AlertTitle>
+          <AlertDescription>
+            Your email address is not mapped to a BambooHR employee ID. 
+            {isAdmin ? (
+              <span> Please set up the mapping in the <Link to="/admin-settings" className="font-medium underline">Admin Settings</Link> under Employee Mappings.</span>
+            ) : (
+              <span> Please contact an administrator to set up this mapping for you.</span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

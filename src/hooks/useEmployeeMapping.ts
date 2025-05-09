@@ -1,0 +1,197 @@
+
+import { useCallback, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export interface EmployeeMapping {
+  id: string;
+  email: string;
+  bamboo_employee_id: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+const useEmployeeMapping = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Get the BambooHR employee ID for a given email
+  const getEmployeeIdByEmail = useCallback(async (email: string): Promise<string | null> => {
+    if (!email) {
+      console.log('No email provided to getEmployeeIdByEmail');
+      return null;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log(`Looking up employee ID for email: ${email}`);
+      
+      const { data, error } = await supabase
+        .from('employee_mappings')
+        .select('bamboo_employee_id')
+        .eq('email', email.toLowerCase())
+        .single();
+
+      if (error) {
+        console.log('No mapping found for email:', email, error);
+        return null;
+      }
+
+      console.log(`Found employee ID for ${email}:`, data?.bamboo_employee_id);
+      return data?.bamboo_employee_id || null;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Error getting employee ID by email:', errorMessage);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save a mapping between email and employee ID
+  const saveEmployeeMapping = useCallback(async (email: string, employeeId: string): Promise<boolean> => {
+    if (!email || !employeeId) {
+      console.error('Email and employee ID are required for saveEmployeeMapping');
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log(`Saving employee mapping: ${email} -> ${employeeId}`);
+      
+      const { error } = await supabase
+        .from('employee_mappings')
+        .upsert({ 
+          email: email.toLowerCase(), 
+          bamboo_employee_id: employeeId,
+          updated_at: new Date().toISOString()
+        }, { 
+          onConflict: 'email' 
+        });
+
+      if (error) {
+        console.error('Error saving employee mapping:', error);
+        throw error;
+      }
+
+      toast({
+        title: "Mapping Saved",
+        description: `Successfully mapped ${email} to employee ID ${employeeId}`,
+      });
+
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      
+      toast({
+        title: "Error Saving Mapping",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // Save multiple mappings at once (for admin use)
+  const saveBulkEmployeeMappings = useCallback(async (mappings: {email: string, employeeId: string}[]): Promise<boolean> => {
+    if (!mappings || mappings.length === 0) {
+      console.error('No mappings provided for saveBulkEmployeeMappings');
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log(`Saving bulk employee mappings: ${mappings.length} records`);
+      
+      const formattedMappings = mappings.map(m => ({
+        email: m.email.toLowerCase(),
+        bamboo_employee_id: m.employeeId,
+        updated_at: new Date().toISOString()
+      }));
+      
+      const { error } = await supabase
+        .from('employee_mappings')
+        .upsert(formattedMappings, { 
+          onConflict: 'email' 
+        });
+
+      if (error) {
+        console.error('Error saving bulk employee mappings:', error);
+        throw error;
+      }
+
+      toast({
+        title: "Mappings Saved",
+        description: `Successfully saved ${mappings.length} employee mappings`,
+      });
+
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      
+      toast({
+        title: "Error Saving Mappings",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // Get all employee mappings (for admin use)
+  const getAllEmployeeMappings = useCallback(async (): Promise<EmployeeMapping[]> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log('Fetching all employee mappings');
+      
+      const { data, error } = await supabase
+        .from('employee_mappings')
+        .select('*')
+        .order('email');
+
+      if (error) {
+        console.error('Error fetching employee mappings:', error);
+        throw error;
+      }
+
+      console.log(`Retrieved ${data?.length || 0} employee mappings`);
+      return data || [];
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Error getting all employee mappings:', errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    isLoading,
+    error,
+    getEmployeeIdByEmail,
+    saveEmployeeMapping,
+    saveBulkEmployeeMappings,
+    getAllEmployeeMappings
+  };
+};
+
+export default useEmployeeMapping;

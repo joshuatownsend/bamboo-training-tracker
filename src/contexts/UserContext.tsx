@@ -2,10 +2,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useMsal } from "./MsalContext";
 import { loginRequest } from "../lib/authConfig";
-import { InteractionType, PopupRequest, RedirectRequest, AuthenticationResult, AccountInfo } from "@azure/msal-browser";
-import { useMsalAuthentication } from "@azure/msal-react";
+import { AccountInfo } from "@azure/msal-browser";
 import { User } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
+import useEmployeeMapping from "@/hooks/useEmployeeMapping";
+import { supabase } from "@/integrations/supabase/client";
 
 // Local storage key for admin settings
 const LOCAL_STORAGE_KEY = "avfrd_admin_settings";
@@ -38,6 +39,7 @@ interface UserContextType {
   isAdmin: boolean;
   login: () => Promise<void>;
   logout: () => void;
+  refreshEmployeeId: () => Promise<string | null>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -55,6 +57,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminSettings, setAdminSettings] = useState<AdminSettings>(DEFAULT_ADMIN_CONFIGURATION);
+  const { getEmployeeIdByEmail } = useEmployeeMapping();
   
   // Load admin settings from localStorage
   useEffect(() => {
@@ -96,7 +99,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activeAccount]);
 
   // Convert MSAL account to our User type
-  const mapAccountToUser = (account: AccountInfo, settings: AdminSettings = adminSettings): User => {
+  const mapAccountToUser = async (account: AccountInfo, settings: AdminSettings = adminSettings): Promise<User> => {
     // Determine user role based on email or group membership
     let role: 'user' | 'admin' = 'user';
     
@@ -111,13 +114,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role = 'admin';
     }
 
+    // Try to get the BambooHR employee ID from our mapping
+    const employeeId = await getEmployeeIdByEmail(account.username);
+    console.log(`Mapped employee ID for ${account.username}:`, employeeId);
+
     return {
       id: account.localAccountId,
       name: account.name || "Unknown User",
       email: account.username,
       role: role,
-      employeeId: account.localAccountId // Can be replaced with actual employee ID from BambooHR API call
+      employeeId: employeeId || account.localAccountId // Use the mapped ID if available, otherwise fall back to the account ID
     };
+  };
+
+  // Refresh the employee ID mapping for the current user
+  const refreshEmployeeId = async (): Promise<string | null> => {
+    if (!currentUser?.email) {
+      return null;
+    }
+
+    try {
+      const employeeId = await getEmployeeIdByEmail(currentUser.email);
+      if (employeeId) {
+        setCurrentUser(prev => prev ? { ...prev, employeeId } : null);
+        return employeeId;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error refreshing employee ID:", error);
+      return null;
+    }
   };
 
   // Attempt silent token acquisition and user data fetch on mount
@@ -127,7 +153,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         if (activeAccount) {
           // We already have an account, convert it to our User type
-          const user = mapAccountToUser(activeAccount);
+          const user = await mapAccountToUser(activeAccount);
           setCurrentUser(user);
           
           // Notify the user of their role (just for demonstration)
@@ -142,7 +168,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               // Set active account to the first one
               instance.setActiveAccount(accounts[0]);
-              setCurrentUser(mapAccountToUser(accounts[0]));
+              const user = await mapAccountToUser(accounts[0]);
+              setCurrentUser(user);
             } catch (error) {
               // Silent token acquisition failed
               console.log("Silent token acquisition failed");
@@ -174,7 +201,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...loginRequest,
             account: accounts[0],
           });
-          setCurrentUser(mapAccountToUser(response.account));
+          const user = await mapAccountToUser(response.account);
+          setCurrentUser(user);
           return;
         } catch (error) {
           // Silent acquisition failed, fallback to redirect
@@ -205,7 +233,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = currentUser?.role === "admin";
 
   return (
-    <UserContext.Provider value={{ currentUser, isLoading, isAdmin, login, logout }}>
+    <UserContext.Provider value={{ currentUser, isLoading, isAdmin, login, logout, refreshEmployeeId }}>
       {children}
     </UserContext.Provider>
   );

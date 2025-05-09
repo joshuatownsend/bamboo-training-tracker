@@ -5,11 +5,13 @@ import BambooHRApiClient from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 import { useToast } from '@/hooks/use-toast';
 import { Training, UserTraining } from '@/lib/types';
+import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 
 const useBambooHR = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { getEmployeeIdByEmail } = useEmployeeMapping();
   
   const isConfigured = isBambooConfigured();
   

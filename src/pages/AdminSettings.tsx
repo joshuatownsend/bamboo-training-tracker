@@ -2,6 +2,7 @@
 import React from "react";
 import AdminSettings from "@/components/admin/AdminSettings";
 import BambooHRConfig from "@/components/admin/BambooHRConfig";
+import EmployeeMappingManager from "@/components/admin/EmployeeMappingManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -16,6 +17,7 @@ export default function AdminSettingsPage() {
         <TabsList>
           <TabsTrigger value="access">Admin Access</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="mappings">Employee Mappings</TabsTrigger>
         </TabsList>
         <TabsContent value="access" className="space-y-4">
           <p className="text-muted-foreground">
@@ -38,6 +40,13 @@ export default function AdminSettingsPage() {
           </div>
           
           <BambooHRConfig />
+        </TabsContent>
+        <TabsContent value="mappings" className="space-y-4">
+          <p className="text-muted-foreground">
+            Map user email addresses to BambooHR employee IDs to enable personalized training views.
+          </p>
+          
+          <EmployeeMappingManager />
         </TabsContent>
       </Tabs>
     </div>
