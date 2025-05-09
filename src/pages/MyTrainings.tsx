@@ -185,7 +185,7 @@ export default function MyTrainings() {
           ) : error ? (
             <div className="p-8 text-center">
               <p className="text-red-500">Error loading training records</p>
-              <p className="text-sm text-muted-foreground mt-2">{error}</p>
+              <p className="text-sm text-muted-foreground mt-2">{error instanceof Error ? error.message : String(error)}</p>
             </div>
           ) : (
             <UserTrainingsTable trainings={filteredTrainings} />
