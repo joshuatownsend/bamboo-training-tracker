@@ -21,7 +21,6 @@ import { useToast } from "@/hooks/use-toast";
 
 const Courses = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { isConfigured } = useBambooHR();
   const queryClient = useQueryClient();
@@ -47,25 +46,19 @@ const Courses = () => {
   
   // Use the trainings from BambooHR or fall back to empty array if not available
   const trainings = (bambooData && Array.isArray(bambooData)) ? bambooData : [];
-  
-  // Get unique types and categories for filtering
-  const types = trainings.length > 0 
-    ? [...new Set(trainings.map(t => t.type).filter(Boolean))]
-    : [];
     
   const categories = trainings.length > 0 
     ? [...new Set(trainings.map(t => t.category).filter(Boolean))]
     : [];
   
-  // Filter trainings based on search, type, and category
+  // Filter trainings based on search and category
   const filteredTrainings = trainings.filter(training => {
     const matchesSearch = searchQuery === "" || 
       training.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (training.description && training.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = typeFilter === "all" || training.type === typeFilter;
     const matchesCategory = categoryFilter === "all" || training.category === categoryFilter;
     
-    return matchesSearch && matchesType && matchesCategory;
+    return matchesSearch && matchesCategory;
   });
 
   const handleRefresh = async () => {
@@ -115,7 +108,6 @@ const Courses = () => {
           <Skeleton className="h-10 w-full max-w-sm" />
           <div className="flex gap-4">
             <Skeleton className="h-10 w-[180px]" />
-            <Skeleton className="h-10 w-[180px]" />
           </div>
           <Skeleton className="h-64 w-full" />
         </div>
@@ -132,21 +124,6 @@ const Courses = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {types.length > 0 && (
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {types.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
             {categories.length > 0 && (
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">

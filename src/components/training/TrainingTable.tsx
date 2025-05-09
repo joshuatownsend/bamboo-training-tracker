@@ -2,6 +2,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Training } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 interface TrainingTableProps {
   trainings: Training[];
@@ -21,22 +23,25 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
   // Get categories and sort them
   const categories = Object.keys(groupedTrainings).sort();
 
+  // Function to open BambooHR training in a new tab
+  const openInBambooHR = (id: string) => {
+    window.open(`https://avfrd.bamboohr.com/app/settings/training/edit/${id}`, '_blank');
+  };
+
   return (
     <div className="rounded-md border bg-white">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead>Training Course</TableHead>
-            <TableHead>Type</TableHead>
+            <TableHead className="w-1/2">Training Course</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>Required</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {trainings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
                 No training courses found. Try refreshing the data.
               </TableCell>
             </TableRow>
@@ -44,7 +49,7 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
             categories.map((category) => (
               <>
                 <TableRow key={`category-${category}`} className="bg-muted/20 hover:bg-muted/20">
-                  <TableCell colSpan={5} className="font-medium py-2">
+                  <TableCell colSpan={3} className="font-medium py-2">
                     {category}
                   </TableCell>
                 </TableRow>
@@ -59,26 +64,20 @@ export function TrainingTable({ trainings }: TrainingTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={training.type === "Compliance" ? "destructive" : "outline"}
-                      >
-                        {training.type || "Standard"}
+                      <Badge variant="outline" className="bg-muted/30">
+                        {training.category || "Uncategorized"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{training.category || "Uncategorized"}</TableCell>
-                    <TableCell>{training.durationHours || 0} hours</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {training.requiredFor && training.requiredFor.length > 0 ? (
-                          training.requiredFor.map((dept) => (
-                            <Badge key={dept} variant="secondary" className="text-xs">
-                              {dept}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not specified</span>
-                        )}
-                      </div>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openInBambooHR(training.id)}
+                        className="gap-1"
+                      >
+                        <ExternalLink className="h-4 w-4" /> 
+                        View in BambooHR
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
