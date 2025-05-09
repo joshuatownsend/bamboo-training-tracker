@@ -19,10 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { employees, positions, trainings, trainingCompletions } from "@/lib/data";
+import { positions, trainings, trainingCompletions } from "@/lib/data";
 import { checkPositionQualification, getEmployeesQualifiedForPosition } from "@/lib/qualifications";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, UserCheck } from "lucide-react";
+import { Search, Users, UserCheck, RefreshCw } from "lucide-react";
+import useBambooHR from "@/hooks/useBambooHR";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminReports() {
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -30,6 +32,15 @@ export default function AdminReports() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [requirementType, setRequirementType] = useState<"county" | "avfrd">("avfrd");
   const [activeTab, setActiveTab] = useState("employee-lookup");
+  
+  // Get data from BambooHR
+  const { isConfigured, useAllData } = useBambooHR();
+  const { data, isLoading, refetch } = useAllData();
+  
+  // Use BambooHR data if available, otherwise fall back to mock data
+  const employees = (isConfigured && data?.employees && data.employees.length > 0) 
+    ? data.employees 
+    : [];
   
   // Filter employees based on search
   const filteredEmployees = employees.filter((employee) =>
@@ -83,6 +94,11 @@ export default function AdminReports() {
       })
     : [];
 
+  // Handle refresh BambooHR data
+  const handleRefresh = () => {
+    refetch();
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -90,6 +106,22 @@ export default function AdminReports() {
         <p className="text-muted-foreground">
           Generate reports on employee qualifications and training status
         </p>
+      </div>
+
+      {!isConfigured && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-md mb-4">
+          <p className="text-sm">
+            BambooHR integration is not configured. Using mock data. 
+            Administrators can configure BambooHR in the Admin Settings.
+          </p>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <Button onClick={handleRefresh} variant="outline" disabled={isLoading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh Data
+        </Button>
       </div>
 
       <Tabs defaultValue="employee-lookup" value={activeTab} onValueChange={setActiveTab}>
@@ -124,16 +156,36 @@ export default function AdminReports() {
                     <SelectValue placeholder="Select an employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredEmployees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.name}
-                      </SelectItem>
-                    ))}
+                    {isLoading ? (
+                      <div className="p-2">
+                        <Skeleton className="h-5 w-full" />
+                        <Skeleton className="h-5 w-full mt-2" />
+                        <Skeleton className="h-5 w-full mt-2" />
+                      </div>
+                    ) : filteredEmployees.length > 0 ? (
+                      filteredEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-muted-foreground">
+                        No employees found
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedEmployeeData && (
+              {isLoading ? (
+                <div className="pt-4 space-y-4">
+                  <Skeleton className="h-8 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : selectedEmployeeData ? (
                 <div className="pt-4">
                   <div className="pb-4">
                     <h3 className="text-lg font-medium">{selectedEmployeeData.name}</h3>
@@ -179,9 +231,7 @@ export default function AdminReports() {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-
-              {!selectedEmployee && (
+              ) : (
                 <div className="text-center py-4 text-muted-foreground">
                   Select an employee to view qualifications
                 </div>
@@ -226,7 +276,14 @@ export default function AdminReports() {
                 </Select>
               </div>
 
-              {selectedPosition && (
+              {isLoading ? (
+                <div className="pt-4 space-y-4">
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : selectedPosition ? (
                 <div className="pt-4">
                   <div className="pb-4 flex items-center justify-between">
                     <div>
@@ -271,9 +328,7 @@ export default function AdminReports() {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-
-              {!selectedPosition && (
+              ) : (
                 <div className="text-center py-4 text-muted-foreground">
                   Select a position to view qualified employees
                 </div>
@@ -304,7 +359,14 @@ export default function AdminReports() {
                 </SelectContent>
               </Select>
 
-              {selectedPosition && (
+              {isLoading ? (
+                <div className="pt-4 space-y-4">
+                  <Skeleton className="h-8 w-1/2" />
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : selectedPosition ? (
                 <div className="pt-4">
                   <div className="pb-4 flex items-center justify-between">
                     <div>
@@ -349,9 +411,7 @@ export default function AdminReports() {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-
-              {!selectedPosition && (
+              ) : (
                 <div className="text-center py-4 text-muted-foreground">
                   Select a position to view eligible employees
                 </div>
