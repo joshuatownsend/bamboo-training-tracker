@@ -38,9 +38,9 @@ export class BambooHRClient {
       // This ensures the Edge Function knows which subdomain we're trying to use
       // even though it will likely use the server-configured subdomain
       if (!url.includes('?')) {
-        url += `?subdomain=${encodeURIComponent(this.subdomain)}`;
+        url += `?subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       } else {
-        url += `&subdomain=${encodeURIComponent(this.subdomain)}`;
+        url += `&subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
       }
       
       console.log(`Final Edge Function URL with params: ${url}`);

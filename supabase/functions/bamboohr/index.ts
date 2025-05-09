@@ -27,11 +27,11 @@ serve(async (req) => {
     // Get the subdomain parameter from query string (for diagnostic or override purposes)
     // By default, use the server-configured subdomain
     const querySubdomain = url.searchParams.get("subdomain");
-    const subdomain = querySubdomain || serverSubdomain;
+    const subdomain = serverSubdomain || querySubdomain || '';
     
     // For security, we'll log if a different subdomain is being used than the server's default
     if (querySubdomain && querySubdomain !== serverSubdomain) {
-      console.log(`WARNING: Using query parameter subdomain (${querySubdomain}) instead of server-configured subdomain`);
+      console.log(`WARNING: Using query parameter subdomain (${querySubdomain}) instead of server-configured subdomain (${serverSubdomain || 'not set'})`);
     }
 
     console.log(`Processing request with subdomain: ${subdomain}`);
@@ -50,7 +50,8 @@ serve(async (req) => {
             subdomain_set: !!subdomain,
             apikey_set: !!apiKey,
             missing: missingItems.join(", "),
-            message: `Missing ${missingItems.join(" and ")} in Edge Function configuration. Please check the Supabase secrets.`
+            message: `Missing ${missingItems.join(" and ")} in Edge Function configuration. Please check the Supabase secrets.`,
+            tested_subdomain: subdomain || querySubdomain || 'not provided'
           }
         }),
         {
@@ -122,7 +123,8 @@ serve(async (req) => {
               : "BambooHR returned HTML instead of JSON. This typically means the API credentials are invalid.",
             html_preview: responseBody.substring(0, 200) + "...",
             status_code: response.status,
-            is_login_page: isLoginPage
+            is_login_page: isLoginPage,
+            tested_subdomain: subdomain
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -157,7 +159,8 @@ serve(async (req) => {
         JSON.stringify({
           error: "BambooHR API request failed",
           details: fetchError instanceof Error ? fetchError.message : String(fetchError),
-          request_url: targetUrl
+          request_url: targetUrl,
+          tested_subdomain: subdomain
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

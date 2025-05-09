@@ -3,10 +3,12 @@ import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRApiClient from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
+import { useToast } from '@/hooks/use-toast';
 
 const useBambooHR = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const isConfigured = isBambooConfigured();
   
@@ -28,6 +30,11 @@ const useBambooHR = () => {
   const fetchData = useCallback(async () => {
     if (!isConfigured) {
       setError('BambooHR is not configured.');
+      toast({
+        title: "BambooHR Error",
+        description: "BambooHR is not configured. Please check settings.",
+        variant: "destructive"
+      });
       return { employees: [], trainings: [], completions: [] };
     }
     
@@ -43,11 +50,18 @@ const useBambooHR = () => {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       console.error("Error fetching BambooHR data:", errorMessage);
+      
+      toast({
+        title: "BambooHR Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
       return { employees: [], trainings: [], completions: [] };
     } finally {
       setIsLoading(false);
     }
-  }, [isConfigured, getBambooService]);
+  }, [isConfigured, getBambooService, toast]);
   
   // React Query hook to fetch all BambooHR data
   const useAllData = () => {
@@ -62,14 +76,33 @@ const useBambooHR = () => {
           const service = getBambooService();
           const result = await service.fetchAllData();
           console.log("Query fetched data:", result ? "Success" : "No data");
+          
+          // Show success toast if we got data
+          if (result && result.employees && result.employees.length > 0) {
+            toast({
+              title: "BambooHR Data Loaded",
+              description: `Successfully loaded ${result.employees.length} employees`,
+              variant: "default"
+            });
+          }
+          
           return result || { employees: [], trainings: [], completions: [] };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
           console.error('Error in useAllData:', errorMessage);
+          
+          toast({
+            title: "BambooHR Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+          
           throw new Error(errorMessage);
         }
       },
-      enabled: isConfigured // Only run the query if BambooHR is configured
+      enabled: isConfigured, // Only run the query if BambooHR is configured
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: false, // Don't refetch on window focus
     });
   };
   
