@@ -4,8 +4,7 @@ import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -33,8 +32,8 @@ export function EmployeeTable({
         <TableHeader>
           <TableRow>
             <TableHead>Employee</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Hire Date</TableHead>
+            <TableHead>Job Title</TableHead>
+            <TableHead>Division</TableHead>
             <TableHead>Training Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -76,15 +75,8 @@ export function EmployeeTable({
                   .join("")
               : "??";
 
-            // Format the hire date with proper error handling
-            let formattedHireDate = 'Unknown';
-            try {
-              if (employee.hireDate && employee.hireDate.trim() !== '') {
-                formattedHireDate = format(new Date(employee.hireDate), "MMM d, yyyy");
-              }
-            } catch (error) {
-              console.warn(`Invalid hire date format for employee ${employee.id}:`, employee.hireDate);
-            }
+            // Create BambooHR profile URL
+            const bambooHRProfileUrl = `https://avfrd.bamboohr.com/employees/employee.php?id=${employee.id}`;
               
             return (
               <TableRow key={employee.id}>
@@ -95,12 +87,12 @@ export function EmployeeTable({
                     </Avatar>
                     <div>
                       <div className="font-medium">{employee.name || 'Unknown'}</div>
-                      <div className="text-xs text-muted-foreground">{employee.position || 'No Position'}</div>
+                      <div className="text-xs text-muted-foreground">{employee.email || 'No Email'}</div>
                     </div>
                   </div>
                 </TableCell>
+                <TableCell>{employee.position || 'No Position'}</TableCell>
                 <TableCell>{employee.department || 'Unassigned'}</TableCell>
-                <TableCell>{formattedHireDate}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${badgeColor}`} />
@@ -114,7 +106,9 @@ export function EmployeeTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild size="sm" variant="outline">
-                    <Link to={`/employees/${employee.id}`}>View Details</Link>
+                    <a href={bambooHRProfileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                      BambooHR Profile <ExternalLink className="h-3.5 w-3.5 ml-0.5" />
+                    </a>
                   </Button>
                 </TableCell>
               </TableRow>
