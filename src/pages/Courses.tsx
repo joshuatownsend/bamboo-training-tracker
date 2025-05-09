@@ -31,13 +31,16 @@ const Courses = () => {
   const { data: bambooData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['bamboohr', 'trainings'],
     queryFn: async () => {
+      console.log("Fetching training data from BambooHR...");
       const bamboo = new (await import('@/lib/bamboohr/api')).default({
         subdomain: 'avfrd',
         apiKey: '',
         useEdgeFunction: true,
         edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
       });
-      return bamboo.fetchAllTrainings();
+      const result = await bamboo.fetchAllTrainings();
+      console.log("Fetched training data:", result);
+      return result;
     },
     enabled: isConfigured
   });
@@ -67,6 +70,7 @@ const Courses = () => {
 
   const handleRefresh = async () => {
     try {
+      await queryClient.invalidateQueries({ queryKey: ['bamboohr', 'trainings'] });
       await refetch();
       toast({
         title: "Refreshed Training Data",
@@ -91,8 +95,8 @@ const Courses = () => {
           className="flex items-center gap-2"
           disabled={isLoading}
         >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
       
@@ -128,42 +132,53 @@ const Courses = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {types.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {types.length > 0 && (
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {types.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {categories.length > 0 && (
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           
           {trainings.length === 0 ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>No Training Data</AlertTitle>
-              <AlertDescription>
-                No training courses were found in BambooHR. This could be because the training types 
-                haven't been set up in your BambooHR account, or they're not accessible through the API.
-                Try clicking the Refresh button to update the data from BambooHR.
+              <AlertDescription className="space-y-2">
+                <p>
+                  No training courses were found in BambooHR. The API call was made to:
+                </p>
+                <code className="block bg-muted p-2 rounded text-xs">
+                  https://api.bamboohr.com/api/gateway.php/avfrd/v1/training/type
+                </code>
+                <p>
+                  Try clicking the Refresh button to update the data from BambooHR.
+                  If this issue persists, check your API credentials and network connectivity.
+                </p>
               </AlertDescription>
             </Alert>
           ) : (

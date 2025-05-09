@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion } from '@/lib/types';
 import BambooHRService from './service';
@@ -82,14 +81,22 @@ class BambooHRApiClient {
       const data = await this.client.fetchFromBamboo('/training/type');
       console.log("Raw trainings data:", data);
       
-      if (Array.isArray(data)) {
+      // Handle the object format where IDs are keys
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const trainingsArray = Object.values(data);
+        return this.mapTrainingData(trainingsArray);
+      }
+      // Handle array format (fallback)
+      else if (Array.isArray(data)) {
         return this.mapTrainingData(data);
-      } else if (data && typeof data === 'object') {
-        // Try to find training data in different possible structures
+      } 
+      // Handle other nested structures
+      else if (data && typeof data === 'object') {
         const trainingArray = data.trainings || data.data || data.rows || [];
         return this.mapTrainingData(trainingArray);
       }
       
+      console.warn("Unexpected training data format:", data);
       return [];
     } catch (error) {
       console.error("Error fetching trainings:", error);
@@ -101,11 +108,14 @@ class BambooHRApiClient {
     return data.map(training => ({
       id: training.id?.toString() || '',
       title: training.name || '',
-      type: training.type || 'Standard',
-      category: training.category || 'General',
+      // Extract type from category name if possible (format: "NUMBER - TYPE - CATEGORY")
+      type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
+      // Extract category from category name if possible
+      category: training.category?.name?.split(' - ')[1] || 'General',
       description: training.description || '',
       durationHours: parseFloat(training.hours) || 0,
-      requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+      // Use 'required' flag to populate requiredFor
+      requiredFor: training.required ? ['Required'] : [],
     }));
   }
 

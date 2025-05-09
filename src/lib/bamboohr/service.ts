@@ -1,3 +1,4 @@
+
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion } from '@/lib/types';
 import { BambooApiOptions } from './client';
@@ -77,31 +78,34 @@ export default class BambooHRService {
       const trainingsData = await this.client.fetchFromBamboo('/training/type');
       console.log("Raw trainings data from BambooHR:", trainingsData);
       
-      // Transform the response data to our Training interface
+      // Handle the object format where IDs are keys
+      if (trainingsData && typeof trainingsData === 'object' && !Array.isArray(trainingsData)) {
+        const trainingsArray = Object.values(trainingsData);
+        return trainingsArray.map((training: any) => ({
+          id: training.id?.toString() || '',
+          title: training.name || '',
+          type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
+          category: training.category?.name?.split(' - ')[1] || 'General',
+          description: training.description || '',
+          durationHours: parseFloat(training.hours) || 0,
+          requiredFor: training.required ? ['Required'] : [],
+        }));
+      } 
+      
+      // Handle array format (fallback)
       if (Array.isArray(trainingsData)) {
         return trainingsData.map((training: any) => ({
           id: training.id?.toString() || '',
           title: training.name || '',
-          type: training.type || 'Standard',
-          category: training.category || 'General',
+          type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
+          category: training.category?.name?.split(' - ')[1] || 'General',
           description: training.description || '',
           durationHours: parseFloat(training.hours) || 0,
-          requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
-        }));
-      } else if (trainingsData && typeof trainingsData === 'object') {
-        // Handle case where API returns trainings in a different format
-        const trainings = trainingsData.trainings || trainingsData.data || [];
-        return trainings.map((training: any) => ({
-          id: training.id?.toString() || '',
-          title: training.name || '',
-          type: training.type || 'Standard',
-          category: training.category || 'General',
-          description: training.description || '',
-          durationHours: parseFloat(training.hours) || 0,
-          requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+          requiredFor: training.required ? ['Required'] : [],
         }));
       }
       
+      console.warn("Unexpected training data format:", trainingsData);
       return [];
     } catch (error) {
       console.error("Error getting trainings from BambooHR:", error);
@@ -160,26 +164,29 @@ export default class BambooHRService {
         const rawTrainingsData = await this.client.fetchFromBamboo('/training/type');
         console.log(`Fetched raw trainings data from BambooHR:`, rawTrainingsData);
         
-        if (Array.isArray(rawTrainingsData)) {
-          trainings = rawTrainingsData.map((training: any) => ({
-            id: training.id?.toString() || '',
-            title: training.name || '',
-            type: training.type || 'Standard',
-            category: training.category || 'General',
-            description: training.description || '',
-            durationHours: parseFloat(training.hours) || 0,
-            requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
-          }));
-        } else if (rawTrainingsData && typeof rawTrainingsData === 'object') {
-          const trainingsArray = rawTrainingsData.trainings || rawTrainingsData.data || [];
+        // Handle the object format where IDs are keys
+        if (rawTrainingsData && typeof rawTrainingsData === 'object' && !Array.isArray(rawTrainingsData)) {
+          const trainingsArray = Object.values(rawTrainingsData);
           trainings = trainingsArray.map((training: any) => ({
             id: training.id?.toString() || '',
             title: training.name || '',
-            type: training.type || 'Standard',
-            category: training.category || 'General',
+            type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
+            category: training.category?.name?.split(' - ')[1] || 'General',
             description: training.description || '',
             durationHours: parseFloat(training.hours) || 0,
-            requiredFor: Array.isArray(training.requiredFor) ? training.requiredFor : [],
+            requiredFor: training.required ? ['Required'] : [],
+          }));
+        } 
+        // Fallback to array format
+        else if (Array.isArray(rawTrainingsData)) {
+          trainings = rawTrainingsData.map((training: any) => ({
+            id: training.id?.toString() || '',
+            title: training.name || '',
+            type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
+            category: training.category?.name?.split(' - ')[1] || 'General',
+            description: training.description || '',
+            durationHours: parseFloat(training.hours) || 0,
+            requiredFor: training.required ? ['Required'] : [],
           }));
         }
         console.log(`Processed ${trainings.length} trainings from BambooHR`);
