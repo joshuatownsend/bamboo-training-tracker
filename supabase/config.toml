@@ -21,3 +21,6 @@ enabled = true
 
 [functions.sync-employee-mappings]
 verify_jwt = true
+
+[functions.bamboohr]
+verify_jwt = false

@@ -23,15 +23,18 @@ serve(async (req) => {
   // Log the incoming request
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/bamboohr/, "");
-  console.log(`BambooHR Edge Function received request: ${req.method} ${url}`);
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] BambooHR Edge Function received request: ${req.method} ${url}`);
   
   // Special endpoint to check if secrets are properly configured
   if (path === "/check-secrets") {
-    console.log("Checking secrets configuration...");
+    console.log(`[${timestamp}] Checking secrets configuration...`);
     
     // Check for existence of environment variables
     const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+    
+    console.log(`[${timestamp}] Secret check results - BAMBOOHR_SUBDOMAIN: ${!!subdomain}, BAMBOOHR_API_KEY: ${!!apiKey}`);
     
     return new Response(
       JSON.stringify({
@@ -40,7 +43,8 @@ serve(async (req) => {
           BAMBOOHR_SUBDOMAIN: !!subdomain,
           BAMBOOHR_API_KEY: !!apiKey
         },
-        timestamp: new Date().toISOString()
+        timestamp: timestamp,
+        deploymentVerification: "Function updated successfully"
       }),
       { headers: corsHeaders, status: 200 }
     );
@@ -53,14 +57,15 @@ serve(async (req) => {
     
     // Check for required credentials
     if (!subdomain || !apiKey) {
-      console.error("Missing BambooHR credentials");
+      console.error(`[${timestamp}] Missing BambooHR credentials - BAMBOOHR_SUBDOMAIN: ${!!subdomain}, BAMBOOHR_API_KEY: ${!!apiKey}`);
       return new Response(
         JSON.stringify({ 
           error: "Missing BambooHR credentials in environment variables", 
           details: {
             BAMBOOHR_SUBDOMAIN: !!subdomain,
             BAMBOOHR_API_KEY: !!apiKey
-          }
+          },
+          timestamp: timestamp
         }),
         { headers: corsHeaders, status: 500 }
       );
@@ -87,8 +92,8 @@ serve(async (req) => {
     headers.append("Accept", accept);
     
     // Log request details (excluding sensitive info)
-    console.log(`Forwarding request to: ${targetUrl}`);
-    console.log(`Headers: ${JSON.stringify([...headers.entries()]
+    console.log(`[${timestamp}] Forwarding request to: ${targetUrl}`);
+    console.log(`[${timestamp}] Headers: ${JSON.stringify([...headers.entries()]
       .filter(([key]) => key.toLowerCase() !== "authorization")
       .map(([key, value]) => [key, value])
     )}`);
@@ -107,10 +112,10 @@ serve(async (req) => {
     if (responseContentType.includes("application/json")) {
       responseData = await bambooResponse.text();
       // Log truncated response for debugging
-      console.log(`BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
+      console.log(`[${timestamp}] BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
     } else {
       responseData = await bambooResponse.text();
-      console.log(`BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
+      console.log(`[${timestamp}] BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
     }
     
     // Return the response with CORS headers
@@ -123,12 +128,14 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error("Error processing BambooHR request:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[${timestamp}] Error processing BambooHR request:`, errorMessage);
     
     return new Response(
       JSON.stringify({
         error: "Error processing BambooHR request",
-        message: error instanceof Error ? error.message : String(error)
+        message: errorMessage,
+        timestamp: timestamp
       }),
       { headers: corsHeaders, status: 500 }
     );
