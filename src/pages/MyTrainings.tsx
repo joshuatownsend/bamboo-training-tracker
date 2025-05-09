@@ -143,7 +143,7 @@ export default function MyTrainings() {
       </div>
 
       {isMissingEmployeeId && (
-        <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
+        <Alert variant="destructive" className="bg-yellow-50 border-yellow-200">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Employee ID Not Found</AlertTitle>
           <AlertDescription>

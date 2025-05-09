@@ -83,8 +83,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAdminSettings(JSON.parse(event.newValue));
           // If user is already logged in, update their role based on new settings
           if (activeAccount) {
-            const updatedUser = mapAccountToUser(activeAccount, JSON.parse(event.newValue));
-            setCurrentUser(updatedUser);
+            // Use async/await with an immediate function execution
+            (async () => {
+              const updatedUser = await mapAccountToUser(activeAccount, JSON.parse(event.newValue));
+              setCurrentUser(updatedUser);
+            })();
           }
         } catch (error) {
           console.error("Error parsing updated admin settings:", error);
@@ -136,6 +139,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const employeeId = await getEmployeeIdByEmail(currentUser.email);
       if (employeeId) {
+        // Fix: Properly handle the async result
         setCurrentUser(prev => prev ? { ...prev, employeeId } : null);
         return employeeId;
       }
