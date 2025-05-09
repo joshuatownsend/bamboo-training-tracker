@@ -1,24 +1,25 @@
-
 /**
  * BambooHRClient provides the low-level API communication with BambooHR.
  * It handles authentication, request formatting, and error handling.
  */
+export interface BambooApiOptions {
+  subdomain: string;
+  apiKey: string;
+  useEdgeFunction?: boolean;
+  edgeFunctionUrl?: string;
+}
+
 export class BambooHRClient {
-  private apiKey: string;
   private subdomain: string;
+  private apiKey: string;
   private useEdgeFunction: boolean;
   private edgeFunctionUrl: string;
 
-  constructor(options: { 
-    subdomain: string; 
-    apiKey: string; 
-    useEdgeFunction?: boolean;
-    edgeFunctionUrl?: string;
-  }) {
+  constructor(options: BambooApiOptions) {
     this.subdomain = options.subdomain;
     this.apiKey = options.apiKey;
-    this.useEdgeFunction = options.useEdgeFunction ?? true; // Default to using Edge Function
-    this.edgeFunctionUrl = options.edgeFunctionUrl || import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || '';
+    this.useEdgeFunction = options.useEdgeFunction || false;
+    this.edgeFunctionUrl = options.edgeFunctionUrl || '';
   }
 
   // Return the raw response for advanced parsing

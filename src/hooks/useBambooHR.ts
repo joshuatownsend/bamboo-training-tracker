@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BambooHRService from '@/lib/bamboohr/api';
@@ -19,8 +18,8 @@ const useBambooHR = () => {
     return new BambooHRService({
       subdomain: config.subdomain,
       apiKey: config.apiKey,
-      useEdgeFunction: config.useEdgeFunction,
-      edgeFunctionUrl: config.edgeFunctionUrl
+      useEdgeFunction: config.useEdgeFunction
+      // The edgeFunctionUrl is handled internally by BambooHRService
     });
   }, []);
   

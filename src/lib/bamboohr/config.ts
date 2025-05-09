@@ -1,4 +1,3 @@
-
 export const BAMBOO_HR_CONFIG = {
   subdomain: import.meta.env.VITE_BAMBOO_SUBDOMAIN || '',
   apiKey: import.meta.env.VITE_BAMBOO_API_KEY || '',
