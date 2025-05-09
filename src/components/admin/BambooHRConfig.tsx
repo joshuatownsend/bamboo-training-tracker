@@ -79,7 +79,7 @@ const BambooHRConfig: React.FC = () => {
                 variant="outline" 
                 size="sm" 
                 className="bg-blue-100"
-                onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/secrets', '_blank')}
+                onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions/secrets', '_blank')}
               >
                 Open Supabase Secrets Manager
                 <ExternalLink className="h-3 w-3 ml-1" />
@@ -113,7 +113,7 @@ const BambooHRConfig: React.FC = () => {
           Manage Edge Functions
         </Button>
         <Button 
-          onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/secrets', '_blank')}
+          onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions/secrets', '_blank')}
           className="bg-yellow-500 hover:bg-yellow-600 text-black"
         >
           Manage Supabase Secrets

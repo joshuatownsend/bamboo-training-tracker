@@ -1,187 +1,122 @@
 
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Environment variable types for TypeScript
-interface Env {
-  BAMBOOHR_SUBDOMAIN: string;
-  BAMBOOHR_API_KEY: string;
-}
-
-// CORS headers for browser compatibility
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Function to build the BambooHR API URL
-function buildBambooHRUrl(subdomain: string, endpoint: string): string {
-  return `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${endpoint}`;
-}
-
-// Main handler function for the Edge Function
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204, 
-      headers: corsHeaders 
-    });
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
-  
+
   try {
-    const env = Deno.env.toObject() as Env;
-    
-    // Check if environment variables are set
-    if (!env.BAMBOOHR_SUBDOMAIN || !env.BAMBOOHR_API_KEY) {
+    // Get subdomain from env var
+    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+    const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+
+    if (!subdomain || !apiKey) {
+      console.error("Missing BambooHR credentials in environment variables");
       return new Response(
-        JSON.stringify({ 
-          error: "BambooHR credentials not configured. Please set BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY environment variables." 
+        JSON.stringify({
+          error: "BambooHR credentials not configured on the server",
+          details: {
+            subdomain_set: !!subdomain,
+            apikey_set: !!apiKey
+          }
         }),
-        { 
-          status: 500, 
-          headers: { 
-            "Content-Type": "application/json",
-            ...corsHeaders
-          } 
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
         }
       );
     }
 
-    // Parse the request URL to get the BambooHR endpoint and optional subdomain override
+    // Process URL - get the path that comes after /bamboohr
     const url = new URL(req.url);
-    const path = url.pathname;
+    let path = url.pathname.replace(/^\/bamboohr\/?/, "");
     
-    // Get subdomain from query parameter (if provided) or use the environment variable
-    let subdomain = url.searchParams.get('subdomain') || env.BAMBOOHR_SUBDOMAIN;
+    // Get the subdomain parameter from the query string (for diagnostic purposes only)
+    // Note: We'll always use the server's environment variable for actual API calls
+    const diagnosticSubdomain = url.searchParams.get("subdomain");
     
-    // Remove subdomain from searchParams to avoid sending it to BambooHR API
-    url.searchParams.delete('subdomain');
-    
-    // Extract the part after /functions/v1/bamboohr
-    const bambooEndpoint = path.includes('/bamboohr') 
-      ? path.substring(path.indexOf('/bamboohr') + '/bamboohr'.length) 
-      : path;
-    
-    if (!bambooEndpoint) {
-      return new Response(
-        JSON.stringify({ error: "No BambooHR endpoint specified" }),
-        { 
-          status: 400, 
-          headers: { 
-            "Content-Type": "application/json",
-            ...corsHeaders 
-          } 
-        }
-      );
-    }
-    
-    console.log(`Edge Function: Using subdomain: ${subdomain}`);
-    console.log(`Edge Function: Extracted bambooEndpoint: ${bambooEndpoint}`);
-    
-    // Build the full BambooHR API URL
-    const apiUrl = buildBambooHRUrl(subdomain, bambooEndpoint);
-    
-    // Forward remaining query parameters if any
-    const queryString = url.search.replace(/^\?subdomain=[^&]*&?/, '?').replace(/^\?$/, '');
-    const fullApiUrl = queryString && queryString !== '?' ? `${apiUrl}${queryString}` : apiUrl;
-    
-    console.log(`Edge Function: Making request to: ${fullApiUrl}`);
-    
+    console.log(`Processing BambooHR request: ${req.method} ${path}`);
+    console.log(`Using server-configured subdomain: ${subdomain}`);
+    console.log(`Diagnostic subdomain parameter: ${diagnosticSubdomain || 'not provided'}`);
+
+    // Create the target URL for BambooHR API
+    const targetUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${path}${url.search ? url.search : ""}`;
+
     // Create headers for BambooHR API
     const headers = new Headers();
-    // Base64 encode API key with empty username as per BambooHR docs
-    const authHeader = "Basic " + btoa(`${env.BAMBOOHR_API_KEY}:`);
-    headers.append("Authorization", authHeader);
+    headers.append("Authorization", `Basic ${btoa(`${apiKey}:`)}`);
     headers.append("Accept", "application/json");
     
-    // Forward content-type header if it's a POST/PUT request
-    if (req.method === "POST" || req.method === "PUT") {
-      const contentType = req.headers.get("Content-Type");
-      if (contentType) {
-        headers.append("Content-Type", contentType);
-      } else {
-        headers.append("Content-Type", "application/json");
-      }
+    // If we're doing a POST or PUT, add content type
+    if (["POST", "PUT", "PATCH"].includes(req.method)) {
+      headers.append("Content-Type", "application/json");
     }
+
+    console.log(`Forwarding to BambooHR: ${req.method} ${targetUrl}`);
     
-    // Make the request to BambooHR API
-    const response = await fetch(fullApiUrl, {
+    // Forward the request to BambooHR
+    const response = await fetch(targetUrl, {
       method: req.method,
-      headers: headers,
-      body: req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined,
+      headers,
+      body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text(),
     });
+
+    console.log(`BambooHR responded with status: ${response.status}`);
+
+    // Read response body
+    const responseBody = await response.text();
     
-    // Check for HTML responses (which usually indicate auth errors)
-    const contentType = response.headers.get("Content-Type") || "";
+    // Check if the response is JSON or HTML
+    const contentType = response.headers.get("content-type") || "";
+    console.log(`Response content type: ${contentType}`);
+    
     if (contentType.includes("text/html")) {
-      const htmlText = await response.text();
+      console.log("BambooHR returned HTML instead of JSON - likely an authentication issue");
+      console.log("HTML preview:", responseBody.substring(0, 200) + "...");
+      
       return new Response(
-        JSON.stringify({ 
-          error: "BambooHR returned HTML instead of JSON. This likely indicates an authentication issue.",
-          status: response.status,
-          statusText: response.statusText,
-          subdomain: subdomain,
-          htmlPreview: htmlText.substring(0, 200) + "..."
+        JSON.stringify({
+          error: "BambooHR authentication failed",
+          details: "BambooHR returned HTML instead of JSON. This typically means the API credentials are invalid.",
+          html_preview: responseBody.substring(0, 200) + "...",
         }),
-        { 
-          status: 401, 
-          headers: { 
-            "Content-Type": "application/json",
-            ...corsHeaders 
-          } 
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
         }
       );
     }
     
-    // If response is not JSON, return it as-is with appropriate status
-    if (!contentType.includes("application/json")) {
-      const responseText = await response.text();
-      return new Response(
-        JSON.stringify({ 
-          error: "BambooHR returned non-JSON response",
-          status: response.status,
-          statusText: response.statusText,
-          contentType,
-          responsePreview: responseText.substring(0, 200) + "..."
-        }),
-        { 
-          status: response.status, 
-          headers: { 
-            "Content-Type": "application/json",
-            ...corsHeaders
-          } 
-        }
-      );
-    }
-    
-    // Return the JSON response
-    const responseData = await response.json();
-    
-    // Return the response with appropriate headers
-    return new Response(
-      JSON.stringify(responseData),
-      { 
-        status: response.status, 
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders
-        }
-      }
-    );
+    // Return the response from BambooHR
+    return new Response(responseBody, {
+      status: response.status,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": contentType,
+      },
+    });
+
   } catch (error) {
-    console.error("Error in BambooHR Edge Function:", error);
+    console.error("Error in BambooHR edge function:", error);
+    
     return new Response(
-      JSON.stringify({ 
-        error: "Internal server error in BambooHR Edge Function", 
-        details: error.message
+      JSON.stringify({
+        error: `Error processing BambooHR request: ${error.message}`,
       }),
-      { 
-        status: 500, 
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders
-        }
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
       }
     );
   }

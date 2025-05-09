@@ -321,7 +321,7 @@ const BambooTroubleshooting = () => {
                   variant="outline" 
                   size="sm"
                   className="mt-4 bg-blue-100"
-                  onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/secrets', '_blank')}
+                  onClick={() => window.open('https://supabase.com/dashboard/project/fvpbkkmnzlxbcxokxkce/settings/functions/secrets', '_blank')}
                 >
                   Open Supabase Secrets Manager
                   <ExternalLink className="h-3 w-3 ml-1" />
