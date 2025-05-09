@@ -18,6 +18,14 @@ export function EmployeeTable({
   trainings,
   completions 
 }: EmployeeTableProps) {
+  if (!employees || !employees.length) {
+    return (
+      <div className="rounded-md border bg-white p-8 text-center">
+        <p className="text-muted-foreground">No employees found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-md border bg-white">
       <Table>
@@ -34,12 +42,12 @@ export function EmployeeTable({
           {employees.map((employee) => {
             // Calculate training status
             const requiredTrainings = trainings.filter(t => 
-              t.requiredFor.includes(employee.department)
-            );
+              t.requiredFor?.includes(employee.department || '')
+            ) || [];
             
             const employeeCompletions = completions.filter(c => 
               c.employeeId === employee.id
-            );
+            ) || [];
             
             const completed = employeeCompletions.filter(c => 
               c.status === "completed"
@@ -58,9 +66,11 @@ export function EmployeeTable({
             
             // Get initials for avatar
             const initials = employee.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("");
+              ? employee.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+              : "??";
               
             return (
               <TableRow key={employee.id}>
@@ -70,13 +80,13 @@ export function EmployeeTable({
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{employee.name}</div>
-                      <div className="text-xs text-muted-foreground">{employee.position}</div>
+                      <div className="font-medium">{employee.name || 'Unknown'}</div>
+                      <div className="text-xs text-muted-foreground">{employee.position || 'No Position'}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{employee.department}</TableCell>
-                <TableCell>{format(new Date(employee.hireDate), "MMM d, yyyy")}</TableCell>
+                <TableCell>{employee.department || 'Unassigned'}</TableCell>
+                <TableCell>{employee.hireDate ? format(new Date(employee.hireDate), "MMM d, yyyy") : 'Unknown'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${badgeColor}`} />

@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/select";
 import { PlusCircle, Search, RefreshCw, AlertTriangle } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
-import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
 import { useState } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
+
+// Import mock data for fallback
+import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
 
 const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,8 +43,8 @@ const Employees = () => {
   
   // Filter employees based on search and department
   const filteredEmployees = employeesData.filter(employee => {
-    const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          employee.position.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = employee.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          employee.position?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
     
     return matchesSearch && matchesDepartment;

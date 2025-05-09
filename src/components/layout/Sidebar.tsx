@@ -82,7 +82,7 @@ const Sidebar = () => {
         },
         {
           name: "Trainings",
-          href: "/trainings",
+          href: "/courses",
           icon: BookCheck,
         },
       ],
@@ -92,31 +92,31 @@ const Sidebar = () => {
       items: [
         {
           name: "Admin Reports",
-          href: "/admin/reports",
+          href: "/admin-reports",
           icon: BarChart3,
           admin: true,
         },
         {
           name: "Position Management",
-          href: "/admin/positions",
+          href: "/position-management",
           icon: Users,
           admin: true,
         },
         {
           name: "Training Requirements",
-          href: "/admin/requirements",
+          href: "/training-requirement-management",
           icon: Book,
           admin: true,
         },
         {
           name: "Training Impact",
-          href: "/admin/training-impact",
+          href: "/training-impact",
           icon: BarChart3,
           admin: true,
         },
         {
           name: "Admin Settings",
-          href: "/admin",
+          href: "/admin-settings",
           icon: Settings,
           admin: true,
         },
