@@ -30,21 +30,34 @@ serve(async (req) => {
   if (path === "/check-secrets") {
     console.log(`[${timestamp}] Checking secrets configuration...`);
     
-    // Check for existence of environment variables
+    // Check for existence of environment variables and log their exact names
+    const allEnvKeys = Object.keys(Deno.env.toObject());
+    console.log(`[${timestamp}] All environment keys: ${JSON.stringify(allEnvKeys)}`);
+    
+    // Try different case variations of the subdomain secret
     const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
+    const subdomainLower = Deno.env.get("bamboohr_subdomain");
+    const subdomainUpper = Deno.env.get("BAMBOOHR_SUBDOMAIN");
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
     
-    console.log(`[${timestamp}] Secret check results - BAMBOOHR_SUBDOMAIN: ${!!subdomain}, BAMBOOHR_API_KEY: ${!!apiKey}`);
+    console.log(`[${timestamp}] Secret check detailed results:`);
+    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomain} (value: ${subdomain ? 'exists' : 'undefined'})`);
+    console.log(`[${timestamp}] - bamboohr_subdomain: ${!!subdomainLower} (value: ${subdomainLower ? 'exists' : 'undefined'})`);
+    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomainUpper} (value: ${subdomainUpper ? 'exists' : 'undefined'})`);
+    console.log(`[${timestamp}] - BAMBOOHR_API_KEY: ${!!apiKey} (value: ${apiKey ? '[REDACTED]' : 'undefined'})`);
     
     return new Response(
       JSON.stringify({
         success: true,
         secrets: {
           BAMBOOHR_SUBDOMAIN: !!subdomain,
+          bamboohr_subdomain: !!subdomainLower,
+          BAMBOOHR_SUBDOMAIN_UPPER: !!subdomainUpper,
           BAMBOOHR_API_KEY: !!apiKey
         },
+        environmentKeys: allEnvKeys,
         timestamp: timestamp,
-        deploymentVerification: "Function updated successfully"
+        deploymentVerification: "Debug function updated"
       }),
       { headers: corsHeaders, status: 200 }
     );
@@ -52,8 +65,11 @@ serve(async (req) => {
   
   try {
     // Get BambooHR credentials from environment variables
-    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || url.searchParams.get("subdomain") || "";
-    const apiKey = Deno.env.get("BAMBOOHR_API_KEY") || "";
+    // Try multiple case variations in case that's the issue
+    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || Deno.env.get("bamboohr_subdomain") || url.searchParams.get("subdomain") || "";
+    const apiKey = Deno.env.get("BAMBOOHR_API_KEY") || Deno.env.get("bamboohr_api_key") || "";
+    
+    console.log(`[${timestamp}] Using subdomain: ${subdomain || '(not found)'}`);
     
     // Check for required credentials
     if (!subdomain || !apiKey) {

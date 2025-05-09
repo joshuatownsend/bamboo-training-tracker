@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, RefreshCw, Server, ExternalLink, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, Server, ExternalLink, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { BambooHRClient } from '@/lib/bamboohr/client';
@@ -23,6 +23,7 @@ const BambooConnectionTest: React.FC = () => {
     BAMBOOHR_SUBDOMAIN: false,
     BAMBOOHR_API_KEY: false,
   });
+  const [environmentKeys, setEnvironmentKeys] = useState<string[]>([]);
   const [isCheckingSecrets, setIsCheckingSecrets] = useState(false);
   const { toast } = useToast();
 
@@ -48,6 +49,10 @@ const BambooConnectionTest: React.FC = () => {
       
       if (result.secrets) {
         setSecretsInfo(result.secrets);
+        
+        if (result.environmentKeys) {
+          setEnvironmentKeys(result.environmentKeys);
+        }
         
         // Show toast with result
         if (result.secretsConfigured) {
@@ -224,6 +229,68 @@ const BambooConnectionTest: React.FC = () => {
                   )}
                 </div>
               </div>
+              
+              {/* Debug info for environment variables */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="env-vars">
+                  <AccordionTrigger className="flex items-center">
+                    <Info className="h-4 w-4 mr-2 text-blue-600" />
+                    Advanced Debug Information
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="p-4 bg-blue-50 rounded-md border border-blue-100 space-y-2 text-sm">
+                      <div>
+                        <h4 className="font-medium">Environment Variables:</h4>
+                        <div className="bg-white p-2 rounded mt-1 font-mono text-xs overflow-auto max-h-40">
+                          {environmentKeys.length > 0 ? (
+                            <ul className="space-y-1">
+                              {environmentKeys.map((key, idx) => (
+                                <li key={idx}>{key}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-gray-500">No environment keys reported</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium">Alternative Casing Check:</h4>
+                        <div className="bg-white p-2 rounded mt-1">
+                          {secretsInfo.bamboohr_subdomain !== undefined && (
+                            <div className="flex items-center">
+                              <span className="font-mono mr-2">bamboohr_subdomain:</span>
+                              {secretsInfo.bamboohr_subdomain ? (
+                                <span className="text-green-600 flex items-center">
+                                  <CheckCircle className="h-3 w-3 mr-1" /> Found
+                                </span>
+                              ) : (
+                                <span className="text-red-600 flex items-center">
+                                  <AlertCircle className="h-3 w-3 mr-1" /> Not found
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {secretsInfo.BAMBOOHR_SUBDOMAIN_UPPER !== undefined && (
+                            <div className="flex items-center">
+                              <span className="font-mono mr-2">BAMBOOHR_SUBDOMAIN (uppercase):</span>
+                              {secretsInfo.BAMBOOHR_SUBDOMAIN_UPPER ? (
+                                <span className="text-green-600 flex items-center">
+                                  <CheckCircle className="h-3 w-3 mr-1" /> Found
+                                </span>
+                              ) : (
+                                <span className="text-red-600 flex items-center">
+                                  <AlertCircle className="h-3 w-3 mr-1" /> Not found
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
               
               {!secretsInfo.BAMBOOHR_SUBDOMAIN || !secretsInfo.BAMBOOHR_API_KEY ? (
                 <Alert className="bg-red-50 border-red-200">
