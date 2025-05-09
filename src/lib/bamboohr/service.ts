@@ -1,264 +1,98 @@
-import { Employee, Training, TrainingCompletion } from "../types";
-import { BambooApiOptions, BambooEmployee, BambooTraining, BambooTrainingCompletion } from "./types";
-import { BambooHRClient } from "./client";
+import { BambooHRClient } from './client';
+import { Employee, Training, TrainingCompletion } from '@/lib/types';
+import { BambooApiOptions } from './client';
 
-/**
- * BambooHRService provides higher-level functionality for accessing BambooHR data
- * and mapping it to the application's domain model.
- */
-class BambooHRService {
+// Add a new diagnostic test that directly calls the BambooHR edge function
+export default class BambooHRService {
   private client: BambooHRClient;
-
+  
   constructor(options: BambooApiOptions) {
     this.client = new BambooHRClient(options);
-    console.log(`BambooHR service initialized with subdomain: ${options.subdomain}`);
   }
-
-  // Test connection - used just to verify credentials
+  
+  // Test connection to the BambooHR API
   async testConnection(): Promise<boolean> {
     try {
-      console.log('Testing BambooHR connection...');
+      console.log("Testing connection to BambooHR API");
+      // Try to get the field list - this is a lightweight call that will validate auth
+      const result = await this.client.fetchRawResponse('/meta/fields');
       
-      // Try multiple endpoints to test connection
-      // These are ordered from simplest to more complex
-      const testEndpoints = [
-        '/meta/fields',
-        '/meta/lists',
-        '/employees/directory'
-      ];
+      console.log(`Test connection result: ${result.status}`);
       
-      // Try each endpoint until one works
-      for (const endpoint of testEndpoints) {
-        try {
-          console.log(`Trying test endpoint: ${endpoint}`);
-          const response = await this.client.fetchFromBamboo(endpoint);
-          console.log(`Successfully connected to BambooHR API using endpoint: ${endpoint}`);
-          console.log('Response data type:', typeof response);
-          console.log('Response keys:', Object.keys(response));
-          return true;
-        } catch (endpointError) {
-          console.warn(`Endpoint ${endpoint} failed:`, endpointError);
-          // Continue to next endpoint
-        }
+      if (!result.ok) {
+        const responseText = await result.text();
+        console.error("BambooHR connection test failed:", result.status, responseText);
+        return false;
       }
       
-      // If we get here, all endpoints failed
-      throw new Error("All BambooHR API test endpoints failed. Please check your credentials and API access.");
+      return true;
     } catch (error) {
-      console.error('BambooHR connection test failed:', error);
-      
-      // Provide more specific error based on the content
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // Enhance error with troubleshooting advice
-      if (errorMessage.includes('HTML') || errorMessage.includes('<!DOCTYPE')) {
-        throw new Error(`Connection failed: BambooHR is returning a login page instead of API data. 
-        Please verify:
-        1. Subdomain format - Use only the company prefix (e.g., "acme" not "acme.bamboohr.com")
-        2. API key format - Ensure you're using a valid API key, not a user password
-        3. BambooHR account - Verify your account has API access enabled
-        
-        Currently using subdomain: "${this.client['subdomain']}"`);
-      }
-      
-      throw error;
+      console.error("Error testing connection to BambooHR:", error);
+      return false;
     }
   }
-
-  // Fetch all employees
+  
+  // Get all employees from BambooHR
   async getEmployees(): Promise<Employee[]> {
     try {
-      const fields = [
-        "id", 
-        "displayName", 
-        "firstName", 
-        "lastName", 
-        "jobTitle", 
-        "department", 
-        "workEmail", 
-        "hireDate", 
-        "photoUrl"
-      ].join(",");
-      
-      const response = await this.client.fetchFromBamboo(`/employees/directory?fields=${fields}`);
-      
-      // Map BambooHR employees to our Employee type
-      return response.employees.map((emp: BambooEmployee) => ({
-        id: emp.id,
-        name: emp.displayName || `${emp.firstName} ${emp.lastName}`,
-        position: emp.jobTitle?.name || "Volunteer",
-        department: emp.department?.name || "General",
-        email: emp.workEmail,
-        avatar: emp.photoUrl,
-        hireDate: emp.hireDate
-      }));
+      return this.client.fetchFromBamboo('/employees/directory');
     } catch (error) {
-      console.error('Error fetching employees from BambooHR:', error);
-      
-      // For CORS errors during actual data fetching, return empty array but log it clearly
-      if (error instanceof Error && error.message.includes('CORS')) {
-        console.warn('CORS error during employee fetch - returning empty array');
-        return [];
-      }
-      
+      console.error("Error getting employees from BambooHR:", error);
       throw error;
     }
   }
-
-  // Fetch a single employee by ID
-  async getEmployee(id: string): Promise<Employee> {
-    try {
-      const response = await this.client.fetchFromBamboo(`/employees/${id}?fields=displayName,firstName,lastName,jobTitle,department,workEmail,hireDate,photoUrl`);
-      
-      return {
-        id: response.id,
-        name: response.displayName || `${response.firstName} ${response.lastName}`,
-        position: response.jobTitle?.name || "Volunteer",
-        department: response.department?.name || "General",
-        email: response.workEmail,
-        avatar: response.photoUrl,
-        hireDate: response.hireDate
-      };
-    } catch (error) {
-      console.error(`Error fetching employee ${id} from BambooHR:`, error);
-      throw error;
-    }
-  }
-
-  // Fetch all trainings
+  
+  // Get all training data from BambooHR
   async getTrainings(): Promise<Training[]> {
     try {
-      // Note: This endpoint might differ based on BambooHR's actual API or custom tables setup
-      const response = await this.client.fetchFromBamboo('/meta/training');
-      
-      return response.trainings.map((training: BambooTraining) => ({
-        id: training.id,
-        title: training.name,
-        type: training.type,
-        category: training.category,
-        description: training.description,
-        durationHours: training.duration,
-        requiredFor: training.requiredFor
-      }));
+      return this.client.fetchFromBamboo('/custom_reports/report?id=40');
     } catch (error) {
-      console.error('Error fetching trainings from BambooHR:', error);
-      
-      // If the endpoint is not found, we might be hitting the wrong API
-      // Return mock data as a fallback for testing
-      if (error instanceof Error && (error.message.includes('404') || error.message.includes('CORS'))) {
-        console.warn('Training endpoint not found or CORS error - BambooHR API structure may differ from expected');
-        return [];
-      }
-      
+      console.error("Error getting trainings from BambooHR:", error);
       throw error;
     }
   }
-
-  // Fetch training completions for an employee
-  async getTrainingCompletions(employeeId: string): Promise<TrainingCompletion[]> {
+  
+  // Fetch all data (employees, trainings, completions)
+  async fetchAllData(): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {
     try {
-      // Note: This endpoint might differ based on BambooHR's actual API or custom tables setup
-      const response = await this.client.fetchFromBamboo(`/employees/${employeeId}/trainings`);
+      console.log("Fetching all data from BambooHR");
       
-      return response.trainings.map((completion: BambooTrainingCompletion) => ({
-        id: completion.id,
-        employeeId: completion.employeeId,
-        trainingId: completion.trainingId,
-        completionDate: completion.completedDate,
-        expirationDate: completion.expirationDate,
-        status: this.mapTrainingStatus(completion.status, completion.expirationDate),
-        score: completion.score,
-        certificateUrl: completion.certificateUrl
-      }));
-    } catch (error) {
-      console.error(`Error fetching training completions for employee ${employeeId}:`, error);
-      
-      // If the endpoint is not found, we might be hitting the wrong API
-      // Return empty array as a fallback
-      if (error instanceof Error && (error.message.includes('404') || error.message.includes('CORS'))) {
-        console.warn('Training completions endpoint not found or CORS error - BambooHR API structure may differ from expected');
-        return [];
+      // First test connection to ensure credentials are valid
+      const connectionTest = await this.testConnection();
+      if (!connectionTest) {
+        console.error("BambooHR connection test failed - aborting data fetch");
+        throw new Error("BambooHR connection test failed. Please check your API credentials.");
       }
       
-      throw error;
-    }
-  }
-
-  // Map BambooHR status to our status format
-  private mapTrainingStatus(status: string, expirationDate?: string): 'completed' | 'expired' | 'due' {
-    if (status.toLowerCase() !== 'completed') {
-      return 'due';
-    }
-    
-    if (expirationDate) {
-      const now = new Date();
-      const expiration = new Date(expirationDate);
+      const employees = await this.client.fetchFromBamboo('/employees/directory');
+      console.log(`Fetched ${employees?.length || 0} employees from BambooHR`);
       
-      if (expiration < now) {
-        return 'expired';
-      }
-    }
-    
-    return 'completed';
-  }
-
-  // Fetch all data needed for the app
-  async fetchAllData() {
-    console.log('Fetching all BambooHR data');
-    
-    try {
-      console.log('Step 1: Fetching employees...');
-      const employees = await this.getEmployees();
-      console.log(`Successfully fetched ${employees.length} employees`);
-      
+      // We might not have custom reports
       let trainings: Training[] = [];
-      let allCompletions: TrainingCompletion[] = [];
+      let completions: TrainingCompletion[] = [];
       
       try {
-        console.log('Step 2: Fetching trainings...');
-        trainings = await this.getTrainings();
-        console.log(`Successfully fetched ${trainings.length} trainings`);
-      } catch (error) {
-        console.error('Failed to fetch trainings, continuing with empty list:', error);
+        trainings = await this.client.fetchFromBamboo('/custom_reports/report?id=40');
+        console.log(`Fetched ${trainings?.length || 0} trainings from BambooHR`);
+      } catch (trainingsError) {
+        console.warn("Could not fetch trainings from BambooHR:", trainingsError);
       }
       
-      // Get training completions for all employees
-      // Note: This might be inefficient for large organizations, consider pagination
       try {
-        console.log('Step 3: Fetching training completions for all employees...');
-        const completionsPromises = employees.map(employee => {
-          console.log(`Fetching training completions for employee ${employee.id}...`);
-          return this.getTrainingCompletions(employee.id)
-            .catch(error => {
-              console.error(`Failed to fetch completions for employee ${employee.id}:`, error);
-              return [];
-            });
-        });
-        
-        allCompletions = (await Promise.all(completionsPromises)).flat();
-        console.log(`Successfully fetched ${allCompletions.length} training completions`);
-      } catch (error) {
-        console.error('Failed to fetch training completions, continuing with empty list:', error);
+        completions = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
+        console.log(`Fetched ${completions?.length || 0} training completions from BambooHR`);
+      } catch (completionsError) {
+        console.warn("Could not fetch training completions from BambooHR:", completionsError);
       }
       
-      const result = {
-        employees,
-        trainings,
-        completions: allCompletions
+      return {
+        employees: employees || [],
+        trainings: trainings || [],
+        completions: completions || []
       };
-      
-      console.log('All data fetched successfully. Summary:', {
-        employeesCount: employees.length,
-        trainingsCount: trainings.length,
-        completionsCount: allCompletions.length
-      });
-      
-      return result;
     } catch (error) {
-      console.error('Error fetching all data from BambooHR:', error);
+      console.error("Error fetching all data from BambooHR:", error);
       throw error;
     }
   }
 }
-
-export default BambooHRService;

@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, ExternalLink, RefreshCw, Wrench } from 'lucide-react';
 import { isBambooConfigured, getEffectiveBambooConfig, setUseEdgeFunction } from '@/lib/bamboohr/config';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useBambooHR from '@/hooks/useBambooHR';
+import { Link } from 'react-router-dom';
 
 const BambooHRConfig: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
@@ -139,6 +140,18 @@ const BambooHRConfig: React.FC = () => {
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
                 {isTestingConnection ? "Testing..." : connectionStatus === 'success' ? "Connection Verified" : "Test Connection"}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-amber-100 text-amber-800"
+                asChild
+              >
+                <Link to="/bamboo-test">
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Advanced Diagnostics
+                </Link>
               </Button>
             </div>
             

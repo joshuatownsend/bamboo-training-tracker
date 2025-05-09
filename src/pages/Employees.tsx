@@ -8,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { PlusCircle, Search, RefreshCw, AlertTriangle } from "lucide-react";
+import { PlusCircle, Search, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
 import { useState, useEffect } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -120,10 +120,16 @@ const Employees = () => {
               <p className="text-sm mt-1">
                 This could be due to connection issues, incorrect API credentials, or empty data in your BambooHR account.
               </p>
-              <div className="mt-3">
+              <div className="mt-3 flex gap-2">
                 <Button asChild variant="outline" size="sm">
                   <Link to="/bamboo-troubleshooting" className="text-amber-800">
                     Run Connection Tests
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="bg-amber-100">
+                  <Link to="/bamboo-test" className="text-amber-800">
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Advanced Diagnostics
                   </Link>
                 </Button>
               </div>
@@ -143,10 +149,16 @@ const Employees = () => {
               <p className="text-sm mt-1">
                 {error instanceof Error ? error.message : String(error)}
               </p>
-              <div className="mt-3">
+              <div className="mt-3 flex gap-2">
                 <Button asChild variant="outline" size="sm">
                   <Link to="/bamboo-troubleshooting" className="text-red-800">
                     Troubleshoot Connection
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="bg-red-100">
+                  <Link to="/bamboo-test" className="text-red-800">
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Advanced Diagnostics
                   </Link>
                 </Button>
               </div>

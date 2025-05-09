@@ -11,8 +11,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("BambooHR Edge Function received request:", req.method, req.url);
+  
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
+    console.log("Handling OPTIONS request");
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
@@ -39,6 +42,9 @@ serve(async (req) => {
 
     console.log(`Processing request with subdomain: ${subdomain}`);
     console.log(`API Key present: ${!!apiKey}`);
+    console.log(`Request headers:`, Object.fromEntries([...req.headers.entries()].map(([k, v]) => 
+      k.toLowerCase() === 'authorization' ? [k, '[REDACTED]'] : [k, v]
+    )));
 
     if (!subdomain || !apiKey) {
       console.error("Missing BambooHR credentials in environment variables");
@@ -66,6 +72,12 @@ serve(async (req) => {
 
     // Process URL - get the path that comes after /bamboohr
     let path = url.pathname.replace(/^\/bamboohr\/?/, "");
+    
+    // If no path is specified, default to employees/directory
+    if (!path) {
+      console.log("No path specified, defaulting to employees/directory");
+      path = "employees/directory";
+    }
     
     // Remove the subdomain parameter from the query string since we'll use it directly
     if (querySubdomain) {

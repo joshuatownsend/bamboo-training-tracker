@@ -16,9 +16,10 @@ import PositionManagement from "./pages/PositionManagement";
 import TrainingRequirementManagement from "./pages/TrainingRequirementManagement";
 import TrainingImpact from "./pages/TrainingImpact";
 import BambooTroubleshooting from "./pages/BambooTroubleshooting";
+import BambooTroubleshootingDetail from "./pages/BambooTroubleshootingDetail";
+import BambooConnectionTest from "./pages/BambooConnectionTest";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
-import BambooTroubleshootingDetail from "./pages/BambooTroubleshootingDetail";
 import { UserProvider } from './contexts/UserContext';
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
             <Route path="training-impact" element={<TrainingImpact />} />
             <Route path="bamboo-troubleshooting" element={<BambooTroubleshooting />} />
             <Route path="bamboo-diagnostics" element={<BambooTroubleshootingDetail />} />
+            <Route path="bamboo-test" element={<BambooConnectionTest />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
