@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,12 @@ import {
 import { positions, trainings, trainingCompletions } from "@/lib/data";
 import { checkPositionQualification, getEmployeesQualifiedForPosition } from "@/lib/qualifications";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, UserCheck, RefreshCw } from "lucide-react";
+import { Search, Users, UserCheck, RefreshCw, Loader2 } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function AdminReports() {
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -32,6 +35,10 @@ export default function AdminReports() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [requirementType, setRequirementType] = useState<"county" | "avfrd">("avfrd");
   const [activeTab, setActiveTab] = useState("employee-lookup");
+  const [open, setOpen] = useState(false);
+  
+  // Debounce the search input to prevent excessive filtering
+  const debouncedSearch = useDebounce(employeeSearch, 300);
   
   // Get data from BambooHR
   const { isConfigured, useAllData } = useBambooHR();
@@ -44,7 +51,7 @@ export default function AdminReports() {
   
   // Filter employees based on search
   const filteredEmployees = employees.filter((employee) =>
-    employee.name.toLowerCase().includes(employeeSearch.toLowerCase())
+    employee.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
   
   // Get the selected employee
@@ -119,7 +126,11 @@ export default function AdminReports() {
 
       <div className="flex justify-end">
         <Button onClick={handleRefresh} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
           Refresh Data
         </Button>
       </div>
@@ -141,43 +152,77 @@ export default function AdminReports() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row">
+                {/* Replace the dropdown with a combobox for better performance */}
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search employees..."
-                    className="pl-8 bg-background"
-                    value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                  />
+                  <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between"
+                      >
+                        {selectedEmployee
+                          ? employees.find((employee) => employee.id === selectedEmployee)?.name
+                          : "Select an employee..."}
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search employees..." 
+                          value={employeeSearch}
+                          onValueChange={setEmployeeSearch}
+                        />
+                        <CommandEmpty>
+                          {isLoading ? "Loading..." : "No employees found."}
+                        </CommandEmpty>
+                        <CommandGroup className="max-h-[300px] overflow-auto">
+                          {isLoading ? (
+                            <>
+                              <CommandItem disabled>
+                                <Skeleton className="h-5 w-full" />
+                              </CommandItem>
+                              <CommandItem disabled>
+                                <Skeleton className="h-5 w-full" />
+                              </CommandItem>
+                              <CommandItem disabled>
+                                <Skeleton className="h-5 w-full" />
+                              </CommandItem>
+                            </>
+                          ) : (
+                            filteredEmployees.slice(0, 50).map((employee) => (
+                              <CommandItem
+                                key={employee.id}
+                                value={employee.name}
+                                onSelect={() => {
+                                  setSelectedEmployee(employee.id);
+                                  setOpen(false);
+                                }}
+                              >
+                                {employee.name}
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  {employee.department}
+                                </span>
+                              </CommandItem>
+                            ))
+                          )}
+                          {filteredEmployees.length > 50 && (
+                            <CommandItem disabled>
+                              <span className="text-xs text-muted-foreground">
+                                + {filteredEmployees.length - 50} more employees. Please refine your search.
+                              </span>
+                            </CommandItem>
+                          )}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                  <SelectTrigger className="w-full sm:w-[250px]">
-                    <SelectValue placeholder="Select an employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoading ? (
-                      <div className="p-2">
-                        <Skeleton className="h-5 w-full" />
-                        <Skeleton className="h-5 w-full mt-2" />
-                        <Skeleton className="h-5 w-full mt-2" />
-                      </div>
-                    ) : filteredEmployees.length > 0 ? (
-                      filteredEmployees.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.id}>
-                          {employee.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-center text-muted-foreground">
-                        No employees found
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
               </div>
 
-              {isLoading ? (
+              {isLoading && !selectedEmployeeData ? (
                 <div className="pt-4 space-y-4">
                   <Skeleton className="h-8 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
