@@ -1,6 +1,7 @@
+
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import BambooHRService from '@/lib/bamboohr/api';
+import BambooHRApiClient from '@/lib/bamboohr/api';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 
 const useBambooHR = () => {
@@ -15,11 +16,11 @@ const useBambooHR = () => {
     if (!config.subdomain && !config.useEdgeFunction) {
       throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings or use Edge Function.');
     }
-    return new BambooHRService({
+    return new BambooHRApiClient({
       subdomain: config.subdomain,
       apiKey: config.apiKey,
-      useEdgeFunction: config.useEdgeFunction
-      // The edgeFunctionUrl is handled internally by BambooHRService
+      useEdgeFunction: config.useEdgeFunction,
+      edgeFunctionUrl: config.edgeFunctionUrl
     });
   }, []);
   

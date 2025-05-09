@@ -3,6 +3,7 @@ export interface BambooApiOptions {
   apiKey: string;
   useProxy?: boolean;
   useEdgeFunction?: boolean;
+  edgeFunctionUrl?: string;
 }
 
 export interface BambooEmployee {
