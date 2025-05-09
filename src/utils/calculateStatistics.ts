@@ -1,4 +1,3 @@
-
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -20,8 +19,8 @@ export const calculateTrainingStatistics = (
     ? (completedTrainings / totalTrainings) * 100 
     : 0;
   
-  // Calculate department statistics
-  const departmentStats = calculateDepartmentStats(employees, trainings, completions);
+  // Calculate division statistics instead of department statistics
+  const departmentStats = calculateDivisionStats(employees, trainings, completions);
   
   return {
     totalTrainings,
@@ -34,32 +33,34 @@ export const calculateTrainingStatistics = (
 };
 
 /**
- * Helper function to calculate statistics per department
+ * Helper function to calculate statistics per division
  */
-export const calculateDepartmentStats = (
+export const calculateDivisionStats = (
   employees: Employee[], 
   trainings: Training[], 
   completions: TrainingCompletion[]
 ): DepartmentStats[] => {
-  // Get unique departments
-  const departments = [...new Set(employees.map(e => e.department))].filter(Boolean);
+  // Get unique divisions
+  const divisions = [...new Set(employees.map(e => e.division))].filter(Boolean);
   
-  return departments.map(department => {
-    // Get employees in department
-    const deptEmployees = employees.filter(e => e.department === department);
+  return divisions.map(division => {
+    // Get employees in division
+    const divisionEmployees = employees.filter(e => e.division === division);
     
-    // Get trainings that might be required for this department
+    // Get trainings that might be required for this division
+    // Note: We're still using department in requiredFor as that's how the data is structured
+    // In a future update, you might want to update the Training model to include division requirements
     const requiredTrainings = trainings.filter(t => 
-      t.requiredFor?.includes(department) || t.requiredFor?.includes('Required')
+      t.requiredFor?.includes(division) || t.requiredFor?.includes('Required')
     );
     
     // Count total required trainings
-    const totalRequired = deptEmployees.length * requiredTrainings.length;
+    const totalRequired = divisionEmployees.length * requiredTrainings.length;
     
     // Count completed trainings
     const completedCount = completions.filter(c => 
       c.status === "completed" && 
-      deptEmployees.some(e => e.id === c.employeeId) &&
+      divisionEmployees.some(e => e.id === c.employeeId) &&
       requiredTrainings.some(t => t.id === c.trainingId)
     ).length;
     
@@ -69,10 +70,13 @@ export const calculateDepartmentStats = (
       : 100;
     
     return {
-      department,
+      department: division, // We'll still use the department field in the model
       completedCount,
       totalRequired,
       complianceRate
     };
   });
 };
+
+// Keeping the old function name for backward compatibility
+export const calculateDepartmentStats = calculateDivisionStats;

@@ -11,7 +11,7 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
   return (
     <Card className="col-span-2">
       <CardHeader>
-        <CardTitle>Department Compliance</CardTitle>
+        <CardTitle>Division Compliance</CardTitle>
       </CardHeader>
       <CardContent className="pt-2">
         <div className="h-[300px]">
@@ -26,9 +26,10 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
               }}
             >
               <XAxis 
-                dataKey="department" 
+                dataKey="department" // Still using 'department' as the key since our model hasn't changed
                 tick={{ fontSize: 12 }}
                 tickLine={false}
+                label={{ value: 'Division', position: 'insideBottom', offset: -5 }}
               />
               <YAxis 
                 tickFormatter={(value) => `${value}%`}
@@ -39,6 +40,7 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
               <Tooltip 
                 formatter={(value) => [`${value}%`, "Compliance Rate"]}
                 cursor={{ fill: "rgba(0, 0, 0, 0.05)" }}
+                labelFormatter={(label) => `Division: ${label}`}
               />
               <Bar 
                 dataKey="complianceRate" 
@@ -62,3 +64,4 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
 }
 
 export default ComplianceChart;
+
