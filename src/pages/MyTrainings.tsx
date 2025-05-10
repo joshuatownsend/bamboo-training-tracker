@@ -220,6 +220,7 @@ export default function MyTrainings() {
         description.includes(searchQuery.toLowerCase()) ||
         notes.includes(searchQuery.toLowerCase());
       
+      // Fix the type issue here - explicitly compare with string value
       const matchesCategory = categoryFilter === "all" || 
         safeString(training.trainingDetails?.category) === categoryFilter;
       
