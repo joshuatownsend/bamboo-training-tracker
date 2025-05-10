@@ -1,5 +1,6 @@
+
 import { ConnectionTester } from './connection-tester';
-import { Employee } from '@/lib/types';
+import { Employee, Training } from '@/lib/types';
 import { BambooEmployee } from '../../types';
 
 /**
@@ -112,11 +113,29 @@ export class DataFetcher extends ConnectionTester {
       }
       
       console.log(`Found ${trainings.length} trainings in catalog`);
-      return trainings;
+      // Map the raw training data to our format
+      return this.mapTrainingData(trainings);
     } catch (error) {
       console.error("Error fetching trainings:", error);
       return [];
     }
+  }
+  
+  /**
+   * Map raw training data from BambooHR to our standardized format
+   * @param trainings Raw training data from BambooHR
+   * @returns Standardized training records
+   */
+  private mapTrainingData(trainings: any[]): Training[] {
+    return trainings.map(training => ({
+      id: training.id?.toString() || '',
+      title: training.name || `Training ${training.id}`,
+      type: training.type || training.id?.toString() || '',
+      category: training.category || 'General',
+      description: training.description || '',
+      durationHours: parseFloat(training.hours) || 0,
+      requiredFor: training.required ? ['Required'] : [],
+    }));
   }
   
   /**
@@ -140,12 +159,26 @@ export class DataFetcher extends ConnectionTester {
         if (trainings && Object.keys(trainings).length > 0) {
           console.log(`Found ${Object.keys(trainings).length} training records for employee ${employeeId}`);
           
+          // Get all training types for proper details
+          const allTrainings = await this.getTrainings();
+          const trainingMap = new Map<string, any>();
+          allTrainings.forEach(training => {
+            trainingMap.set(training.id.toString(), training);
+          });
+          
           // Convert object format to array for consistency
           const trainingArray = Object.values(trainings);
-          return trainingArray.map((training: any) => ({
-            ...training,
-            trainingDetails: this.getTrainingDetailsById(training?.type)
-          }));
+          return trainingArray.map((training: any) => {
+            const trainingId = training?.type?.toString() || '';
+            const trainingDetails = trainingMap.get(trainingId) || this.getTrainingDetailsById(trainingId);
+            
+            return {
+              ...training,
+              trainingDetails: trainingDetails,
+              completionDate: training.completed || '',
+              trainingId: trainingId
+            };
+          });
         } else {
           console.log("Training records endpoint returned empty data, trying alternatives");
         }
@@ -215,19 +248,15 @@ export class DataFetcher extends ConnectionTester {
    * @returns Training details object or null
    */
   private getTrainingDetailsById(trainingId?: string | number): any | null {
-    try {
-      if (!trainingId) return null;
-      
-      // You might want to implement caching for this
-      // This is a placeholder implementation
-      return { 
-        id: trainingId,
-        title: `Training ${trainingId}`,
-        category: 'Unknown' 
-      };
-    } catch (error) {
-      console.warn(`Could not get training details for ID ${trainingId}:`, error);
-      return null;
-    }
+    if (!trainingId) return null;
+    
+    // Create a basic training details object if we don't have the full data
+    return { 
+      id: trainingId,
+      title: `${trainingId}`,
+      type: trainingId.toString(),
+      category: 'General', 
+      description: 'Training details not available'
+    };
   }
 }

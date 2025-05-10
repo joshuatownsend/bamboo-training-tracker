@@ -4,7 +4,7 @@ import { UserTraining } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 
 interface UserTrainingsTableProps {
   trainings: UserTraining[];
@@ -23,6 +23,24 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
 
   // Get categories and sort them
   const categories = Object.keys(groupedTrainings).sort();
+
+  // Function to format date with proper validation
+  const formatDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return "N/A";
+    
+    try {
+      const date = parseISO(dateStr);
+      return isValid(date) ? format(date, "MMM d, yyyy") : dateStr;
+    } catch (e) {
+      // Handle non-ISO format dates (like MM/DD/YYYY)
+      try {
+        const date = new Date(dateStr);
+        return isValid(date) ? format(date, "MMM d, yyyy") : dateStr;
+      } catch {
+        return dateStr;
+      }
+    }
+  };
 
   // Function to open BambooHR training page for the employee
   const openInBambooHR = (employeeId: string) => {
@@ -60,7 +78,9 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                   <TableRow key={training.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{training.trainingDetails?.title || 'Unknown Training'}</div>
+                        <div className="font-medium">
+                          {training.trainingDetails?.title || `Training ${training.trainingId || training.id}`}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {training.trainingDetails?.description || "No description available"}
                         </div>
@@ -68,11 +88,11 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-muted/30">
-                        {training.trainingDetails?.category || "Uncategorized"}
+                        {training.trainingDetails?.category || category}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {training.completionDate ? format(new Date(training.completionDate), "MMM d, yyyy") : "N/A"}
+                      {formatDate(training.completionDate)}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">

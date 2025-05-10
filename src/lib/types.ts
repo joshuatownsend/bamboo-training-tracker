@@ -1,3 +1,4 @@
+
 export interface Employee {
   id: string;
   name: string;
@@ -89,4 +90,7 @@ export interface UserTraining {
   instructor?: string;
   notes?: string;
   trainingDetails: Training | null;
+  // Add type or any other fields that might be present in the BambooHR response
+  type?: string;  
+  completed?: string;
 }

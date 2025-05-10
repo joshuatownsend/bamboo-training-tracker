@@ -1,3 +1,4 @@
+
 import { BambooHRClientInterface } from './client/types';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './types';
@@ -5,6 +6,7 @@ import { BambooApiOptions } from './types';
 class BambooHRService {
   private client: BambooHRClientInterface;
   private subdomain: string;
+  private trainingCache: Map<string, Training> = new Map();
 
   constructor(options: BambooApiOptions) {
     this.subdomain = options.subdomain;
@@ -56,7 +58,14 @@ class BambooHRService {
       const trainingsData = await this.client.getTrainings();
       console.log("Raw trainings data:", trainingsData);
       
-      return this.mapTrainingData(trainingsData);
+      const mappedTrainings = this.mapTrainingData(trainingsData);
+      
+      // Cache trainings for future reference
+      mappedTrainings.forEach(training => {
+        this.trainingCache.set(training.id, training);
+      });
+      
+      return mappedTrainings;
     } catch (error) {
       console.error("Error fetching trainings:", error);
       return [];
@@ -64,18 +73,25 @@ class BambooHRService {
   }
   
   private mapTrainingData(data: any[]): Training[] {
-    return data.map(training => ({
-      id: training.id?.toString() || '',
-      title: training.name || '',
-      // Extract type from category name if possible (format: "NUMBER - TYPE - CATEGORY")
-      type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
-      // Extract category from category name if possible
-      category: training.category?.name?.split(' - ')[1] || 'General',
-      description: training.description || '',
-      durationHours: parseFloat(training.hours) || 0,
-      // Use 'required' flag to populate requiredFor
-      requiredFor: training.required ? ['Required'] : [],
-    }));
+    return data.map(training => {
+      const trainingObj: Training = {
+        id: training.id?.toString() || '',
+        title: training.name || `Training ${training.id}`,
+        // Extract type from category name if possible (format: "NUMBER - TYPE - CATEGORY")
+        type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, '') || training.id?.toString() || '',
+        // Extract category from category name if possible
+        category: training.category?.name?.split(' - ')[1] || training.category?.name || 'General',
+        description: training.description || '',
+        durationHours: parseFloat(training.hours) || 0,
+        // Use 'required' flag to populate requiredFor
+        requiredFor: training.required ? ['Required'] : [],
+      };
+      
+      // Add to cache
+      this.trainingCache.set(trainingObj.id, trainingObj);
+      
+      return trainingObj;
+    });
   }
   
   // Get trainings for a specific employee with timeout
@@ -97,24 +113,44 @@ class BambooHRService {
         return [];
       }
       
-      // Get all training types for reference
-      const allTrainings = await this.getTrainings();
-      const trainingMap = allTrainings.reduce((map, training) => {
-        map[training.id] = training;
-        return map;
-      }, {} as Record<string, Training>);
+      // Make sure training cache is populated
+      if (this.trainingCache.size === 0) {
+        console.log("Training cache is empty, fetching all trainings...");
+        await this.getTrainings();
+      }
       
       // Convert the data to our UserTraining format
-      return trainingsArray.map((record: any) => ({
-        id: record.id?.toString() || '',
-        employeeId: record.employeeId?.toString() || employeeId,
-        trainingId: record.type?.toString() || '',
-        completionDate: record.completed || '',
-        instructor: record.instructor || '',
-        notes: record.notes || '',
-        // Include training details if we can find them
-        trainingDetails: trainingMap[record.type] || null
-      }));
+      return trainingsArray.map((record: any) => {
+        const trainingId = record.type?.toString() || '';
+        let trainingDetails = this.trainingCache.get(trainingId);
+        
+        // If not found in cache, create a basic training details object
+        if (!trainingDetails) {
+          trainingDetails = {
+            id: trainingId,
+            title: record.name || `Training ${trainingId}`,
+            type: trainingId,
+            category: record.category || 'General',
+            description: record.description || 'No description available',
+            durationHours: 0,
+            requiredFor: []
+          };
+        }
+        
+        return {
+          id: record.id?.toString() || '',
+          employeeId: record.employeeId?.toString() || employeeId,
+          trainingId: trainingId,
+          completionDate: record.completed || '',
+          instructor: record.instructor || '',
+          notes: record.notes || '',
+          // Include training details
+          trainingDetails: trainingDetails,
+          // Pass through original fields in case they're needed
+          type: record.type?.toString(),
+          completed: record.completed
+        };
+      });
     } catch (error) {
       console.error("Error getting user trainings from BambooHR:", error);
       return [];
