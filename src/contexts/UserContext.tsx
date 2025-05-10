@@ -136,7 +136,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchUserData();
   }, [instance, activeAccount, adminSettings, getEmployeeIdByEmail]);
 
-  // Interactive login - use redirect for better SPA compatibility
+  // Interactive login - use popup for better iframe compatibility
   const login = async () => {
     setIsLoading(true);
     try {
@@ -153,17 +153,32 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(user);
           return;
         } catch (error) {
-          // Silent acquisition failed, fallback to redirect
-          console.log("Silent acquisition failed, falling back to redirect login");
-          instance.loginRedirect(loginRequest);
-          return;
+          // Silent acquisition failed, fallback to popup
+          console.log("Silent acquisition failed, falling back to popup login");
+        }
+      }
+      
+      // Check if we're in an iframe - use popup for iframe environments
+      const isInIframe = window !== window.parent;
+      
+      if (isInIframe) {
+        // We're in an iframe, use popup auth
+        const response = await instance.loginPopup(loginRequest);
+        if (response) {
+          const user = await mapAccountToUser(response.account, adminSettings, getEmployeeIdByEmail);
+          setCurrentUser(user);
         }
       } else {
-        // No accounts, do redirect login
+        // Not in an iframe, redirect is fine
         instance.loginRedirect(loginRequest);
       }
     } catch (error) {
       console.error("Login failed:", error);
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setIsLoading(false);
@@ -172,9 +187,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout the user
   const logout = () => {
-    instance.logoutRedirect({
-      postLogoutRedirectUri: window.location.origin,
-    });
+    // Check if we're in an iframe - use popup for iframe environments
+    const isInIframe = window !== window.parent;
+    
+    if (isInIframe) {
+      instance.logoutPopup({
+        postLogoutRedirectUri: window.location.origin,
+      });
+    } else {
+      instance.logoutRedirect({
+        postLogoutRedirectUri: window.location.origin,
+      });
+    }
     setCurrentUser(null);
   };
 

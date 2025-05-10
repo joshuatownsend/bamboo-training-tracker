@@ -5,10 +5,14 @@ import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MicrosoftLogo } from "@/components/icons/MicrosoftLogo";
+import { Wrench } from "lucide-react";
 
 export default function Login() {
   const { login, currentUser, isLoading } = useUser();
   const navigate = useNavigate();
+  
+  // Check if we're in development mode
+  const isDevelopment = import.meta.env.DEV;
 
   // Redirect immediately if authenticated
   useEffect(() => {
@@ -24,6 +28,11 @@ export default function Login() {
     } catch (error) {
       console.error("Login failed:", error);
     }
+  };
+  
+  const navigateWithoutAuth = () => {
+    // We don't need to do anything here - the AuthGuard will handle the bypass
+    navigate('/');
   };
 
   if (isLoading) {
@@ -62,6 +71,17 @@ export default function Login() {
             <MicrosoftLogo className="mr-2 h-5 w-5" />
             Sign in with Microsoft
           </Button>
+          
+          {isDevelopment && (
+            <Button
+              className="w-full mt-4 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300"
+              variant="outline"
+              onClick={navigateWithoutAuth}
+            >
+              <Wrench className="mr-2 h-4 w-4" />
+              Development Mode (Skip Auth)
+            </Button>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col items-center">
           <p className="text-center text-sm text-muted-foreground">
