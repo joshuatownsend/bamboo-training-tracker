@@ -76,7 +76,7 @@ export const useBambooConnectionTest = () => {
     }
   }, []);
   
-  const runTest = async () => {
+  const runTest = async (): Promise<void> => {
     setIsLoading(true);
     setStatus('idle');
     setError(null);

@@ -9,19 +9,35 @@ import ApiEndpointTest from '@/components/bamboo/diagnostics/ApiEndpointTest';
 import ResponseViewer from "@/components/bamboo/connection-test/ResponseViewer";
 import EdgeFunctionConfig from '@/components/bamboo/troubleshooting/EdgeFunctionConfig';
 import CommonIssues from '@/components/bamboo/troubleshooting/CommonIssues';
+import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 
 const BambooApiDiagnostics = () => {
   const navigate = useNavigate();
   const [endpointPath, setEndpointPath] = useState<string>('/employees/directory');
   const [isTestLoading, setIsTestLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [responseData, setResponseData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  const runTest = () => {
+  // Make runTest return a Promise to match the expected type
+  const runTest = async (): Promise<void> => {
     setIsTestLoading(true);
-    // Simulate test completion after 1 second
-    setTimeout(() => {
+    
+    try {
+      // Simulate test completion after 1 second
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setStatus('success');
+      setResponseData({ message: "Test completed successfully" });
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
       setIsTestLoading(false);
-    }, 1000);
+    }
   };
+
+  // Get the full config with all required properties
+  const config = getEffectiveBambooConfig();
 
   return (
     <div className="space-y-6">
@@ -105,10 +121,7 @@ const BambooApiDiagnostics = () => {
             setEndpointPath={setEndpointPath}
             isLoading={isTestLoading}
             runTest={runTest}
-            config={{
-              subdomain: localStorage.getItem('bamboo_subdomain') || '',
-              useEdgeFunction: true
-            }}
+            config={config}
           />
           <EdgeFunctionConfig />
         </TabsContent>

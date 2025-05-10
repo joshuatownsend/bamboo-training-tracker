@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
+// Update the props interface to match how we're using it
 interface ResponseViewerProps {
   status: 'idle' | 'success' | 'error';
   error: string | null;
