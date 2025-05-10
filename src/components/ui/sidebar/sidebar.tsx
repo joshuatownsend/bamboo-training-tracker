@@ -110,4 +110,3 @@ Sidebar.displayName = "Sidebar"
 
 // Import the constants
 import { SIDEBAR_WIDTH_MOBILE } from "./context"
-import { cn } from "@/lib/utils"
