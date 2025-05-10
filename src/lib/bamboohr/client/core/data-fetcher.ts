@@ -50,8 +50,8 @@ export class DataFetcher extends ConnectionTester {
     try {
       console.log("Fetching trainings from BambooHR");
       
-      // Try to get trainings from training catalog
-      const trainings = await this.fetchFromBamboo('/training/catalog');
+      // Update to use the correct endpoint: /training/type instead of /training/catalog
+      const trainings = await this.fetchFromBamboo('/training/type');
       
       if (!trainings || !Array.isArray(trainings)) {
         console.warn("Invalid trainings response:", trainings);

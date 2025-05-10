@@ -37,9 +37,22 @@ const Courses = () => {
         useEdgeFunction: true,
         edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
       });
-      const result = await bamboo.fetchAllTrainings();
-      console.log("Fetched training data:", result);
-      return result;
+      
+      try {
+        // Use the correct endpoint - /training/type
+        console.log("Making API call to /training/type endpoint");
+        const result = await bamboo.fetchAllTrainings();
+        console.log("Fetched training data:", result ? `${result.length} items` : "No data");
+        return result;
+      } catch (err) {
+        console.error("Error fetching training data:", err);
+        toast({
+          title: "Error fetching training data",
+          description: err instanceof Error ? err.message : "Unknown error",
+          variant: "destructive"
+        });
+        throw err;
+      }
     },
     enabled: isConfigured
   });
@@ -54,7 +67,7 @@ const Courses = () => {
   // Filter trainings based on search and category
   const filteredTrainings = trainings.filter(training => {
     const matchesSearch = searchQuery === "" || 
-      training.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      training.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (training.description && training.description.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = categoryFilter === "all" || training.category === categoryFilter;
     
@@ -98,7 +111,7 @@ const Courses = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            Failed to fetch training data: {error?.message || "Unknown error"}
+            Failed to fetch training data: {error instanceof Error ? error.message : "Unknown error"}
           </AlertDescription>
         </Alert>
       )}

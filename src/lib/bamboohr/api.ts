@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client/base';
 import { BambooHRApiClient } from './client/api-client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
@@ -56,7 +55,19 @@ class BambooHRApi {
   
   // Added fetchAllTrainings method to fix the error in Courses.tsx
   async fetchAllTrainings(): Promise<Training[]> {
-    return this.service.getTrainings();
+    console.log("Fetching all trainings with explicit /training/type endpoint");
+    if (this.client.useEdgeFunction) {
+      console.log(`Using edge function URL: ${this.client.edgeFunctionUrl}`);
+    }
+    
+    try {
+      const trainings = await this.service.getTrainings();
+      console.log(`Fetched ${trainings.length} trainings successfully`);
+      return trainings;
+    } catch (error) {
+      console.error("Error in fetchAllTrainings:", error);
+      throw error;
+    }
   }
 
   async fetchAllData(isConnectionTest = false): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {

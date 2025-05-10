@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './base';
 import { BambooApiOptions } from './types';
 
@@ -201,6 +200,41 @@ export class BambooHRApiClient extends BambooHRClient {
       return allCompletions;
     } catch (error) {
       console.error("Error fetching training completions:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all trainings with proper error handling
+   * Uses the correct /training/type endpoint
+   */
+  async getTrainings(): Promise<any[]> {
+    try {
+      console.log("BambooHRApiClient: Fetching trainings using /training/type endpoint");
+      const trainings = await this.fetchFromBamboo('/training/type');
+      
+      if (!trainings) {
+        console.warn("No trainings returned from BambooHR API");
+        return [];
+      }
+      
+      if (!Array.isArray(trainings)) {
+        console.warn("Trainings response is not an array:", typeof trainings);
+        // If it's an object but not an array, try to extract values
+        if (typeof trainings === 'object') {
+          const extracted = Object.values(trainings);
+          if (Array.isArray(extracted) && extracted.length > 0) {
+            console.log(`Extracted ${extracted.length} trainings from object response`);
+            return extracted;
+          }
+        }
+        return [];
+      }
+      
+      console.log(`Successfully fetched ${trainings.length} trainings from BambooHR`);
+      return trainings;
+    } catch (error) {
+      console.error("Error in getTrainings:", error);
       return [];
     }
   }
