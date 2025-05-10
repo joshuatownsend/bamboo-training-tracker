@@ -21,7 +21,8 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
   const trainingsByCategory: Record<string, UserTraining[]> = {};
   
   trainings.forEach(training => {
-    const category = training.category || 'Uncategorized';
+    // Use trainingDetails.category if available, otherwise use a default category
+    const category = training.trainingDetails?.category || 'Uncategorized';
     if (!trainingsByCategory[category]) {
       trainingsByCategory[category] = [];
     }
@@ -56,6 +57,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                   key={`${training.id}-${training.completionDate}`}
                   training={training}
                   trainingTypeNames={trainingTypeNames}
+                  category={category}
                 />
               ))}
             </React.Fragment>

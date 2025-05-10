@@ -7,13 +7,24 @@ import { ExternalLink } from "lucide-react";
 import { UserTraining } from "@/lib/types";
 import { safeTextValue, formatDate, openInBambooHR } from '@/lib/training-utils';
 
-interface TrainingTableRowProps {
+export interface TrainingTableRowProps {
   training: UserTraining;
-  getTrainingName: (training: UserTraining) => string;
-  category: string;
+  trainingTypeNames: Record<string, string>;
+  category?: string;
 }
 
-export function TrainingTableRow({ training, getTrainingName, category }: TrainingTableRowProps) {
+export function TrainingTableRow({ training, trainingTypeNames, category }: TrainingTableRowProps) {
+  // Helper function to get training name from type ID
+  const getTrainingName = (training: UserTraining): string => {
+    if (training.trainingDetails?.title) {
+      return safeTextValue(training.trainingDetails.title);
+    }
+    
+    // Use the training type ID to look up the name in trainingTypeNames
+    const typeId = training.trainingId || training.type?.toString() || '';
+    return trainingTypeNames[typeId] || `Training ${typeId}`;
+  };
+
   return (
     <TableRow key={safeTextValue(training.id)}>
       <TableCell>
@@ -27,22 +38,13 @@ export function TrainingTableRow({ training, getTrainingName, category }: Traini
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant="outline" className="bg-muted/30">
-          {safeTextValue(training.trainingDetails?.category) || safeTextValue(category)}
-        </Badge>
-      </TableCell>
-      <TableCell>
         {formatDate(safeTextValue(training.completionDate))}
       </TableCell>
       <TableCell>
-        <div className="text-sm">
-          {safeTextValue(training.notes) || "No notes"}
-          {training.instructor && (
-            <div className="text-xs text-muted-foreground mt-1">
-              Instructor: {safeTextValue(training.instructor)}
-            </div>
-          )}
-        </div>
+        {training.trainingDetails?.expirationDate ? 
+          formatDate(safeTextValue(training.trainingDetails.expirationDate)) : 
+          "No expiration"
+        }
       </TableCell>
       <TableCell className="text-right">
         <Button 
