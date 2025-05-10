@@ -32,6 +32,22 @@ export const useBambooQueries = () => {
           
           if (result && result.employees && result.employees.length > 0) {
             console.log(`Successfully loaded ${result.employees.length} employees from BambooHR`);
+            console.log(`Successfully loaded ${result.trainings?.length || 0} trainings from BambooHR`);
+            console.log(`Successfully loaded ${result.completions?.length || 0} training completions from BambooHR`);
+            
+            // Log some sample data for debugging
+            if (result.completions && result.completions.length > 0) {
+              const futureCompletions = result.completions.filter(c => {
+                if (!c.completionDate) return false;
+                const completionDate = new Date(c.completionDate);
+                return completionDate > new Date();
+              });
+              
+              console.log(`Found ${futureCompletions.length} completions with future dates`);
+              if (futureCompletions.length > 0) {
+                console.log("Sample future completion:", futureCompletions[0]);
+              }
+            }
             
             // Only show toast for successful data loads, not empty results
             toast({

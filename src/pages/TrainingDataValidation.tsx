@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,13 +25,23 @@ interface ValidationIssue {
 const TrainingDataValidation = () => {
   const { useAllData } = useBambooHR();
   const { data, isLoading, error } = useAllData();
+  const [validationStats, setValidationStats] = useState({
+    totalCompletions: 0,
+    futureCompletions: 0,
+    pastCompletions: 0
+  });
 
   // Function to identify validation issues
   const getValidationIssues = (): ValidationIssue[] => {
-    if (!data || !data.employees || !data.completions || !data.trainings) return [];
+    if (!data || !data.employees || !data.completions || !data.trainings) {
+      console.log("Missing required data for validation");
+      return [];
+    }
 
     const now = new Date();
     const issues: ValidationIssue[] = [];
+    
+    console.log(`Processing ${data.completions.length} completion records for validation`);
     
     // Build a map for quick lookups
     const employeeMap = new Map<string, Employee>();
@@ -44,6 +54,9 @@ const TrainingDataValidation = () => {
       trainingMap.set(training.id, training.title);
     });
     
+    let futureCount = 0;
+    let pastCount = 0;
+    
     // Check completion dates
     data.completions.forEach(completion => {
       if (!completion.completionDate) return;
@@ -53,7 +66,10 @@ const TrainingDataValidation = () => {
       const trainingName = trainingMap.get(completion.trainingId) || "Unknown Training";
       
       // Skip if we can't find the employee
-      if (!employee) return;
+      if (!employee) {
+        console.log(`Skipping completion record - employee not found: ${completion.employeeId}`);
+        return;
+      }
       
       // Check if date is before minimum valid date
       if (completionDate < MIN_VALID_DATE) {
@@ -65,10 +81,12 @@ const TrainingDataValidation = () => {
           completionDate: completion.completionDate,
           issueType: 'past'
         });
+        pastCount++;
       }
       
       // Check if date is in the future
       else if (completionDate > now) {
+        console.log(`Found future date: ${completion.completionDate} for employee ${employee.name}, training ${trainingName}`);
         issues.push({
           employeeId: completion.employeeId,
           employeeName: employee.name,
@@ -77,7 +95,16 @@ const TrainingDataValidation = () => {
           completionDate: completion.completionDate,
           issueType: 'future'
         });
+        futureCount++;
       }
+    });
+    
+    console.log(`Validation summary: ${issues.length} issues found (${futureCount} future dates, ${pastCount} past dates)`);
+    
+    setValidationStats({
+      totalCompletions: data.completions.length,
+      futureCompletions: futureCount,
+      pastCompletions: pastCount
     });
     
     return issues;
@@ -90,6 +117,17 @@ const TrainingDataValidation = () => {
   
   // Get validation issues
   const validationIssues = getValidationIssues();
+  
+  // Effects to re-run validation when data changes
+  useEffect(() => {
+    if (data) {
+      console.log("Data loaded for validation:", {
+        employees: data.employees?.length || 0,
+        trainings: data.trainings?.length || 0,
+        completions: data.completions?.length || 0
+      });
+    }
+  }, [data]);
   
   if (isLoading) {
     return (
@@ -119,6 +157,21 @@ const TrainingDataValidation = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Training Data Validation</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-muted rounded-lg p-4">
+          <p className="text-muted-foreground text-sm">Total Completions</p>
+          <p className="text-2xl font-bold">{validationStats.totalCompletions}</p>
+        </div>
+        <div className="bg-muted rounded-lg p-4">
+          <p className="text-muted-foreground text-sm">Future Dates</p>
+          <p className="text-2xl font-bold">{validationStats.futureCompletions}</p>
+        </div>
+        <div className="bg-muted rounded-lg p-4">
+          <p className="text-muted-foreground text-sm">Pre-1990 Dates</p>
+          <p className="text-2xl font-bold">{validationStats.pastCompletions}</p>
+        </div>
+      </div>
       
       <Card>
         <CardHeader>
