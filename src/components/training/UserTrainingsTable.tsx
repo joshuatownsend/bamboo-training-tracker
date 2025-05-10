@@ -1,4 +1,4 @@
-
+import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserTraining } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
