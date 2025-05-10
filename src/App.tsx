@@ -17,6 +17,10 @@ import BambooTroubleshooting from './pages/BambooTroubleshooting';
 import BambooApiDiagnostics from './pages/BambooApiDiagnostics';
 import Layout from './components/layout/Layout';
 import MyQualifications from './pages/MyQualifications';
+import AdminReports from './pages/AdminReports';
+import PositionManagement from './pages/PositionManagement';
+import TrainingRequirementManagement from './pages/TrainingRequirementManagement';
+import TrainingImpact from './pages/TrainingImpact';
 
 function App() {
   return (
@@ -36,6 +40,12 @@ function App() {
             <Route path="/bamboo-test" element={<AuthGuard><BambooTest /></AuthGuard>} />
             <Route path="/bamboo-troubleshooting" element={<AuthGuard><BambooTroubleshooting /></AuthGuard>} />
             <Route path="/bamboo-diagnostics" element={<AuthGuard><BambooApiDiagnostics /></AuthGuard>} />
+            
+            {/* Adding the missing admin routes */}
+            <Route path="/admin-reports" element={<AuthGuard><AdminReports /></AuthGuard>} />
+            <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
+            <Route path="/training-requirement-management" element={<AuthGuard><TrainingRequirementManagement /></AuthGuard>} />
+            <Route path="/training-impact" element={<AuthGuard><TrainingImpact /></AuthGuard>} />
           </Route>
         </Routes>
         <Toaster />
