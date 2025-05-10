@@ -152,7 +152,7 @@ const TrainingDataValidation = () => {
                       {format(new Date(issue.completionDate), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={issue.issueType === 'future' ? 'warning' : 'destructive'}>
+                      <Badge variant={issue.issueType === 'future' ? 'secondary' : 'destructive'}>
                         {issue.issueType === 'future' 
                           ? 'Date is in the future' 
                           : 'Date is before 1990'}
