@@ -1,20 +1,16 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Database, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 interface PageHeaderProps {
   isAdmin: boolean;
-  isSyncingTrainingTypes: boolean;
-  handleSyncTrainingTypes: () => Promise<void>;
   isRefetching: boolean;
   handleRefresh: () => Promise<void>;
 }
 
 export function PageHeader({
   isAdmin,
-  isSyncingTrainingTypes,
-  handleSyncTrainingTypes,
   isRefetching,
   handleRefresh
 }: PageHeaderProps) {
@@ -27,17 +23,6 @@ export function PageHeader({
         </p>
       </div>
       <div className="flex gap-2">
-        {isAdmin && (
-          <Button 
-            onClick={handleSyncTrainingTypes}
-            disabled={isSyncingTrainingTypes}
-            variant="outline"
-            className="gap-2"
-          >
-            <Database className={`h-4 w-4 ${isSyncingTrainingTypes ? 'animate-pulse' : ''}`} />
-            Sync Training Types
-          </Button>
-        )}
         <Button 
           onClick={handleRefresh}
           disabled={isRefetching}

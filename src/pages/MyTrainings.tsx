@@ -7,7 +7,6 @@ import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingState } from "@/components/training/LoadingState";
 import { ErrorState } from "@/components/training/ErrorState";
-import { supabase } from "@/integrations/supabase/client";
 import { useTrainingFilters } from "@/hooks/useTrainingFilters";
 import { StatCards } from "@/components/training/stats/StatCards";
 import { SearchAndFilter } from "@/components/training/filters/SearchAndFilter";
@@ -18,7 +17,6 @@ import { SortableHeader } from "@/components/training/headers/SortableHeader";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
-  const [isSyncingTrainingTypes, setIsSyncingTrainingTypes] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -89,38 +87,6 @@ export default function MyTrainings() {
       });
     }
   };
-  
-  // Sync training types
-  const handleSyncTrainingTypes = async () => {
-    if (!isAdmin) return;
-    
-    setIsSyncingTrainingTypes(true);
-    
-    try {
-      // Call the edge function directly
-      const { data: funcResult, error: funcError } = await supabase.functions.invoke('sync-bamboo-trainings');
-      
-      if (funcError) throw new Error(funcError.message);
-      
-      console.log("Edge function result:", funcResult);
-      toast({
-        title: "Training Types Synced",
-        description: "Successfully synced training types from BambooHR.",
-      });
-      
-      // Refetch trainings to use the updated names
-      await refetch();
-    } catch (error) {
-      console.error("Error syncing training types:", error);
-      toast({
-        title: "Error Syncing Training Types",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSyncingTrainingTypes(false);
-    }
-  };
 
   // Check if employee ID is missing
   const isMissingEmployeeId = !employeeId || employeeId === currentUser?.id;
@@ -132,8 +98,6 @@ export default function MyTrainings() {
     <div className="space-y-6">
       <PageHeader 
         isAdmin={isAdmin}
-        isSyncingTrainingTypes={isSyncingTrainingTypes}
-        handleSyncTrainingTypes={handleSyncTrainingTypes}
         isRefetching={isRefetching}
         handleRefresh={handleRefresh}
       />

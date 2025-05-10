@@ -3,16 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, ExternalLink, RefreshCw, Wrench } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, ExternalLink, RefreshCw, Wrench } from 'lucide-react';
 import { isBambooConfigured, getEffectiveBambooConfig, setUseEdgeFunction } from '@/lib/bamboohr/config';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import useBambooHR from '@/hooks/useBambooHR';
 import { Link } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 
 const BambooHRConfig: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [isUsingEdgeFunction, setIsUsingEdgeFunction] = useState<boolean>(true);
   const [isTestingConnection, setIsTestingConnection] = useState<boolean>(false);
+  const [isSyncingTrainingTypes, setIsSyncingTrainingTypes] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'error'>('untested');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
@@ -79,6 +81,33 @@ const BambooHRConfig: React.FC = () => {
       });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  // Sync training types
+  const handleSyncTrainingTypes = async () => {
+    setIsSyncingTrainingTypes(true);
+    
+    try {
+      // Call the edge function directly
+      const { data: funcResult, error: funcError } = await supabase.functions.invoke('sync-bamboo-trainings');
+      
+      if (funcError) throw new Error(funcError.message);
+      
+      console.log("Edge function result:", funcResult);
+      toast({
+        title: "Training Types Synced",
+        description: "Successfully synced training types from BambooHR.",
+      });
+    } catch (error) {
+      console.error("Error syncing training types:", error);
+      toast({
+        title: "Error Syncing Training Types",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingTrainingTypes(false);
     }
   };
 
@@ -168,6 +197,28 @@ const BambooHRConfig: React.FC = () => {
                 <p className="mt-1">Your BambooHR credentials are valid and working.</p>
               </div>
             )}
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Training Types Management</h3>
+          <Button 
+            onClick={handleSyncTrainingTypes}
+            disabled={isSyncingTrainingTypes}
+            variant="outline"
+            className="gap-2"
+          >
+            <Database className={`h-4 w-4 ${isSyncingTrainingTypes ? 'animate-pulse' : ''}`} />
+            Sync Training Types
+          </Button>
+        </div>
+        
+        <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+          <AlertDescription>
+            <p>
+              Syncing training types will retrieve the latest training types from BambooHR and update the local database.
+              This helps ensure that training names and categories are up-to-date.
+            </p>
           </AlertDescription>
         </Alert>
 
