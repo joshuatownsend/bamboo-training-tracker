@@ -24,7 +24,7 @@ export const useBambooQueries = () => {
         
         try {
           // Try to prefetch data in background if not available in cache
-          // Fix: Remove the argument since prefetchBambooHRData expects 0 arguments
+          // No argument needed for prefetchBambooHRData
           prefetchBambooHRData().catch(console.error);
           
           const service = getBambooService();
@@ -127,7 +127,6 @@ export const useBambooQueries = () => {
         console.log(`Fetching user trainings for employeeId: ${employeeId}`);
         
         const service = getBambooService();
-        // Fix: Remove the second argument as getUserTrainings expects just the employeeId
         return service.getUserTrainings(employeeId);
       },
       enabled: isConfigured && !!employeeId,
