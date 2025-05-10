@@ -44,11 +44,76 @@ serve(async (req) => {
       throw new Error(`BambooHR API error: ${response.status} ${response.statusText}`);
     }
 
-    const trainings = await response.json();
-    console.log(`Retrieved ${trainings.length} training types from BambooHR`);
+    const trainingsData = await response.json();
+    
+    // Check if trainingsData is an array, if not, handle appropriately
+    if (!Array.isArray(trainingsData)) {
+      console.log(`Retrieved data is not an array. Data type: ${typeof trainingsData}`);
+      console.log("Data structure:", JSON.stringify(trainingsData).substring(0, 200) + "...");
+      
+      // If it's an object with a data field that's an array, use that
+      const trainings = Array.isArray(trainingsData.data) 
+        ? trainingsData.data 
+        : Array.isArray(trainingsData) 
+          ? trainingsData 
+          : [];
+      
+      console.log(`Extracted ${trainings.length} training types from response`);
+    
+      // Process and upsert training types to Supabase
+      if (trainings.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "No training types found or could not parse response",
+            raw_data_type: typeof trainingsData
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
+      
+      // Process and upsert available training types
+      const processedTrainings = trainings.map((training) => ({
+        id: String(training.id),
+        name: training.name || `Training ${training.id}`,
+        category: training.category || null,
+        description: training.description || null,
+      }));
+
+      console.log("Upserting training types to Supabase...");
+      
+      // Use upsert to either update existing records or insert new ones
+      const { data, error } = await supabase
+        .from("bamboo_training_types")
+        .upsert(processedTrainings)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      console.log(`Successfully synced ${processedTrainings.length} training types to Supabase`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Successfully synced ${processedTrainings.length} training types`,
+          data,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+    
+    console.log(`Retrieved ${trainingsData.length} training types from BambooHR`);
 
     // Process and upsert training types to Supabase
-    const processedTrainings = trainings.map((training: any) => ({
+    const processedTrainings = trainingsData.map((training) => ({
       id: String(training.id),
       name: training.name || `Training ${training.id}`,
       category: training.category || null,

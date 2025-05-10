@@ -109,29 +109,16 @@ export default function MyTrainings() {
     setIsSyncingTrainingTypes(true);
     
     try {
-      // First try using the database function
-      const { data: dbResult, error: dbError } = await supabase.rpc('sync_bamboohr_trainings');
+      // Call the edge function directly
+      const { data: funcResult, error: funcError } = await supabase.functions.invoke('sync-bamboo-trainings');
       
-      if (dbError) {
-        console.error("Error using database function:", dbError);
-        
-        // Fallback to calling the edge function directly
-        const { data: funcResult, error: funcError } = await supabase.functions.invoke('sync-bamboo-trainings');
-        
-        if (funcError) throw new Error(funcError.message);
-        
-        console.log("Edge function result:", funcResult);
-        toast({
-          title: "Training Types Synced",
-          description: "Successfully synced training types from BambooHR.",
-        });
-      } else {
-        console.log("Database function result:", dbResult);
-        toast({
-          title: "Training Types Sync Initiated",
-          description: "Training types sync has been initiated.",
-        });
-      }
+      if (funcError) throw new Error(funcError.message);
+      
+      console.log("Edge function result:", funcResult);
+      toast({
+        title: "Training Types Synced",
+        description: "Successfully synced training types from BambooHR.",
+      });
       
       // Refetch trainings to use the updated names
       await refetch();
@@ -220,9 +207,9 @@ export default function MyTrainings() {
         description.includes(searchQuery.toLowerCase()) ||
         notes.includes(searchQuery.toLowerCase());
       
-      // Fix the type issue here - explicitly compare with string value
-      const matchesCategory = categoryFilter === "all" || 
-        safeString(training.trainingDetails?.category) === categoryFilter;
+      // Fix the type issue by ensuring both sides are strings
+      const trainingCategory = safeString(training.trainingDetails?.category);
+      const matchesCategory = categoryFilter === "all" || trainingCategory === categoryFilter;
       
       return matchesSearch && matchesCategory;
     });
