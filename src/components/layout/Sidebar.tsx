@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Settings,
@@ -111,12 +110,6 @@ const Sidebar = () => {
           name: "Position Management",
           href: "/position-management",
           icon: Users,
-          admin: true,
-        },
-        {
-          name: "Training Requirements",
-          href: "/training-requirement-management",
-          icon: Book,
           admin: true,
         },
         {

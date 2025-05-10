@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -17,20 +17,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { positions, trainings } from "@/lib/data";
-import { Position } from "@/lib/types";
+import { positions } from "@/lib/data";
+import { Position, Training } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Plus, Save, Trash } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import useBambooHR from "@/hooks/useBambooHR";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PositionManagement() {
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -40,6 +38,38 @@ export default function PositionManagement() {
     county: string[];
     avfrd: string[];
   }>({ county: [], avfrd: [] });
+
+  const { isConfigured } = useBambooHR();
+  const { toast } = useToast();
+
+  // Fetch trainings from BambooHR
+  const { data: trainings = [], isLoading, isError, error } = useQuery({
+    queryKey: ['bamboohr', 'trainings'],
+    queryFn: async () => {
+      console.log("Fetching training data from BambooHR for Position Management...");
+      const bamboo = new (await import('@/lib/bamboohr/api')).default({
+        subdomain: 'avfrd',
+        apiKey: '',
+        useEdgeFunction: true,
+        edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
+      });
+      
+      try {
+        const result = await bamboo.fetchAllTrainings();
+        console.log("Fetched training data for Position Management:", result ? `${result.length} items` : "No data");
+        return result || [];
+      } catch (err) {
+        console.error("Error fetching training data:", err);
+        toast({
+          title: "Error fetching training data",
+          description: err instanceof Error ? err.message : "Unknown error",
+          variant: "destructive"
+        });
+        throw err;
+      }
+    },
+    enabled: isConfigured
+  });
 
   // Handle creating or editing a position
   const handleSavePosition = () => {
@@ -101,7 +131,10 @@ export default function PositionManagement() {
 
   // Get training names from IDs
   const getTrainingNames = (ids: string[]) => {
-    return ids.map((id) => trainings.find((t) => t.id === id)?.title || "Unknown");
+    return ids.map((id) => {
+      const training = trainings.find((t) => t.id === id);
+      return training?.title || "Unknown";
+    });
   };
 
   // Toggle a training in the selected list
@@ -130,6 +163,16 @@ export default function PositionManagement() {
         </Button>
       </div>
 
+      {isError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading training data</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error ? error.message : "Could not load training data from BambooHR"}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Position Requirements</CardTitle>
@@ -138,67 +181,75 @@ export default function PositionManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[250px]">Position</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>County Requirements</TableHead>
-                <TableHead>AVFRD Requirements</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {positionsList.map((position) => (
-                <TableRow key={position.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{position.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {position.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{position.department}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {getTrainingNames(position.countyRequirements).map((name, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {getTrainingNames(position.avfrdRequirements).map((name, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEditPosition(position)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => handleDeletePosition(position.id)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[250px]">Position</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>County Requirements</TableHead>
+                  <TableHead>AVFRD Requirements</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {positionsList.map((position) => (
+                  <TableRow key={position.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{position.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {position.description}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{position.department}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {getTrainingNames(position.countyRequirements).map((name, idx) => (
+                          <Badge key={idx} variant="outline">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {getTrainingNames(position.avfrdRequirements).map((name, idx) => (
+                          <Badge key={idx} variant="outline">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEditPosition(position)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => handleDeletePosition(position.id)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -270,50 +321,74 @@ export default function PositionManagement() {
               <div>
                 <h4 className="text-sm font-medium mb-2">County Requirements</h4>
                 <div className="border rounded-md p-2 h-60 overflow-y-auto">
-                  {trainings.map((training) => (
-                    <div
-                      key={training.id}
-                      className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`county-${training.id}`}
-                        checked={selectedTrainings.county.includes(training.id)}
-                        onChange={() => toggleTraining(training.id, "county")}
-                      />
-                      <label
-                        htmlFor={`county-${training.id}`}
-                        className="flex-1 text-sm cursor-pointer"
-                      >
-                        {training.title}
-                      </label>
+                  {isLoading ? (
+                    <div className="space-y-2 p-2">
+                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-6 w-full" />
                     </div>
-                  ))}
+                  ) : trainings.length === 0 ? (
+                    <div className="text-center p-4 text-muted-foreground">
+                      No trainings available from BambooHR
+                    </div>
+                  ) : (
+                    trainings.map((training) => (
+                      <div
+                        key={training.id}
+                        className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`county-${training.id}`}
+                          checked={selectedTrainings.county.includes(training.id)}
+                          onChange={() => toggleTraining(training.id, "county")}
+                        />
+                        <label
+                          htmlFor={`county-${training.id}`}
+                          className="flex-1 text-sm cursor-pointer"
+                        >
+                          {training.title}
+                        </label>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
               
               <div>
                 <h4 className="text-sm font-medium mb-2">AVFRD Requirements</h4>
                 <div className="border rounded-md p-2 h-60 overflow-y-auto">
-                  {trainings.map((training) => (
-                    <div
-                      key={training.id}
-                      className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`avfrd-${training.id}`}
-                        checked={selectedTrainings.avfrd.includes(training.id)}
-                        onChange={() => toggleTraining(training.id, "avfrd")}
-                      />
-                      <label
-                        htmlFor={`avfrd-${training.id}`}
-                        className="flex-1 text-sm cursor-pointer"
-                      >
-                        {training.title}
-                      </label>
+                  {isLoading ? (
+                    <div className="space-y-2 p-2">
+                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-6 w-full" />
+                      <Skeleton className="h-6 w-full" />
                     </div>
-                  ))}
+                  ) : trainings.length === 0 ? (
+                    <div className="text-center p-4 text-muted-foreground">
+                      No trainings available from BambooHR
+                    </div>
+                  ) : (
+                    trainings.map((training) => (
+                      <div
+                        key={training.id}
+                        className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`avfrd-${training.id}`}
+                          checked={selectedTrainings.avfrd.includes(training.id)}
+                          onChange={() => toggleTraining(training.id, "avfrd")}
+                        />
+                        <label
+                          htmlFor={`avfrd-${training.id}`}
+                          className="flex-1 text-sm cursor-pointer"
+                        >
+                          {training.title}
+                        </label>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

@@ -19,7 +19,6 @@ import Layout from './components/layout/Layout';
 import MyQualifications from './pages/MyQualifications';
 import AdminReports from './pages/AdminReports';
 import PositionManagement from './pages/PositionManagement';
-import TrainingRequirementManagement from './pages/TrainingRequirementManagement';
 import TrainingImpact from './pages/TrainingImpact';
 
 function App() {
@@ -47,7 +46,6 @@ function App() {
             
             {/* Admin-only section */}
             <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
-            <Route path="/training-requirement-management" element={<AuthGuard><TrainingRequirementManagement /></AuthGuard>} />
           </Route>
         </Routes>
         <Toaster />
