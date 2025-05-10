@@ -88,6 +88,32 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
       
       logWithTimestamp(`BambooHR API error: HTTP ${response.status}, Body: ${typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody)}`);
       
+      // Special handling for 404 errors from tables endpoints
+      if (response.status === 404 && (path.includes('/tables/trainingCompleted') || path.includes('/tables/certifications'))) {
+        // Try fallback to 'training/record/employee' endpoint for this employee
+        const employeeIdMatch = path.match(/\/employees\/(\d+)\/tables\//);
+        if (employeeIdMatch && employeeIdMatch[1]) {
+          const employeeId = employeeIdMatch[1];
+          logWithTimestamp(`404 for tables endpoint, suggesting fallback to training/record/employee/${employeeId}`);
+          
+          return new Response(
+            JSON.stringify({
+              error: `BambooHR API Error (HTTP ${response.status})`,
+              message: errorBody,
+              fallbackEndpoint: `/training/record/employee/${employeeId}`,
+              timestamp: new Date().toISOString()
+            }),
+            {
+              status: response.status,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+      }
+      
       return new Response(
         JSON.stringify({
           error: `BambooHR API Error (HTTP ${response.status})`,

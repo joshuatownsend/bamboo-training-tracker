@@ -1,3 +1,4 @@
+
 import { BambooHRClient } from './base';
 import { BambooApiOptions } from './types';
 
@@ -50,6 +51,54 @@ export class BambooHRApiClient extends BambooHRClient {
         console.warn("Failed to get training completions:", error);
         partialData = true;
         errorInfo = error instanceof Error ? error.message : 'Unknown error';
+        
+        // Second attempt: Try to get completions for individual employees
+        if (employees.length > 0) {
+          try {
+            console.log("Falling back to fetching individual employee training records...");
+            
+            // Only get for a small subset in connection test mode
+            const employeesToProcess = isConnectionTest ? employees.slice(0, 5) : employees;
+            const batchSize = 5;
+            let batchedCompletions: any[] = [];
+            
+            // Process employees in small batches to avoid overwhelming the API
+            for (let i = 0; i < employeesToProcess.length; i += batchSize) {
+              const batch = employeesToProcess.slice(i, i + batchSize);
+              console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(employeesToProcess.length/batchSize)}`);
+              
+              const batchPromises = batch.map(employee => {
+                return this.getUserTrainings(employee.id.toString(), 3000)
+                  .then(trainings => {
+                    // Map user trainings to completions format
+                    return trainings.map(training => ({
+                      id: training.id || `${employee.id}-${training.type}`,
+                      employeeId: employee.id.toString(),
+                      trainingId: training.type?.toString() || '',
+                      completionDate: training.completed || '',
+                      status: 'completed',
+                    }));
+                  })
+                  .catch(err => {
+                    console.warn(`Failed to get trainings for employee ${employee.id}:`, err);
+                    return [];
+                  });
+              });
+              
+              const batchResults = await Promise.allSettled(batchPromises);
+              batchResults.forEach(result => {
+                if (result.status === 'fulfilled') {
+                  batchedCompletions = [...batchedCompletions, ...result.value];
+                }
+              });
+            }
+            
+            completions = batchedCompletions;
+            console.log(`Fetched ${completions.length} completions via individual employee records`);
+          } catch (fallbackError) {
+            console.error("Fallback approach also failed:", fallbackError);
+          }
+        }
       }
       
       console.log(`Fetched ${completions.length} completions`);

@@ -8,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Search, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
+import { Search, RefreshCw, AlertTriangle, Wrench, Stethoscope } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
 import { useState, useEffect } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -102,6 +102,9 @@ const Employees = () => {
   // Check if we're actually using mock data despite having BambooHR configured
   const usingMockDataDespiteConfig = isConfigured && (!data?.employees || data.employees.length === 0);
   
+  // Check if we received partial data due to errors
+  const hasPartialData = data?.partialData === true;
+  
   console.log('Rendering Employees page with filtered employees count:', filteredEmployees.length);
   
   return (
@@ -152,9 +155,33 @@ const Employees = () => {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="bg-amber-100">
-                  <Link to="/bamboo-test" className="text-amber-800">
-                    <Wrench className="h-4 w-4 mr-1" />
-                    Advanced Diagnostics
+                  <Link to="/bamboo-diagnostics" className="text-amber-800">
+                    <Stethoscope className="h-4 w-4 mr-1" />
+                    API Diagnostics
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {hasPartialData && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md mb-4">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">
+                Some BambooHR data could not be retrieved
+              </p>
+              <p className="text-sm mt-1">
+                {data?.error || "Some API endpoints may be unavailable or timed out."}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button asChild variant="outline" size="sm" className="bg-amber-100">
+                  <Link to="/bamboo-diagnostics" className="text-amber-800">
+                    <Stethoscope className="h-4 w-4 mr-1" />
+                    Diagnose API Issues
                   </Link>
                 </Button>
               </div>
@@ -181,7 +208,7 @@ const Employees = () => {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="sm" className="bg-red-100">
-                  <Link to="/bamboo-test" className="text-red-800">
+                  <Link to="/bamboo-diagnostics" className="text-red-800">
                     <Wrench className="h-4 w-4 mr-1" />
                     Advanced Diagnostics
                   </Link>

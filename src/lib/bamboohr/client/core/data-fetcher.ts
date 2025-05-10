@@ -84,11 +84,16 @@ export class DataFetcher extends ConnectionTester {
           timeoutMs
         );
         
-        if (trainings && Array.isArray(trainings)) {
-          console.log(`Found ${trainings.length} training records for employee ${employeeId}`);
-          return trainings;
+        if (trainings && Object.keys(trainings).length > 0) {
+          console.log(`Found ${Object.keys(trainings).length} training records for employee ${employeeId}`);
+          
+          // Convert object format to array for consistency
+          return Object.values(trainings).map(training => ({
+            ...training,
+            trainingDetails: this.getTrainingDetailsById(training.type)
+          }));
         } else {
-          console.log("Training records endpoint returned invalid data, trying alternative");
+          console.log("Training records endpoint returned empty data, trying alternatives");
         }
       } catch (trainingError) {
         console.warn(`Error fetching employee training records: ${trainingError.message}, trying alternatives`);
@@ -102,11 +107,16 @@ export class DataFetcher extends ConnectionTester {
           timeoutMs
         );
         
-        if (completedTrainings && Array.isArray(completedTrainings)) {
-          console.log(`Found ${completedTrainings.length} completed trainings for employee ${employeeId}`);
-          return completedTrainings;
+        if (completedTrainings && Object.keys(completedTrainings).length > 0) {
+          console.log(`Found ${Object.keys(completedTrainings).length} completed trainings for employee ${employeeId}`);
+          
+          // Convert object format to array for consistency
+          return Object.values(completedTrainings).map(training => ({
+            ...training,
+            trainingDetails: this.getTrainingDetailsById(training.type)
+          }));
         } else {
-          console.log("Training completed table returned invalid data, trying next alternative");
+          console.log("Training completed table returned empty data, trying next alternative");
         }
       } catch (completedError) {
         console.warn(`Error fetching employee completed trainings: ${completedError.message}, trying last alternative`);
@@ -120,11 +130,16 @@ export class DataFetcher extends ConnectionTester {
           timeoutMs
         );
         
-        if (certifications && Array.isArray(certifications)) {
-          console.log(`Found ${certifications.length} certifications for employee ${employeeId}`);
-          return certifications;
+        if (certifications && Object.keys(certifications).length > 0) {
+          console.log(`Found ${Object.keys(certifications).length} certifications for employee ${employeeId}`);
+          
+          // Convert object format to array for consistency
+          return Object.values(certifications).map(cert => ({
+            ...cert,
+            trainingDetails: this.getTrainingDetailsById(cert.type)
+          }));
         } else {
-          console.log("Certifications table returned invalid data");
+          console.log("Certifications table returned empty data");
         }
       } catch (certError) {
         console.warn(`Error fetching employee certifications: ${certError.message}`);
@@ -135,6 +150,26 @@ export class DataFetcher extends ConnectionTester {
     } catch (error) {
       console.error(`Error in getUserTrainings for employee ${employeeId}:`, error);
       return [];
+    }
+  }
+  
+  /**
+   * Get training details by training ID
+   * @param trainingId Training/certification ID
+   * @returns Training details object or null
+   */
+  private getTrainingDetailsById(trainingId: string | number): any | null {
+    try {
+      // You might want to implement caching for this
+      // This is a placeholder implementation
+      return { 
+        id: trainingId,
+        title: `Training ${trainingId}`,
+        category: 'Unknown' 
+      };
+    } catch (error) {
+      console.warn(`Could not get training details for ID ${trainingId}:`, error);
+      return null;
     }
   }
 }

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { Search, RefreshCw, AlertCircle } from "lucide-react";
+import { Search, RefreshCw, AlertCircle, Stethoscope } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,6 @@ export default function MyTrainings() {
   
   const {
     useUserTrainings,
-    fetchUserTrainings,
   } = useBambooHR();
   
   const employeeId = currentUser?.employeeId;
@@ -132,6 +131,9 @@ export default function MyTrainings() {
 
   // Check if employee ID is missing
   const isMissingEmployeeId = !employeeId || employeeId === currentUser?.id;
+  
+  // Check if there was an API error
+  const hasApiError = error !== null && error !== undefined;
 
   return (
     <div className="space-y-6">
@@ -164,6 +166,24 @@ export default function MyTrainings() {
             ) : (
               <span> Please contact an administrator to set up this mapping for you.</span>
             )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {hasApiError && (
+        <Alert variant="destructive" className="bg-red-50 border-red-200">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Training Data</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>{error instanceof Error ? error.message : String(error)}</p>
+            <div className="flex gap-2 mt-2">
+              <Button asChild size="sm" variant="outline" className="bg-red-100">
+                <Link to="/bamboo-diagnostics" className="text-red-800">
+                  <Stethoscope className="h-4 w-4 mr-1" />
+                  Diagnose API Issues
+                </Link>
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -241,6 +261,12 @@ export default function MyTrainings() {
             <div className="p-8 text-center">
               <p className="text-red-500">Error loading training records</p>
               <p className="text-sm text-muted-foreground mt-2">{error instanceof Error ? error.message : String(error)}</p>
+              <Button asChild variant="outline" className="gap-2 mt-4">
+                <Link to="/bamboo-diagnostics">
+                  <Stethoscope className="h-4 w-4" />
+                  Diagnose API Issues
+                </Link>
+              </Button>
             </div>
           ) : (
             <UserTrainingsTable trainings={filteredTrainings} />

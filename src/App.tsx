@@ -1,104 +1,62 @@
-
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Login from "./pages/Login";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Employees from "./pages/Employees";
-import EmployeeDetail from "./pages/EmployeeDetail";
-import Courses from "./pages/Courses";
-import MyTrainings from "./pages/MyTrainings";
-import MyQualifications from "./pages/MyQualifications";
-import RequiredTrainings from "./pages/RequiredTrainings";
-import AdminSettings from "./pages/AdminSettings";
-import AdminReports from "./pages/AdminReports";
-import PositionManagement from "./pages/PositionManagement";
-import TrainingRequirementManagement from "./pages/TrainingRequirementManagement";
-import TrainingImpact from "./pages/TrainingImpact";
-import TrainingDataValidation from "./pages/TrainingDataValidation";
-import BambooTroubleshooting from "./pages/BambooTroubleshooting";
-import BambooTroubleshootingDetail from "./pages/BambooTroubleshootingDetail";
-import BambooConnectionTest from "./pages/BambooConnectionTest";
-import NotFound from "./pages/NotFound";
-import Layout from "./components/layout/Layout";
-import { UserProvider } from './contexts/UserContext';
-import { useEffect } from 'react';
-import { prefetchBambooHRData, initializeQueryClient } from '@/services/dataCacheService';
-import { AuthGuard } from './components/auth/AuthGuard';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-
-// Initialize the query client at the app level
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 30 * 60 * 1000, // 30 minutes (replaces cacheTime)
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
-
-// Initialize the query client in the cache service
-initializeQueryClient(queryClient);
+import React, { useEffect } from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Toaster } from "@/components/ui/toaster"
+import Dashboard from './pages/Dashboard';
+import Employees from './pages/Employees';
+import Courses from './pages/Courses';
+import MyTrainings from './pages/MyTrainings';
+import RequiredTrainings from './pages/RequiredTrainings';
+import AdminSettings from './pages/AdminSettings';
+import Login from './pages/Login';
+import UserProvider from './contexts/UserContext';
+import MsalProvider from './contexts/MsalContext';
+import AuthGuard from './components/auth/AuthGuard';
+import BambooTest from './pages/BambooTest';
+import TrainingDataValidation from './pages/TrainingDataValidation';
+import BambooTroubleshooting from './pages/BambooTroubleshooting';
+import BambooApiDiagnostics from './pages/BambooApiDiagnostics';
 
 function App() {
-  // Start background refresh when the app loads
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Run the first prefetch when the app loads
-    prefetchBambooHRData();
-    
-    // Set up periodic refresh (every 5 minutes)
-    const intervalId = setInterval(() => {
-      console.log("Running background refresh of BambooHR data");
-      prefetchBambooHRData();
-    }, 5 * 60 * 1000);
-    
-    // Return cleanup function
-    return () => {
-      console.log("Stopping background refresh");
-      clearInterval(intervalId);
-    };
-  }, []);
+    // Redirect to /login if the user tries to access any route without being authenticated
+    const publicRoutes = ['/login'];
+    const isPublicRoute = publicRoutes.includes(location.pathname);
+
+    // You can add more sophisticated authentication checks here if needed
+    // For example, checking if the user is logged in or has a valid token
+
+    // If the route is not a public route, redirect to /login
+    if (!isPublicRoute) {
+      // You might want to store the intended route in localStorage or a cookie
+      // so you can redirect the user back to it after they log in.
+      // localStorage.setItem('intendedRoute', location.pathname);
+    }
+  }, [location, navigate]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <UserProvider>
-        <Router>
+    <div className="min-h-screen bg-background">
+      <MsalProvider>
+        <UserProvider>
           <Routes>
-            <Route path="login" element={<Login />} />
-            <Route path="/" element={
-              <AuthGuard>
-                <Layout />
-              </AuthGuard>
-            }>
-              <Route index element={<Index />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="employees" element={<Employees />} />
-              <Route path="employees/:id" element={<EmployeeDetail />} />
-              <Route path="courses" element={<Courses />} />
-              <Route path="my-trainings" element={<MyTrainings />} />
-              <Route path="my-qualifications" element={<MyQualifications />} />
-              <Route path="required-trainings" element={<RequiredTrainings />} />
-              <Route path="admin-settings" element={<AdminSettings />} />
-              <Route path="admin-reports" element={<AdminReports />} />
-              <Route path="position-management" element={<PositionManagement />} />
-              <Route path="training-requirement-management" element={<TrainingRequirementManagement />} />
-              <Route path="training-impact" element={<TrainingImpact />} />
-              <Route path="training-validation" element={<TrainingDataValidation />} />
-              <Route path="bamboo-troubleshooting" element={<BambooTroubleshooting />} />
-              <Route path="bamboo-diagnostics" element={<BambooTroubleshootingDetail />} />
-              <Route path="bamboo-test" element={<BambooConnectionTest />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-            {/* Catch-all route redirects to login */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<AuthGuard><Dashboard /></AuthGuard>} />
+            <Route path="/employees" element={<AuthGuard><Employees /></AuthGuard>} />
+            <Route path="/courses" element={<AuthGuard><Courses /></AuthGuard>} />
+            <Route path="/my-trainings" element={<AuthGuard><MyTrainings /></AuthGuard>} />
+            <Route path="/required-trainings" element={<AuthGuard><RequiredTrainings /></AuthGuard>} />
+            <Route path="/admin-settings" element={<AuthGuard><AdminSettings /></AuthGuard>} />
+            <Route path="/training-validation" element={<AuthGuard><TrainingDataValidation /></AuthGuard>} />
+            <Route path="/bamboo-test" element={<AuthGuard><BambooTest /></AuthGuard>} />
+            <Route path="/bamboo-troubleshooting" element={<AuthGuard><BambooTroubleshooting /></AuthGuard>} />
+            <Route path="/bamboo-diagnostics" element={<AuthGuard><BambooApiDiagnostics /></AuthGuard>} />
           </Routes>
-        </Router>
-      </UserProvider>
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools />}
-    </QueryClientProvider>
+        </UserProvider>
+      </MsalProvider>
+      <Toaster />
+    </div>
   );
 }
 
