@@ -1,9 +1,11 @@
+
 export interface BambooApiOptions {
   subdomain: string;
   apiKey: string;
   useProxy?: boolean;
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
+  client?: any; // Add client to the interface
 }
 
 export interface BambooEmployee {

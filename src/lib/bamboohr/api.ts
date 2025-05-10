@@ -10,6 +10,7 @@ interface BambooHRServiceOptions {
   apiKey: string;
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
+  client?: any; // Add client to the interface
 }
 
 class BambooHRApi {
@@ -21,7 +22,7 @@ class BambooHRApi {
       subdomain: options.subdomain,
       apiKey: options.apiKey,
       useEdgeFunction: options.useEdgeFunction || false,
-      edgeFunctionUrl: options.edgeFunctionUrl
+      edgeFunctionUrl: options.edgeFunctionUrl,
     });
     
     this.service = new BambooHRService({
@@ -51,6 +52,11 @@ class BambooHRApi {
   // Get trainings for a specific employee
   async getUserTrainings(employeeId: string): Promise<UserTraining[]> {
     return this.service.getUserTrainings(employeeId);
+  }
+  
+  // Added fetchAllTrainings method to fix the error in Courses.tsx
+  async fetchAllTrainings(): Promise<Training[]> {
+    return this.service.getTrainings();
   }
 
   async fetchAllData(isConnectionTest = false): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {

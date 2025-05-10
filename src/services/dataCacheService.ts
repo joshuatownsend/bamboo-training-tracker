@@ -1,10 +1,11 @@
 
 import { BambooHRApiClient } from "@/lib/bamboohr/client/api-client";
-import { BambooHRClientInterface } from "@/lib/bamboohr/client/types";
 import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
+import { QueryClient } from "@tanstack/react-query";
 
 // Cache for sharing service instances across components
 let bambooServiceInstance: BambooHRApiClient | null = null;
+let queryClient: QueryClient | null = null;
 
 // Cache for prefetched data
 const dataCache: {
@@ -13,6 +14,32 @@ const dataCache: {
   completions?: any[];
   lastFetch?: number;
 } = {};
+
+// Initialize the QueryClient
+export function initializeQueryClient(client: QueryClient): void {
+  queryClient = client;
+  console.log("Query client initialized");
+}
+
+// Start background refresh of data
+export function startBackgroundRefresh(): () => void {
+  console.log("Starting background refresh of BambooHR data");
+  
+  // Run the first refresh immediately
+  prefetchBambooHRData();
+  
+  // Set up periodic refresh (every 5 minutes)
+  const intervalId = setInterval(() => {
+    console.log("Running background refresh of BambooHR data");
+    prefetchBambooHRData();
+  }, 5 * 60 * 1000);
+  
+  // Return cleanup function
+  return () => {
+    console.log("Stopping background refresh");
+    clearInterval(intervalId);
+  };
+}
 
 // Get or create a singleton BambooHR service instance
 export function getBambooService(): BambooHRApiClient {

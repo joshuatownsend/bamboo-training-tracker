@@ -23,8 +23,8 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import { UserProvider } from './contexts/UserContext';
 import { QueryClient } from '@tanstack/react-query';
-import { initializeQueryClient, startBackgroundRefresh } from '@/services/dataCacheService';
 import { useEffect } from 'react';
+import { prefetchBambooHRData } from '@/services/dataCacheService';
 
 // Initialize the query client at the app level
 const queryClient = new QueryClient({
@@ -38,14 +38,23 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize our cache service with the query client
-initializeQueryClient(queryClient);
-
 function App() {
   // Start background refresh when the app loads
   useEffect(() => {
-    const cleanup = startBackgroundRefresh();
-    return cleanup;
+    // Run the first prefetch when the app loads
+    prefetchBambooHRData();
+    
+    // Set up periodic refresh (every 5 minutes)
+    const intervalId = setInterval(() => {
+      console.log("Running background refresh of BambooHR data");
+      prefetchBambooHRData();
+    }, 5 * 60 * 1000);
+    
+    // Return cleanup function
+    return () => {
+      console.log("Stopping background refresh");
+      clearInterval(intervalId);
+    };
   }, []);
 
   return (

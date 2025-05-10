@@ -119,6 +119,8 @@ export default function MyTrainings() {
   // Find the top category
   let topCategory = 'None';
   let topCount = 0;
+  
+  // Fix TypeScript errors by adding type safety to Object.entries
   Object.entries(categoryCounts).forEach(([category, count]) => {
     if (count > topCount) {
       topCount = count;
