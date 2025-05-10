@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserTraining } from "@/lib/types";
@@ -53,9 +54,10 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     if (typeof value === "number") return value.toString();
     if (typeof value === "boolean") return value.toString();
     if (typeof value === "object") {
-      // Check if it's an object by verifying it's not null and is an object
-      if (value === null || typeof value !== "object") return String(value);
-      
+      // Special handling for objects with id and name properties
+      if (value && 'id' in value && 'name' in value) {
+        return value.name?.toString() || `ID: ${value.id}`;
+      }
       // Handle specific object properties we know about
       if ('name' in value && value.name) return safeTextValue(value.name);
       if ('title' in value && value.title) return safeTextValue(value.title);
@@ -72,8 +74,10 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
   };
 
   // Function to open BambooHR training page for the employee
-  const openInBambooHR = (employeeId: string) => {
-    window.open(`https://avfrd.bamboohr.com/employees/training/?id=${employeeId}&page=2109`, '_blank');
+  const openInBambooHR = (employeeId: any) => {
+    // Make sure employeeId is a string
+    const empId = safeTextValue(employeeId);
+    window.open(`https://avfrd.bamboohr.com/employees/training/?id=${empId}&page=2109`, '_blank');
   };
 
   return (
@@ -137,7 +141,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => openInBambooHR(safeTextValue(training.employeeId))}
+                        onClick={() => openInBambooHR(training.employeeId)}
                         className="gap-1"
                       >
                         <ExternalLink className="h-4 w-4" /> 
