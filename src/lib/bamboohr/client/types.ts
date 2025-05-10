@@ -4,24 +4,28 @@ export interface BambooApiOptions {
   apiKey: string;
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
+  client?: any;
 }
 
 export interface EdgeFunctionSecretsResult {
-  secretsConfigured: boolean;
-  error?: string;
-  secrets?: Record<string, boolean>;
+  success: boolean;
+  message?: string;
+  secretsConfigured?: boolean;
+  secrets: {
+    BAMBOOHR_SUBDOMAIN: boolean;
+    BAMBOOHR_API_KEY: boolean;
+  };
   environmentKeys?: string[];
+  timestamp?: string;
 }
 
 export interface BambooHRClientInterface {
-  fetchRawResponse(endpoint: string, method?: string, body?: any, timeoutMs?: number): Promise<Response>;
-  checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult>;
-  testEndpointExists(endpoint: string): Promise<boolean>;
-  fetchAllData(isConnectionTest?: boolean): Promise<any>;
+  testEndpointExists(path: string): Promise<boolean>;
   testConnection(): Promise<boolean>;
+  fetchRawResponse(path: string): Promise<Response>;
+  fetchFromBamboo(path: string): Promise<any>;
   getEmployees(): Promise<any[]>;
   getTrainings(): Promise<any[]>;
   getUserTrainings(employeeId: string, timeoutMs?: number): Promise<any[]>;
-  getClient(): any;
-  fetchFromBamboo(endpoint: string, method?: string, body?: any): Promise<any>;
+  checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult>;
 }

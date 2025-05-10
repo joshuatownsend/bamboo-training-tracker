@@ -21,160 +21,340 @@ export class BambooHRClient implements BambooHRClientInterface {
     console.log(`BambooHR Client initialized - Using Edge Function: ${this.useEdgeFunction}`);
   }
 
-  // Return the raw response for advanced parsing with timeout handling
-  async fetchRawResponse(endpoint: string, method = 'GET', body?: any, timeoutMs = this.defaultTimeout): Promise<Response> {
-    const headers = new Headers();
-    
-    let url: string;
-    
-    // Use the Edge Function 
-    if (this.useEdgeFunction) {
-      url = `${this.edgeFunctionUrl}${endpoint}`;
-      console.log(`Using Edge Function URL: ${url}`);
-      
-      // ALWAYS add subdomain as a query param for diagnostic purposes
-      if (!url.includes('?')) {
-        url += `?subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
-      } else {
-        url += `&subdomain=${encodeURIComponent(this.subdomain || 'avfrd')}`;
-      }
-      
-      // When using Edge Function, we add an auth check header
-      // The Edge Function will use its own credentials from environment variables
-      headers.append("X-Client-Auth-Check", "true");
-      
-      // Add X-BambooHR-Auth header with the API key for the Edge Function to use
-      // This helps with debugging and lets the edge function know we're authorized
-      if (this.apiKey) {
-        headers.append("X-BambooHR-Auth", "present");
-      }
-    } else {
-      // Direct API access (legacy approach, will likely fail in browser due to CORS)
-      url = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1${endpoint}`;
-      // Base64 encode API key with empty password as per BambooHR docs
-      const authHeader = "Basic " + btoa(`${this.apiKey}:`);
-      headers.append("Authorization", authHeader);
+  /**
+   * Test if a BambooHR API endpoint exists and is accessible
+   */
+  async testEndpointExists(path: string): Promise<boolean> {
+    try {
+      const response = await this.fetchRawResponse(path);
+      return response.ok;
+    } catch (error) {
+      console.error(`Error testing endpoint ${path}:`, error);
+      return false;
     }
-    
-    headers.append("Accept", "application/json");
-    
-    // If we're doing a POST or PUT, add content type
-    if (["POST", "PUT", "PATCH"].includes(method)) {
-      headers.append("Content-Type", "application/json");
-    }
+  }
 
-    // Print full URL for debugging (removing API key for security)
-    console.log(`BambooHR API request: ${method} ${url}`);
+  /**
+   * Test connection to BambooHR
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      // Try to access the directory endpoint as a simple connection test
+      const response = await this.fetchRawResponse('/employees/directory');
+      return response.ok;
+    } catch (error) {
+      console.error('Error testing BambooHR connection:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get raw response from BambooHR API for diagnostic purposes
+   */
+  async fetchRawResponse(path: string): Promise<Response> {
+    const url = this.buildApiUrl(path);
     
     try {
-      console.log(`Sending request to BambooHR API: ${method} ${url}`);
-      console.log(`Headers: ${JSON.stringify([...headers.entries()].map(([key, value]) => 
-        key.toLowerCase() === 'authorization' ? [key, '[REDACTED]'] : [key, value]
-      ))}`);
-      
-      // Create a timeout promise to race against the fetch
-      const timeoutPromise = new Promise<Response>((_, reject) => {
-        setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
-      });
-      
-      // Create the fetch promise
-      const fetchPromise = fetch(url, {
-        method,
-        headers,
-        body: ["GET", "HEAD", "OPTIONS"].includes(method) ? undefined : JSON.stringify(body),
-        credentials: 'omit', // Don't send cookies
-      });
-      
-      // Race the fetch against the timeout
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      console.log(`Response status: ${response.status}`);
-      
-      return response;
+      if (this.useEdgeFunction) {
+        // Use Edge Function
+        return this.fetchFromEdgeFunction(path);
+      } else {
+        // Direct API access (requires CORS proxy for browser usage)
+        const headers = this.getAuthHeaders();
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers,
+          credentials: 'omit'
+        });
+        
+        return response;
+      }
     } catch (error) {
-      console.error(`Error in BambooHR API call to ${endpoint}:`, error);
+      console.error(`Error fetching from ${url}:`, error);
       throw error;
     }
   }
 
-  // Method to check if edge function secrets are configured
-  async checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult> {
-    if (!this.useEdgeFunction) {
-      return { secretsConfigured: false, error: "Not using Edge Function" };
-    }
-
-    try {
-      const response = await this.fetchRawResponse('/check-secrets');
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error checking Edge Function secrets:', errorText);
-        return { secretsConfigured: false, error: errorText };
+  /**
+   * Fetch data from BambooHR API
+   * @param path API path to fetch from
+   * @returns Parsed JSON response
+   */
+  async fetchFromBamboo(path: string): Promise<any> {
+    const response = await this.fetchRawResponse(path);
+    
+    if (!response.ok) {
+      // Get error details from response
+      let errorDetail;
+      try {
+        // Try to get error in JSON format
+        errorDetail = await response.json();
+      } catch (e) {
+        // If not JSON, get as text
+        try {
+          errorDetail = await response.text();
+        } catch (e2) {
+          errorDetail = 'Unknown error';
+        }
       }
       
-      const data = await response.json();
-      console.log('Check secrets response data:', data);
-      return { 
-        secretsConfigured: data.secrets.BAMBOOHR_SUBDOMAIN && data.secrets.BAMBOOHR_API_KEY,
-        secrets: data.secrets,
-        environmentKeys: data.environmentKeys || []
+      throw new Error(`BambooHR API error (${response.status}): ${JSON.stringify(errorDetail)}`);
+    }
+    
+    // Check if response is empty
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // Not a JSON response
+      const text = await response.text();
+      
+      if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
+        throw new Error('Received HTML instead of JSON. This usually means authentication failed or incorrect subdomain.');
+      }
+      
+      if (!text.trim()) {
+        // Empty response
+        return null;
+      }
+      
+      // Try to parse as JSON anyway
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        // Not JSON, return as is
+        console.warn('Response is not JSON:', text.substring(0, 100));
+        return text;
+      }
+    }
+    
+    return await response.json();
+  }
+
+  /**
+   * Fetch employees from BambooHR
+   */
+  async getEmployees(): Promise<any[]> {
+    try {
+      console.log('Fetching employees directory from BambooHR...');
+      // First try employees directory endpoint (more complete data)
+      const directoryResponse = await this.fetchFromBamboo('/employees/directory');
+      
+      if (directoryResponse && directoryResponse.employees && Array.isArray(directoryResponse.employees)) {
+        console.log(`Found ${directoryResponse.employees.length} employees in directory`);
+        return directoryResponse.employees;
+      } else {
+        // Fallback to basic employees endpoint
+        console.log('Directory endpoint returned no data, trying basic employees endpoint...');
+        const response = await this.fetchFromBamboo('/employees');
+        
+        if (Array.isArray(response)) {
+          console.log(`Found ${response.length} employees from basic endpoint`);
+          return response;
+        }
+        
+        // If we still don't have employees, check if we got an employees object
+        if (response && response.employees) {
+          console.log(`Found ${response.employees.length} employees in response object`);
+          return response.employees;
+        }
+        
+        console.warn('No employees found in response:', response);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Fetch trainings from BambooHR
+   */
+  async getTrainings(): Promise<any[]> {
+    try {
+      // First try to fetch from the training table
+      console.log('Fetching trainings from training table...');
+      try {
+        const trainingTable = await this.fetchFromBamboo('/employees/all/tables/training');
+        if (Array.isArray(trainingTable)) {
+          console.log(`Found ${trainingTable.length} training types in training table`);
+          return trainingTable;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch from training table:', error);
+      }
+      
+      // Try to fetch from meta/fields for training types
+      console.log('Fetching trainings from meta fields...');
+      const fields = await this.fetchFromBamboo('/meta/fields');
+      
+      if (!Array.isArray(fields)) {
+        console.warn('Fields response is not an array:', fields);
+        return [];
+      }
+      
+      // Filter fields that look like training types
+      const trainingFields = fields.filter(field => {
+        return field.name && (
+          field.name.includes('Training') || 
+          field.name.includes('Certification') || 
+          field.name.includes('Course')
+        );
+      });
+      
+      console.log(`Found ${trainingFields.length} training field types`);
+      return trainingFields;
+    } catch (error) {
+      console.error('Error fetching trainings:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch trainings for a specific employee
+   */
+  async getUserTrainings(employeeId: string, timeoutMs = 10000): Promise<any[]> {
+    if (!employeeId) {
+      console.error('No employee ID provided for getUserTrainings');
+      return [];
+    }
+    
+    try {
+      console.log(`Fetching user trainings for employee ${employeeId}`);
+      
+      // Try different approaches with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+        // First try the trainingCompleted table
+        const trainingCompletedTable = await this.fetchFromBamboo(`/employees/${employeeId}/tables/trainingCompleted`);
+        clearTimeout(timeoutId);
+        
+        if (Array.isArray(trainingCompletedTable) && trainingCompletedTable.length > 0) {
+          console.log(`Found ${trainingCompletedTable.length} completed trainings in trainingCompleted table`);
+          return trainingCompletedTable;
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch trainingCompleted for employee ${employeeId}:`, error);
+      }
+      
+      // Try another approach - certifications table
+      try {
+        const certificationsTable = await this.fetchFromBamboo(`/employees/${employeeId}/tables/certifications`);
+        
+        if (Array.isArray(certificationsTable) && certificationsTable.length > 0) {
+          console.log(`Found ${certificationsTable.length} certifications`);
+          return certificationsTable;
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch certifications for employee ${employeeId}:`, error);
+      }
+      
+      console.log(`No training records found for employee ${employeeId}`);
+      return [];
+    } catch (error) {
+      console.error(`Error fetching user trainings for employee ${employeeId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Check Edge Function secrets configuration
+   */
+  async checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult> {
+    if (!this.useEdgeFunction) {
+      return {
+        success: false,
+        message: 'Edge Function is not enabled',
+        secretsConfigured: false,
+        secrets: {
+          BAMBOOHR_SUBDOMAIN: false,
+          BAMBOOHR_API_KEY: false
+        }
       };
+    }
+    
+    try {
+      const url = `${this.edgeFunctionUrl}/check`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Edge Function check failed: HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result as EdgeFunctionSecretsResult;
     } catch (error) {
       console.error('Error checking Edge Function secrets:', error);
-      return { 
-        secretsConfigured: false, 
-        error: error instanceof Error ? error.message : String(error)
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+        secretsConfigured: false,
+        secrets: {
+          BAMBOOHR_SUBDOMAIN: false,
+          BAMBOOHR_API_KEY: false
+        }
       };
     }
   }
 
-  // Test if API endpoint exists without parsing the response
-  async testEndpointExists(endpoint: string): Promise<boolean> {
-    try {
-      const response = await this.fetchRawResponse(endpoint);
-      // Any response (even error responses) means the endpoint exists in some form
-      // We'll interpret a 401 or 403 as "endpoint exists but not authorized"
-      return response.status !== 404;
-    } catch (error) {
-      console.error(`Error checking endpoint ${endpoint}:`, error);
-      return false;
+  // Helper methods
+
+  /**
+   * Build API URL for BambooHR
+   */
+  protected buildApiUrl(path: string): string {
+    if (this.useEdgeFunction) {
+      // Use Edge Function
+      // Remove leading slash from path
+      const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+      return `${this.edgeFunctionUrl}/${cleanPath}`;
+    } else {
+      // Direct API access (requires CORS proxy for browser usage)
+      const cleanedSubdomain = this.subdomain.replace(/\.bamboohr\.com$/i, '');
+      return `https://api.bamboohr.com/api/gateway.php/${cleanedSubdomain}/v1${path}`;
     }
   }
-  
-  // Default implementation of API methods that should be overridden by derived classes
-  
-  // Fetch from BambooHR API with parsing
-  async fetchFromBamboo(endpoint: string, method = 'GET', body?: any): Promise<any> {
-    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+
+  /**
+   * Get authentication headers for BambooHR API
+   */
+  protected getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json'
+    };
+    
+    if (!this.useEdgeFunction && this.apiKey) {
+      // Only add Basic Auth when not using Edge Function
+      const authString = `${this.apiKey}:x`;
+      headers['Authorization'] = `Basic ${btoa(authString)}`;
+    }
+    
+    return headers;
   }
-  
-  // Test connection to BambooHR API
-  async testConnection(): Promise<boolean> {
-    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
-  }
-  
-  // Get employees
-  async getEmployees(): Promise<any[]> {
-    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
-  }
-  
-  // Get trainings
-  async getTrainings(): Promise<any[]> {
-    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
-  }
-  
-  // Get user trainings
-  async getUserTrainings(employeeId: string): Promise<any[]> {
-    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
-  }
-  
-  // Return the client itself (for testing)
-  getClient(): BambooHRClientInterface {
-    return this;
-  }
-  
-  // Add minimal implementation for fetchAllData to satisfy service usage
-  async fetchAllData(isConnectionTest = false): Promise<any> {
-    // Minimal implementation
-    return {};
+
+  /**
+   * Fetch from Edge Function
+   */
+  private async fetchFromEdgeFunction(path: string): Promise<Response> {
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    const url = `${this.edgeFunctionUrl}/${cleanPath}`;
+    
+    // Add subdomain as query param
+    const separator = url.includes('?') ? '&' : '?';
+    const finalUrl = `${url}${separator}subdomain=${this.subdomain}`;
+    
+    return fetch(finalUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
   }
 }
