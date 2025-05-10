@@ -161,6 +161,7 @@ serve(async (req) => {
     
     // Initialize Supabase admin client for direct database operations
     // Note: In an edge function, we need to use fetch for Supabase operations
+    // FIXED: Use upsert with on_conflict=email to handle existing records
     const insertResults = await fetch(`${supabaseUrl}/rest/v1/employee_mappings`, {
       method: "POST",
       headers: {
@@ -175,6 +176,59 @@ serve(async (req) => {
     if (!insertResults.ok) {
       const errorText = await insertResults.text();
       console.error(`Supabase Error (${insertResults.status}):`, errorText);
+      
+      // If we got a conflict error, we'll try a different approach
+      if (insertResults.status === 409) {
+        console.log("Received 409 conflict error, trying individual upserts...");
+        
+        // Try updating records one by one to handle the conflicts
+        let successCount = 0;
+        const errors = [];
+        
+        for (const mapping of mappings) {
+          try {
+            const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/employee_mappings?email=eq.${encodeURIComponent(mapping.email)}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                bamboo_employee_id: mapping.bamboo_employee_id,
+                updated_at: mapping.updated_at
+              })
+            });
+            
+            if (upsertResponse.ok) {
+              successCount++;
+            } else {
+              const errorDetail = await upsertResponse.text();
+              errors.push({
+                email: mapping.email,
+                error: errorDetail
+              });
+            }
+          } catch (err) {
+            errors.push({
+              email: mapping.email,
+              error: err.message || "Unknown error"
+            });
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: successCount > 0,
+            message: `Updated ${successCount} of ${mappings.length} employee mappings individually`,
+            count: successCount,
+            errors: errors.length > 0 ? errors.slice(0, 5) : [],
+            timestamp: new Date().toISOString()
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
       
       return new Response(
         JSON.stringify({ 
