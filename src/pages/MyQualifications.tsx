@@ -19,7 +19,8 @@ export default function MyQualifications() {
   }
 
   if (!currentUser?.employeeId) {
-    return <MissingEmployeeIdAlert />;
+    // Add isAdmin prop with a default value of false
+    return <MissingEmployeeIdAlert isAdmin={false} />;
   }
 
   if (error) {

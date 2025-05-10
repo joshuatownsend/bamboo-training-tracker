@@ -58,7 +58,8 @@ export function useQualifications() {
       });
       
       try {
-        const result = await bamboo.fetchEmployeeTrainings(currentUser.employeeId);
+        // Using getUserTrainings instead of fetchEmployeeTrainings
+        const result = await bamboo.getUserTrainings(currentUser.employeeId);
         console.log("Fetched user trainings:", result);
         return result || [];
       } catch (err) {
@@ -85,7 +86,16 @@ export function useQualifications() {
         throw error;
       }
       
-      return data as Training[];
+      // Map the data to match the Training type
+      return data.map(item => ({
+        id: item.id,
+        title: item.name,
+        type: item.category || 'unknown',
+        category: item.category || 'uncategorized',
+        description: item.description || '',
+        durationHours: 0, // Default value as it's not in the database
+        requiredFor: [] // Default value as it's not in the database
+      })) as Training[];
     },
     enabled: !!currentUser
   });
