@@ -1,4 +1,5 @@
-import { corsHeaders, cleanSecret, getBambooCredentials, logWithTimestamp, createErrorResponse } from "./utils.ts";
+
+import { corsHeaders, cleanSecret, getBambooCredentials, logWithTimestamp } from "./utils.ts";
 
 // Timeout for API requests to BambooHR - 5 seconds
 export const BAMBOOHR_REQUEST_TIMEOUT = 5000;
@@ -159,4 +160,20 @@ async function makeProxyRequest(req: Request, targetUrl: string, headers: Header
     logWithTimestamp(`Fetch error for ${targetUrl}: ${errorMessage}`);
     return createErrorResponse(503, "Error connecting to BambooHR API", { message: errorMessage });
   }
+}
+
+// Helper function for error responses
+function createErrorResponse(status: number, message: string, details: Record<string, any> = {}): Response {
+  const timestamp = new Date().toISOString();
+  return new Response(
+    JSON.stringify({ 
+      error: message, 
+      details,
+      timestamp 
+    }),
+    { 
+      headers: corsHeaders, 
+      status 
+    }
+  );
 }

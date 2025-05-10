@@ -36,3 +36,4 @@ max_timeout = 60
 
 [functions.sync-employee-mappings]
 verify_jwt = true
+

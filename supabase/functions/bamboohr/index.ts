@@ -4,7 +4,8 @@
 // This enables autocomplete, go to definition, etc.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { handlers, corsHeaders, logWithTimestamp } from "./handlers.ts";
+import { handleBambooHRRequest, handleSecretsCheck } from "./handlers.ts";
+import { corsHeaders, logWithTimestamp } from "./utils.ts";
 
 // BambooHR API timeout (increased to 60 seconds for better chance of success)
 const API_TIMEOUT = 60000;
@@ -31,11 +32,11 @@ serve(async (req) => {
     // Check if this is a secrets check request
     if (path.endsWith('check')) {
       logWithTimestamp("Handling secrets check request");
-      return handlers.handleSecretsCheck(req);
+      return handleSecretsCheck(req);
     }
     
     // Handle standard BambooHR API request
-    return await handlers.handleBambooHRRequest(req, "/" + path, url.searchParams);
+    return await handleBambooHRRequest(req, "/" + path, url.searchParams);
   } 
   catch (error) {
     // Enhanced error logging for better debugging
