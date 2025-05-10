@@ -49,9 +49,9 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     if (typeof value === "number") return value.toString();
     if (typeof value === "object") {
       // If it's an object with id and name properties, return the name
-      if (value.name) return value.name;
-      if (value.title) return value.title;
-      if (value.id) return `ID: ${value.id}`;
+      if ('name' in value && value.name) return safeTextValue(value.name);
+      if ('title' in value && value.title) return safeTextValue(value.title);
+      if ('id' in value && value.id) return `ID: ${safeTextValue(value.id)}`;
       // Convert object to JSON string as fallback
       return JSON.stringify(value);
     }
@@ -124,7 +124,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => openInBambooHR(training.employeeId)}
+                        onClick={() => openInBambooHR(safeTextValue(training.employeeId))}
                         className="gap-1"
                       >
                         <ExternalLink className="h-4 w-4" /> 
