@@ -41,8 +41,10 @@ export function TrainingTableRow({ training, trainingTypeNames, category }: Trai
         {formatDate(safeTextValue(training.completionDate))}
       </TableCell>
       <TableCell>
-        {training.trainingDetails?.expirationDate ? 
-          formatDate(safeTextValue(training.trainingDetails.expirationDate)) : 
+        {/* Fix the property access - the property might not exist on the Training type */}
+        {training.trainingDetails && 
+          ('expirationDate' in training.trainingDetails) ? 
+          formatDate(safeTextValue(training.trainingDetails.expirationDate as string)) : 
           "No expiration"
         }
       </TableCell>

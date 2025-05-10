@@ -25,6 +25,8 @@ export interface Training {
   description: string;
   durationHours: number;
   requiredFor: string[];
+  // Add expirationDate to fix the type error
+  expirationDate?: string;
 }
 
 export interface TrainingCompletion {
