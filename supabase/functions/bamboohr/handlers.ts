@@ -1,4 +1,3 @@
-
 import { corsHeaders, cleanSecret, getBambooCredentials, logWithTimestamp, createErrorResponse } from "./utils.ts";
 
 // Timeout for API requests to BambooHR - 5 seconds

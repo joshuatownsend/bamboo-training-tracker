@@ -5,6 +5,7 @@ export interface BambooApiOptions {
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
   client?: any;
+  timeout?: number; // Added timeout option
 }
 
 export interface EdgeFunctionSecretsResult {
@@ -17,6 +18,7 @@ export interface EdgeFunctionSecretsResult {
   };
   environmentKeys?: string[];
   timestamp?: string;
+  deploymentVerification?: string;
 }
 
 export interface BambooHRClientInterface {

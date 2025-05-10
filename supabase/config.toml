@@ -32,6 +32,7 @@ port = 54328
 
 [functions.bamboohr]
 verify_jwt = false
+max_timeout = 60
 
 [functions.sync-employee-mappings]
 verify_jwt = true
