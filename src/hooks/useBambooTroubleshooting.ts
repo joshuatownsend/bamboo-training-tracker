@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { getEffectiveBambooConfig, storeSubdomainLocally } from '@/lib/bamboohr/config';
 import useBambooHR from '@/hooks/useBambooHR';
-import { testBambooHREndpoints } from '@/lib/bamboohr/apiTester';
+import { testBambooHREndpoints } from '@/lib/bamboohr/api-tester';
 
 export interface TestResult {
   step: string;
@@ -56,7 +56,7 @@ export const useBambooTroubleshooting = () => {
         throw new Error('Please enter your BambooHR subdomain in the field above to run diagnostic tests. This helps with troubleshooting.');
       }
       
-      const client = getBambooService().getClient();
+      const client = getBambooService();
       
       const testResults = await testBambooHREndpoints(client);
       setResults(testResults);

@@ -1,6 +1,6 @@
 
 import { QueryClient } from '@tanstack/react-query';
-import BambooHRApiClient from '@/lib/bamboohr/api';
+import { BambooHRApiClient } from '@/lib/bamboohr/client';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 
 // Singleton instance for the query client
