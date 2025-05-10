@@ -16,6 +16,7 @@ import TrainingDataValidation from './pages/TrainingDataValidation';
 import BambooTroubleshooting from './pages/BambooTroubleshooting';
 import BambooApiDiagnostics from './pages/BambooApiDiagnostics';
 import Layout from './components/layout/Layout';
+import MyQualifications from './pages/MyQualifications';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/employees" element={<AuthGuard><Employees /></AuthGuard>} />
             <Route path="/courses" element={<AuthGuard><Courses /></AuthGuard>} />
             <Route path="/my-trainings" element={<AuthGuard><MyTrainings /></AuthGuard>} />
+            <Route path="/my-qualifications" element={<AuthGuard><MyQualifications /></AuthGuard>} />
             <Route path="/required-trainings" element={<AuthGuard><RequiredTrainings /></AuthGuard>} />
             <Route path="/admin-settings" element={<AuthGuard><AdminSettings /></AuthGuard>} />
             <Route path="/training-validation" element={<AuthGuard><TrainingDataValidation /></AuthGuard>} />

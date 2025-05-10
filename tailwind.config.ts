@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -20,11 +19,11 @@ export default {
 		},
 		extend: {
 			colors: {
-				border: 'hsl(var(--border))',
-				input: 'hsl(var(--input))',
-				ring: 'hsl(var(--ring))',
-				background: 'hsl(var(--background))',
-				foreground: 'hsl(var(--foreground))',
+				border: "hsl(var(--border))",
+				input: "hsl(var(--input))",
+				ring: "hsl(var(--ring))",
+				background: "hsl(var(--background))",
+				foreground: "hsl(var(--foreground))",
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -65,11 +64,10 @@ export default {
 					800: '#3f6212',
 					900: '#365314',
 				},
-				// Adding company colors directly for easier access
 				company: {
-					yellow: '#FCDC1D',
-					grey: '#747474',
-					black: '#000000'
+					yellow: "#FCDC1D",
+					grey: "#747474",
+					black: "#000000",
 				},
 			},
 			borderRadius: {
