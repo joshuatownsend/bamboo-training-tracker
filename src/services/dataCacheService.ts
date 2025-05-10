@@ -48,6 +48,12 @@ export function getBambooService(): BambooHRApiClient {
   }
   
   const config = getEffectiveBambooConfig();
+  console.log("Creating new BambooHR service with config:", {
+    subdomain: config.subdomain,
+    apiKeyPresent: !!config.apiKey,
+    useEdgeFunction: config.useEdgeFunction,
+    edgeFunctionUrlProvided: !!config.edgeFunctionUrl
+  });
   
   // We create a new BambooHRApiClient instance
   bambooServiceInstance = new BambooHRApiClient({

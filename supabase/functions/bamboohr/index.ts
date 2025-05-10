@@ -7,9 +7,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleBambooHRRequest, handleSecretsCheck } from "./handlers.ts";
 import { corsHeaders, logWithTimestamp } from "./utils.ts";
 
-// BambooHR API timeout (increased to 60 seconds for better chance of success)
-const API_TIMEOUT = 60000;
-
 // Define the serve handler function
 serve(async (req) => {
   console.log(`BambooHR Edge Function received request: ${req.method} ${req.url}`);

@@ -1,8 +1,8 @@
 
 import { corsHeaders, cleanSecret, getBambooCredentials, logWithTimestamp } from "./utils.ts";
 
-// Timeout for API requests to BambooHR - 5 seconds
-export const BAMBOOHR_REQUEST_TIMEOUT = 5000;
+// BambooHR API timeout (increased to 60 seconds for better chance of success)
+export const BAMBOOHR_REQUEST_TIMEOUT = 60000;
 
 // Handle secrets check endpoint
 export async function handleSecretsCheck(req: Request): Promise<Response> {
@@ -56,7 +56,7 @@ export async function handleBambooHRRequest(req: Request, path: string, searchPa
   const { subdomain, apiKey, hasCredentials } = getBambooCredentials(searchParams);
   const timestamp = new Date().toISOString();
   
-  logWithTimestamp(`Using subdomain: "${subdomain || '(not found)'}", raw length: ${subdomain.length}, cleaned length: ${subdomain.length}`);
+  logWithTimestamp(`Using subdomain: "${subdomain || '(not found)'}", raw length: ${subdomain?.length || 0}, cleaned length: ${subdomain?.length || 0}`);
   
   // Check for required credentials
   if (!hasCredentials) {
@@ -68,9 +68,14 @@ export async function handleBambooHRRequest(req: Request, path: string, searchPa
   }
   
   // Check for requests to endpoints known to be slow
-  // For individual employee training records, we should add a timeout
-  if (path.includes('/training/record/employee/')) {
-    logWithTimestamp(`Detected request for individual employee training records, adding timeout of ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
+  const requestTimeout = path.includes('/training/record/employee/') || 
+                        path.includes('/tables/trainingCompleted') ||
+                        path.includes('/tables/certifications')
+    ? BAMBOOHR_REQUEST_TIMEOUT  // Use longer timeout for these endpoints
+    : 30000;  // Default 30s timeout
+  
+  if (requestTimeout > 30000) {
+    logWithTimestamp(`Detected request for endpoint that may be slow, using extended timeout of ${requestTimeout}ms`);
   }
   
   // Build the target BambooHR URL
@@ -100,17 +105,17 @@ export async function handleBambooHRRequest(req: Request, path: string, searchPa
     .map(([key, value]) => [key, value])
   )}`);
   
-  return await makeProxyRequest(req, targetUrl, headers);
+  return await makeProxyRequest(req, targetUrl, headers, requestTimeout);
 }
 
 // Function to make the actual proxy request with timeout handling
-async function makeProxyRequest(req: Request, targetUrl: string, headers: Headers): Promise<Response> {
+async function makeProxyRequest(req: Request, targetUrl: string, headers: Headers, timeoutMs: number): Promise<Response> {
   // Create an AbortController for timeout management
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-    logWithTimestamp(`Request timed out after ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
-  }, BAMBOOHR_REQUEST_TIMEOUT);
+    logWithTimestamp(`Request timed out after ${timeoutMs}ms`);
+  }, timeoutMs);
   
   try {
     // Forward the request to BambooHR with timeout

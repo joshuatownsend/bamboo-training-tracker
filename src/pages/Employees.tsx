@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -38,8 +39,8 @@ const Employees = () => {
     console.log('Error:', error);
     
     if (data) {
-      console.log(`Employees data:`, data.employees);
-      console.log(`Employees count: ${data.employees?.length || 0}`);
+      console.log(`Employees data length: ${data.employees?.length || 0}`);
+      console.log(`First few employees:`, data.employees?.slice(0, 3) || []);
       console.log(`Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
     }
     
@@ -65,7 +66,7 @@ const Employees = () => {
     : (data?.completions || []);
   
   // Get unique divisions for filter
-  const divisions = [...new Set(employeesData?.map(e => e.division).filter(Boolean))];
+  const divisions = [...new Set(employeesData?.filter(Boolean).map(e => e.division).filter(Boolean))];
   
   // Filter employees based on search and division
   const filteredEmployees = employeesData?.filter(employee => {
@@ -90,6 +91,11 @@ const Employees = () => {
       });
     }).catch((error) => {
       console.error("Error refreshing data:", error);
+      toast({
+        title: "Refresh failed",
+        description: error?.message || "Failed to refresh employee data",
+        variant: "destructive",
+      });
     });
   };
 

@@ -1,360 +1,386 @@
 
-import { BambooApiOptions, BambooHRClientInterface, EdgeFunctionSecretsResult } from './types';
+import { BambooApiOptions, BambooHRClientInterface } from './types';
 
 /**
- * Base BambooHRClient provides the low-level API communication with BambooHR.
- * It handles authentication, request formatting, and error handling.
+ * Base BambooHR API client class
+ * Handles direct communication with the BambooHR API or Edge Function proxy
  */
 export class BambooHRClient implements BambooHRClientInterface {
-  protected subdomain: string;
-  protected apiKey: string;
-  protected useEdgeFunction: boolean;
-  protected edgeFunctionUrl: string;
-  private defaultTimeout = 10000; // 10 seconds default timeout
+  private subdomain: string;
+  private apiKey: string;
+  private baseUrl: string;
+  private useEdgeFunction: boolean;
+  private edgeFunctionUrl: string;
+  private retryCount: number = 2; // Add retry capability
 
   constructor(options: BambooApiOptions) {
     this.subdomain = options.subdomain || '';
     this.apiKey = options.apiKey || '';
     this.useEdgeFunction = options.useEdgeFunction || false;
-    this.edgeFunctionUrl = options.edgeFunctionUrl || '';
+    this.edgeFunctionUrl = options.edgeFunctionUrl || '/api/bamboohr';
     
-    console.log(`BambooHR Client initialized - Using Edge Function: ${this.useEdgeFunction}`);
+    // Set up the base URL for BambooHR API
+    this.baseUrl = `https://api.bamboohr.com/api/gateway.php/${this.subdomain}/v1`;
   }
-
+  
   /**
-   * Test if a BambooHR API endpoint exists and is accessible
-   */
-  async testEndpointExists(path: string): Promise<boolean> {
-    try {
-      const response = await this.fetchRawResponse(path);
-      return response.ok;
-    } catch (error) {
-      console.error(`Error testing endpoint ${path}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Test connection to BambooHR
+   * Test if we can connect to the BambooHR API
+   * @returns True if connection was successful
    */
   async testConnection(): Promise<boolean> {
     try {
-      // Try to access the directory endpoint as a simple connection test
-      const response = await this.fetchRawResponse('/employees/directory');
-      return response.ok;
+      // Try to access a simple endpoint that should be available to any valid API key
+      const result = await this.testEndpointExists('/employees/directory');
+      return result;
     } catch (error) {
-      console.error('Error testing BambooHR connection:', error);
+      console.error("Connection test failed:", error);
       return false;
     }
   }
-
+  
   /**
-   * Get raw response from BambooHR API for diagnostic purposes
+   * Test if a specific endpoint exists and is accessible
+   * @param endpoint The endpoint to test
+   * @returns True if endpoint exists and is accessible
    */
-  async fetchRawResponse(path: string): Promise<Response> {
-    const url = this.buildApiUrl(path);
-    
+  async testEndpointExists(endpoint: string): Promise<boolean> {
     try {
-      if (this.useEdgeFunction) {
-        // Use Edge Function
-        return this.fetchFromEdgeFunction(path);
-      } else {
-        // Direct API access (requires CORS proxy for browser usage)
-        const headers = this.getAuthHeaders();
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers,
-          credentials: 'omit'
-        });
-        
-        return response;
-      }
+      const response = await this.fetchFromBamboo(endpoint);
+      return !!response; // If we got a response, endpoint exists
     } catch (error) {
-      console.error(`Error fetching from ${url}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch data from BambooHR API
-   * @param path API path to fetch from
-   * @returns Parsed JSON response
-   */
-  async fetchFromBamboo(path: string): Promise<any> {
-    const response = await this.fetchRawResponse(path);
-    
-    if (!response.ok) {
-      // Get error details from response
-      let errorDetail;
-      try {
-        // Try to get error in JSON format
-        errorDetail = await response.json();
-      } catch (e) {
-        // If not JSON, get as text
-        try {
-          errorDetail = await response.text();
-        } catch (e2) {
-          errorDetail = 'Unknown error';
-        }
+      if (error instanceof Error && error.message.includes('404')) {
+        // 404 means endpoint exists but may need additional permissions or params
+        return true;
       }
-      
-      throw new Error(`BambooHR API error (${response.status}): ${JSON.stringify(errorDetail)}`);
-    }
-    
-    // Check if response is empty
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      // Not a JSON response
-      const text = await response.text();
-      
-      if (text.includes('<!DOCTYPE html>') || text.includes('<html>')) {
-        throw new Error('Received HTML instead of JSON. This usually means authentication failed or incorrect subdomain.');
-      }
-      
-      if (!text.trim()) {
-        // Empty response
-        return null;
-      }
-      
-      // Try to parse as JSON anyway
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        // Not JSON, return as is
-        console.warn('Response is not JSON:', text.substring(0, 100));
-        return text;
-      }
-    }
-    
-    return await response.json();
-  }
-
-  /**
-   * Fetch employees from BambooHR
-   */
-  async getEmployees(): Promise<any[]> {
-    try {
-      console.log('Fetching employees directory from BambooHR...');
-      // First try employees directory endpoint (more complete data)
-      const directoryResponse = await this.fetchFromBamboo('/employees/directory');
-      
-      if (directoryResponse && directoryResponse.employees && Array.isArray(directoryResponse.employees)) {
-        console.log(`Found ${directoryResponse.employees.length} employees in directory`);
-        return directoryResponse.employees;
-      } else {
-        // Fallback to basic employees endpoint
-        console.log('Directory endpoint returned no data, trying basic employees endpoint...');
-        const response = await this.fetchFromBamboo('/employees');
-        
-        if (Array.isArray(response)) {
-          console.log(`Found ${response.length} employees from basic endpoint`);
-          return response;
-        }
-        
-        // If we still don't have employees, check if we got an employees object
-        if (response && response.employees) {
-          console.log(`Found ${response.employees.length} employees in response object`);
-          return response.employees;
-        }
-        
-        console.warn('No employees found in response:', response);
-        return [];
-      }
-    } catch (error) {
-      console.error('Error fetching employees:', error);
       throw error;
     }
   }
   
   /**
-   * Fetch trainings from BambooHR
+   * Fetch data from BambooHR API with improved error handling and retry logic
+   * @param endpoint API endpoint to fetch
+   * @param options Fetch options
+   * @returns Response data
    */
-  async getTrainings(): Promise<any[]> {
-    try {
-      // First try to fetch from the training table
-      console.log('Fetching trainings from training table...');
+  async fetchFromBamboo(endpoint: string, options: RequestInit = {}): Promise<any> {
+    let attempt = 0;
+    let lastError;
+    
+    while (attempt <= this.retryCount) {
       try {
-        const trainingTable = await this.fetchFromBamboo('/employees/all/tables/training');
-        if (Array.isArray(trainingTable)) {
-          console.log(`Found ${trainingTable.length} training types in training table`);
-          return trainingTable;
+        // If using edge function, proxy request through that
+        if (this.useEdgeFunction) {
+          return await this.fetchThroughEdgeFunction(endpoint, options);
+        }
+        
+        // Direct API call (client-side)
+        const url = `${this.baseUrl}${endpoint}`;
+        const headers = new Headers({
+          'Accept': 'application/json',
+          'Authorization': `Basic ${btoa(`${this.apiKey}:x`)}`
+        });
+        
+        console.log(`Direct API fetch to ${url}`);
+        
+        const response = await fetch(url, {
+          ...options,
+          headers,
+        });
+        
+        if (!response.ok) {
+          let errorMessage = `BambooHR API error (${response.status})`;
+          
+          try {
+            const errorData = await response.json();
+            errorMessage = `${errorMessage}: ${JSON.stringify(errorData)}`;
+          } catch (e) {
+            // If can't parse JSON, use text
+            try {
+              const errorText = await response.text();
+              errorMessage = `${errorMessage}: "${errorText}"`;
+            } catch (textError) {
+              errorMessage = `${errorMessage}: "Unknown error"`;
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // Check if response is empty
+        const text = await response.text();
+        if (!text) return null;
+        
+        // Try to parse as JSON
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn("Response is not valid JSON:", text.substring(0, 100));
+          return text;
         }
       } catch (error) {
-        console.warn('Failed to fetch from training table:', error);
+        lastError = error;
+        console.warn(`API fetch attempt ${attempt + 1} failed:`, error);
+        
+        // If it's a network error or a 5xx error, retry
+        const isRetryableError = error instanceof Error && (
+          error.message.includes('network') || 
+          error.message.includes('timeout') ||
+          error.message.includes('500') ||
+          error.message.includes('503')
+        );
+        
+        if (isRetryableError && attempt < this.retryCount) {
+          // Add increasing delay before retry (exponential backoff)
+          const delay = Math.pow(2, attempt) * 500; // 500ms, 1000ms, 2000ms
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          attempt++;
+          continue;
+        }
+        
+        throw lastError;
       }
+    }
+    
+    throw lastError;
+  }
+  
+  /**
+   * Fetch data through the Edge Function proxy
+   * @param endpoint BambooHR API endpoint
+   * @param options Fetch options
+   * @returns Response data
+   */
+  private async fetchThroughEdgeFunction(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const url = `${this.edgeFunctionUrl}${endpoint}?subdomain=${this.subdomain}`;
+    console.log(`Edge function fetch to ${url}`);
+    
+    let attempt = 0;
+    let lastError;
+    
+    while (attempt <= this.retryCount) {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            'Accept': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          let errorMessage = `BambooHR API error (${response.status})`;
+          
+          try {
+            const errorData = await response.json();
+            errorMessage = `${errorMessage}: ${JSON.stringify(errorData)}`;
+          } catch (e) {
+            // If can't parse JSON, use text
+            try {
+              const errorText = await response.text();
+              errorMessage = `${errorMessage}: "${errorText}"`;
+            } catch (textError) {
+              errorMessage = `${errorMessage}: "Unknown error"`;
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // Check for empty response
+        const text = await response.text();
+        if (!text) return null;
+        
+        // Parse JSON response
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn("Edge function response is not valid JSON:", text.substring(0, 100));
+          return text;
+        }
+      } catch (error) {
+        lastError = error;
+        console.warn(`Edge function fetch attempt ${attempt + 1} failed:`, error);
+        
+        // If it's a network error or a 5xx error, retry
+        const isRetryableError = error instanceof Error && (
+          error.message.includes('network') || 
+          error.message.includes('timeout') ||
+          error.message.includes('500') ||
+          error.message.includes('503')
+        );
+        
+        if (isRetryableError && attempt < this.retryCount) {
+          // Add increasing delay before retry
+          const delay = Math.pow(2, attempt) * 500;
+          console.log(`Retrying edge function in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          attempt++;
+          continue;
+        }
+        
+        throw lastError;
+      }
+    }
+    
+    throw lastError;
+  }
+  
+  /**
+   * Get all employees from BambooHR
+   * @returns Array of employee records
+   */
+  async getEmployees(): Promise<any[]> {
+    try {
+      console.log("Fetching employees from BambooHR");
+      const directory = await this.fetchFromBamboo('/employees/directory');
       
-      // Try to fetch from meta/fields for training types
-      console.log('Fetching trainings from meta fields...');
-      const fields = await this.fetchFromBamboo('/meta/fields');
-      
-      if (!Array.isArray(fields)) {
-        console.warn('Fields response is not an array:', fields);
+      if (!directory || !Array.isArray(directory.employees)) {
+        console.warn("Invalid employee directory response:", directory);
         return [];
       }
       
-      // Filter fields that look like training types
-      const trainingFields = fields.filter(field => {
-        return field.name && (
-          field.name.includes('Training') || 
-          field.name.includes('Certification') || 
-          field.name.includes('Course')
+      console.log(`Found ${directory.employees.length} employees in directory`);
+      return directory.employees;
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      // Fallback to smaller employee directory if available
+      try {
+        console.log("Trying alternative employee directory endpoint");
+        const directoryAlt = await this.fetchFromBamboo('/employees');
+        
+        if (!directoryAlt || !Array.isArray(directoryAlt)) {
+          console.warn("Invalid alternative employee directory response");
+          return [];
+        }
+        
+        console.log(`Found ${directoryAlt.length} employees in alternative directory`);
+        return directoryAlt;
+      } catch (fallbackError) {
+        console.error("Fallback employee fetch also failed:", fallbackError);
+        return [];
+      }
+    }
+  }
+  
+  /**
+   * Get all trainings from BambooHR
+   * @returns Array of training records
+   */
+  async getTrainings(): Promise<any[]> {
+    try {
+      console.log("Fetching trainings from BambooHR");
+      
+      // Try to get trainings from training catalog
+      const trainings = await this.fetchFromBamboo('/training/catalog');
+      
+      if (!trainings || !Array.isArray(trainings)) {
+        console.warn("Invalid trainings response:", trainings);
+        return [];
+      }
+      
+      console.log(`Found ${trainings.length} trainings in catalog`);
+      return trainings;
+    } catch (error) {
+      console.error("Error fetching trainings:", error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get trainings for a specific employee
+   * @param employeeId Employee ID
+   * @param timeoutMs Timeout in milliseconds
+   * @returns Array of training records for the employee
+   */
+  async getUserTrainings(employeeId: string, timeoutMs: number = 5000): Promise<any[]> {
+    try {
+      console.log(`Fetching trainings for employee ID: ${employeeId}`);
+      
+      // Try to get trainings from training/record/employee first
+      try {
+        const trainings = await this.fetchWithTimeout(
+          `/training/record/employee/${employeeId}`, 
+          {}, 
+          timeoutMs
         );
-      });
-      
-      console.log(`Found ${trainingFields.length} training field types`);
-      return trainingFields;
-    } catch (error) {
-      console.error('Error fetching trainings:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch trainings for a specific employee
-   */
-  async getUserTrainings(employeeId: string, timeoutMs = 10000): Promise<any[]> {
-    if (!employeeId) {
-      console.error('No employee ID provided for getUserTrainings');
-      return [];
-    }
-    
-    try {
-      console.log(`Fetching user trainings for employee ${employeeId}`);
-      
-      // Try different approaches with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
-      try {
-        // First try the trainingCompleted table
-        const trainingCompletedTable = await this.fetchFromBamboo(`/employees/${employeeId}/tables/trainingCompleted`);
-        clearTimeout(timeoutId);
         
-        if (Array.isArray(trainingCompletedTable) && trainingCompletedTable.length > 0) {
-          console.log(`Found ${trainingCompletedTable.length} completed trainings in trainingCompleted table`);
-          return trainingCompletedTable;
+        if (trainings && Array.isArray(trainings)) {
+          console.log(`Found ${trainings.length} training records for employee ${employeeId}`);
+          return trainings;
+        } else {
+          console.log("Training records endpoint returned invalid data, trying alternative");
         }
-      } catch (error) {
-        console.warn(`Failed to fetch trainingCompleted for employee ${employeeId}:`, error);
+      } catch (trainingError) {
+        console.warn(`Error fetching employee training records: ${trainingError.message}, trying alternatives`);
       }
       
-      // Try another approach - certifications table
+      // Try to get trainings from tables/trainingCompleted
       try {
-        const certificationsTable = await this.fetchFromBamboo(`/employees/${employeeId}/tables/certifications`);
+        const completedTrainings = await this.fetchWithTimeout(
+          `/employees/${employeeId}/tables/trainingCompleted`,
+          {},
+          timeoutMs
+        );
         
-        if (Array.isArray(certificationsTable) && certificationsTable.length > 0) {
-          console.log(`Found ${certificationsTable.length} certifications`);
-          return certificationsTable;
+        if (completedTrainings && Array.isArray(completedTrainings)) {
+          console.log(`Found ${completedTrainings.length} completed trainings for employee ${employeeId}`);
+          return completedTrainings;
+        } else {
+          console.log("Training completed table returned invalid data, trying next alternative");
         }
-      } catch (error) {
-        console.warn(`Failed to fetch certifications for employee ${employeeId}:`, error);
+      } catch (completedError) {
+        console.warn(`Error fetching employee completed trainings: ${completedError.message}, trying last alternative`);
       }
       
-      console.log(`No training records found for employee ${employeeId}`);
+      // Try certifications table as last resort
+      try {
+        const certifications = await this.fetchWithTimeout(
+          `/employees/${employeeId}/tables/certifications`,
+          {},
+          timeoutMs
+        );
+        
+        if (certifications && Array.isArray(certifications)) {
+          console.log(`Found ${certifications.length} certifications for employee ${employeeId}`);
+          return certifications;
+        } else {
+          console.log("Certifications table returned invalid data");
+        }
+      } catch (certError) {
+        console.warn(`Error fetching employee certifications: ${certError.message}`);
+      }
+      
+      console.info(`No training records found for employee ${employeeId}`);
       return [];
     } catch (error) {
-      console.error(`Error fetching user trainings for employee ${employeeId}:`, error);
+      console.error(`Error in getUserTrainings for employee ${employeeId}:`, error);
       return [];
     }
   }
-
+  
   /**
-   * Check Edge Function secrets configuration
+   * Fetch with timeout
+   * @param endpoint BambooHR API endpoint
+   * @param options Fetch options
+   * @param timeoutMs Timeout in milliseconds
+   * @returns Response data
    */
-  async checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult> {
-    if (!this.useEdgeFunction) {
-      return {
-        success: false,
-        message: 'Edge Function is not enabled',
-        secretsConfigured: false,
-        secrets: {
-          BAMBOOHR_SUBDOMAIN: false,
-          BAMBOOHR_API_KEY: false
-        }
-      };
-    }
-    
-    try {
-      const url = `${this.edgeFunctionUrl}/check`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+  private async fetchWithTimeout(endpoint: string, options: RequestInit = {}, timeoutMs: number): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Request to ${endpoint} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
       
-      if (!response.ok) {
-        throw new Error(`Edge Function check failed: HTTP ${response.status}`);
-      }
-      
-      const result = await response.json();
-      return result as EdgeFunctionSecretsResult;
-    } catch (error) {
-      console.error('Error checking Edge Function secrets:', error);
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : String(error),
-        secretsConfigured: false,
-        secrets: {
-          BAMBOOHR_SUBDOMAIN: false,
-          BAMBOOHR_API_KEY: false
-        }
-      };
-    }
-  }
-
-  // Helper methods
-
-  /**
-   * Build API URL for BambooHR
-   */
-  protected buildApiUrl(path: string): string {
-    if (this.useEdgeFunction) {
-      // Use Edge Function
-      // Remove leading slash from path
-      const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-      return `${this.edgeFunctionUrl}/${cleanPath}`;
-    } else {
-      // Direct API access (requires CORS proxy for browser usage)
-      const cleanedSubdomain = this.subdomain.replace(/\.bamboohr\.com$/i, '');
-      return `https://api.bamboohr.com/api/gateway.php/${cleanedSubdomain}/v1${path}`;
-    }
-  }
-
-  /**
-   * Get authentication headers for BambooHR API
-   */
-  protected getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Accept': 'application/json'
-    };
-    
-    if (!this.useEdgeFunction && this.apiKey) {
-      // Only add Basic Auth when not using Edge Function
-      const authString = `${this.apiKey}:x`;
-      headers['Authorization'] = `Basic ${btoa(authString)}`;
-    }
-    
-    return headers;
-  }
-
-  /**
-   * Fetch from Edge Function
-   */
-  private async fetchFromEdgeFunction(path: string): Promise<Response> {
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    const url = `${this.edgeFunctionUrl}/${cleanPath}`;
-    
-    // Add subdomain as query param
-    const separator = url.includes('?') ? '&' : '?';
-    const finalUrl = `${url}${separator}subdomain=${this.subdomain}`;
-    
-    return fetch(finalUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
+      this.fetchFromBamboo(endpoint, options)
+        .then(result => {
+          clearTimeout(timeoutId);
+          resolve(result);
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
     });
   }
 }

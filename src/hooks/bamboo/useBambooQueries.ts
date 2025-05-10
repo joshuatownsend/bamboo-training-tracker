@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isBambooConfigured } from '@/lib/bamboohr/config';
@@ -25,12 +26,30 @@ export const useBambooQueries = () => {
           console.log('Fetching BambooHR data for UI...');
           
           // Try to prefetch data in background if not available in cache
-          // No argument needed for prefetchBambooHRData
-          await prefetchBambooHRData().catch(console.error);
+          try {
+            await prefetchBambooHRData().catch(err => {
+              console.error("Error in prefetch:", err);
+            });
+          } catch (prefetchError) {
+            console.warn("Prefetch attempt failed:", prefetchError);
+            // Continue with direct fetch even if prefetch fails
+          }
           
           const service = getBambooService();
+          
           // Use regular mode for UI data loading (not connection test mode)
           const result = await service.fetchAllData();
+          
+          if (!result) {
+            console.error("BambooHR API returned null or undefined result");
+            return {
+              employees: [],
+              trainings: [],
+              completions: [],
+              partialData: true,
+              error: "Empty response from BambooHR API"
+            };
+          }
           
           // Ensure we always return objects, even if undefined
           const normalizedResult = {
@@ -56,6 +75,8 @@ export const useBambooQueries = () => {
             if (missingIds > 0) {
               console.warn(`Warning: ${missingIds} employees are missing ID fields`);
             }
+          } else {
+            console.warn("No employees found in the API response");
           }
           
           return normalizedResult;
@@ -90,6 +111,7 @@ export const useBambooQueries = () => {
       enabled: isConfigured, // Only run the query if BambooHR is configured
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false, // Don't refetch on window focus
+      retry: 2, // Retry failed requests up to 2 times
     });
   }, [isConfigured, toast]);
   
@@ -108,6 +130,7 @@ export const useBambooQueries = () => {
       enabled: isConfigured,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
+      retry: 2,
     });
   }, [isConfigured]);
   
@@ -128,6 +151,7 @@ export const useBambooQueries = () => {
       enabled: isConfigured && !!employeeId,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
+      retry: 2,
     });
   }, [isConfigured]);
 

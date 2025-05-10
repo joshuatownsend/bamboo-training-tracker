@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useEmployeeMapping from "@/hooks/useEmployeeMapping";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -25,8 +25,10 @@ export function EmployeeTable({
   const { toast } = useToast();
 
   // For debugging
-  console.log("EmployeeTable received employees:", employees.length);
-  console.log("First few employees:", employees.slice(0, 3));
+  useEffect(() => {
+    console.log("EmployeeTable received employees:", employees.length);
+    console.log("First few employees:", employees.slice(0, 3));
+  }, [employees]);
 
   // Function to save email to employee ID mappings
   const saveEmailMappings = async () => {
@@ -78,9 +80,24 @@ export function EmployeeTable({
     );
   }
 
+  // Filter out any invalid employee records (should have id at minimum)
+  const validEmployees = employees.filter(employee => employee && employee.id);
+  
+  if (validEmployees.length === 0) {
+    return (
+      <div className="rounded-md border bg-white p-8 text-center">
+        <p className="text-muted-foreground">No valid employee records found</p>
+        <p className="text-xs text-muted-foreground mt-2">Data may be missing required fields</p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-md border bg-white">
-      <div className="p-4 flex justify-end border-b">
+      <div className="p-4 flex justify-between border-b">
+        <div className="text-sm text-muted-foreground">
+          Showing {validEmployees.length} employees
+        </div>
         <Button 
           onClick={saveEmailMappings}
           disabled={savingMappings}
@@ -103,13 +120,7 @@ export function EmployeeTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {employees.map((employee) => {
-            // Ensure employee exists and has an ID before proceeding
-            if (!employee || !employee.id) {
-              console.warn("Found invalid employee record:", employee);
-              return null;
-            }
-            
+          {validEmployees.map((employee) => {
             // Calculate training status with null checks
             const requiredTrainings = (trainings || []).filter(t => 
               t && t.requiredFor?.includes(employee.division || '')
