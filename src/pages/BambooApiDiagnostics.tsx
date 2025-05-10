@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, ArrowLeft, FileText } from 'lucide-react';
@@ -12,6 +12,16 @@ import CommonIssues from '@/components/bamboo/troubleshooting/CommonIssues';
 
 const BambooApiDiagnostics = () => {
   const navigate = useNavigate();
+  const [endpointPath, setEndpointPath] = useState<string>('/employees/directory');
+  const [isTestLoading, setIsTestLoading] = useState<boolean>(false);
+  
+  const runTest = () => {
+    setIsTestLoading(true);
+    // Simulate test completion after 1 second
+    setTimeout(() => {
+      setIsTestLoading(false);
+    }, 1000);
+  };
 
   return (
     <div className="space-y-6">
@@ -90,7 +100,16 @@ const BambooApiDiagnostics = () => {
         </TabsContent>
         
         <TabsContent value="config" className="space-y-4 mt-6">
-          <ConnectionConfig />
+          <ConnectionConfig 
+            endpointPath={endpointPath} 
+            setEndpointPath={setEndpointPath}
+            isLoading={isTestLoading}
+            runTest={runTest}
+            config={{
+              subdomain: localStorage.getItem('bamboo_subdomain') || '',
+              useEdgeFunction: true
+            }}
+          />
           <EdgeFunctionConfig />
         </TabsContent>
         

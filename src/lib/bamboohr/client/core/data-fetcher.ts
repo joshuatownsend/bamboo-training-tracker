@@ -88,15 +88,16 @@ export class DataFetcher extends ConnectionTester {
           console.log(`Found ${Object.keys(trainings).length} training records for employee ${employeeId}`);
           
           // Convert object format to array for consistency
-          return Object.values(trainings).map(training => ({
+          const trainingArray = Object.values(trainings);
+          return trainingArray.map((training: any) => ({
             ...training,
-            trainingDetails: this.getTrainingDetailsById(training.type)
+            trainingDetails: this.getTrainingDetailsById(training?.type)
           }));
         } else {
           console.log("Training records endpoint returned empty data, trying alternatives");
         }
       } catch (trainingError) {
-        console.warn(`Error fetching employee training records: ${trainingError.message}, trying alternatives`);
+        console.warn(`Error fetching employee training records: ${trainingError instanceof Error ? trainingError.message : 'Unknown error'}, trying alternatives`);
       }
       
       // Try to get trainings from tables/trainingCompleted
@@ -111,15 +112,16 @@ export class DataFetcher extends ConnectionTester {
           console.log(`Found ${Object.keys(completedTrainings).length} completed trainings for employee ${employeeId}`);
           
           // Convert object format to array for consistency
-          return Object.values(completedTrainings).map(training => ({
+          const trainingArray = Object.values(completedTrainings);
+          return trainingArray.map((training: any) => ({
             ...training,
-            trainingDetails: this.getTrainingDetailsById(training.type)
+            trainingDetails: this.getTrainingDetailsById(training?.type)
           }));
         } else {
           console.log("Training completed table returned empty data, trying next alternative");
         }
       } catch (completedError) {
-        console.warn(`Error fetching employee completed trainings: ${completedError.message}, trying last alternative`);
+        console.warn(`Error fetching employee completed trainings: ${completedError instanceof Error ? completedError.message : 'Unknown error'}, trying last alternative`);
       }
       
       // Try certifications table as last resort
@@ -134,15 +136,16 @@ export class DataFetcher extends ConnectionTester {
           console.log(`Found ${Object.keys(certifications).length} certifications for employee ${employeeId}`);
           
           // Convert object format to array for consistency
-          return Object.values(certifications).map(cert => ({
+          const certArray = Object.values(certifications);
+          return certArray.map((cert: any) => ({
             ...cert,
-            trainingDetails: this.getTrainingDetailsById(cert.type)
+            trainingDetails: this.getTrainingDetailsById(cert?.type)
           }));
         } else {
           console.log("Certifications table returned empty data");
         }
       } catch (certError) {
-        console.warn(`Error fetching employee certifications: ${certError.message}`);
+        console.warn(`Error fetching employee certifications: ${certError instanceof Error ? certError.message : 'Unknown error'}`);
       }
       
       console.info(`No training records found for employee ${employeeId}`);
@@ -158,8 +161,10 @@ export class DataFetcher extends ConnectionTester {
    * @param trainingId Training/certification ID
    * @returns Training details object or null
    */
-  private getTrainingDetailsById(trainingId: string | number): any | null {
+  private getTrainingDetailsById(trainingId?: string | number): any | null {
     try {
+      if (!trainingId) return null;
+      
       // You might want to implement caching for this
       // This is a placeholder implementation
       return { 

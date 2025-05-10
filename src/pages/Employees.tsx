@@ -103,7 +103,8 @@ const Employees = () => {
   const usingMockDataDespiteConfig = isConfigured && (!data?.employees || data.employees.length === 0);
   
   // Check if we received partial data due to errors
-  const hasPartialData = data?.partialData === true;
+  // Use optional chaining to safely access the partialData property
+  const hasPartialData = data && 'partialData' in data ? data.partialData === true : false;
   
   console.log('Rendering Employees page with filtered employees count:', filteredEmployees.length);
   
@@ -175,7 +176,7 @@ const Employees = () => {
                 Some BambooHR data could not be retrieved
               </p>
               <p className="text-sm mt-1">
-                {data?.error || "Some API endpoints may be unavailable or timed out."}
+                {data && 'error' in data ? data.error : "Some API endpoints may be unavailable or timed out."}
               </p>
               <div className="mt-3 flex gap-2">
                 <Button asChild variant="outline" size="sm" className="bg-amber-100">
