@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client/base';
 import { BambooHRApiClient } from './client/api-client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
@@ -58,10 +57,9 @@ class BambooHRApi {
   async fetchAllTrainings(): Promise<Training[]> {
     console.log("Fetching all trainings with explicit /training/type endpoint");
     
-    // Fixed: Check for useEdgeFunction in the client properties safely with optional chaining
-    const useEdgeFunction = this.client?.useEdgeFunction;
-    if (useEdgeFunction) {
-      console.log(`Using edge function URL: ${this.client?.edgeFunctionUrl}`);
+    // Now we can access these properties directly since they're public
+    if (this.client.useEdgeFunction) {
+      console.log(`Using edge function URL: ${this.client.edgeFunctionUrl}`);
     }
     
     try {

@@ -9,8 +9,8 @@ export class BaseBambooClient {
   protected subdomain: string;
   protected apiKey: string;
   protected baseUrl: string;
-  protected useEdgeFunction: boolean;
-  protected edgeFunctionUrl: string;
+  public useEdgeFunction: boolean; // Changed from protected to public
+  public edgeFunctionUrl: string;  // Changed from protected to public
   protected retryCount: number = 2;
 
   constructor(options: BambooApiOptions) {
