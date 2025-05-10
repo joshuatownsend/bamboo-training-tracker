@@ -1,4 +1,3 @@
-
 export interface Employee {
   id: string;
   name: string;
@@ -27,6 +26,8 @@ export interface Training {
   requiredFor: string[];
   // Add expirationDate to fix the type error
   expirationDate?: string;
+  // Add expiryYears property
+  expiryYears?: number;
 }
 
 export interface TrainingCompletion {

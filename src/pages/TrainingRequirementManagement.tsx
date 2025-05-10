@@ -19,17 +19,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trainings } from "@/lib/data";
+import { Training } from "@/lib/types";
 
 export default function TrainingRequirementManagement() {
   const { isAdmin } = useUser();
-  const [trainingData, setTrainingData] = useState(trainings);
+  const [trainingData, setTrainingData] = useState<Training[]>(trainings);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTraining, setEditingTraining] = useState<any | null>(null);
+  const [editingTraining, setEditingTraining] = useState<Training | null>(null);
 
   if (!isAdmin) {
     return (
@@ -40,7 +40,7 @@ export default function TrainingRequirementManagement() {
     );
   }
 
-  const handleEditTraining = (training: any) => {
+  const handleEditTraining = (training: Training) => {
     setEditingTraining({ ...training });
     setIsDialogOpen(true);
   };
@@ -52,6 +52,8 @@ export default function TrainingRequirementManagement() {
       description: "",
       category: "",
       durationHours: 0,
+      type: "",
+      requiredFor: [],
       expiryYears: 0
     });
     setIsDialogOpen(true);
@@ -77,7 +79,7 @@ export default function TrainingRequirementManagement() {
 
   const updateTrainingField = (field: string, value: string | number) => {
     setEditingTraining({
-      ...editingTraining,
+      ...editingTraining!,
       [field]: value
     });
   };
