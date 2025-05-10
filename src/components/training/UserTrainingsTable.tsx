@@ -42,6 +42,22 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     }
   };
 
+  // Function to safely get text value from potentially object values
+  const safeTextValue = (value: any): string => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return value.toString();
+    if (typeof value === "object") {
+      // If it's an object with id and name properties, return the name
+      if (value.name) return value.name;
+      if (value.title) return value.title;
+      if (value.id) return `ID: ${value.id}`;
+      // Convert object to JSON string as fallback
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   // Function to open BambooHR training page for the employee
   const openInBambooHR = (employeeId: string) => {
     window.open(`https://avfrd.bamboohr.com/employees/training/?id=${employeeId}&page=2109`, '_blank');
@@ -71,7 +87,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
               <>
                 <TableRow key={`category-${category}`} className="bg-muted/20 hover:bg-muted/20">
                   <TableCell colSpan={5} className="font-medium py-2">
-                    {category}
+                    {safeTextValue(category)}
                   </TableCell>
                 </TableRow>
                 {groupedTrainings[category].map((training) => (
@@ -79,16 +95,16 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {training.trainingDetails?.title || `Training ${training.trainingId || training.id}`}
+                          {safeTextValue(training.trainingDetails?.title) || `Training ${safeTextValue(training.trainingId || training.id)}`}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {training.trainingDetails?.description || "No description available"}
+                          {safeTextValue(training.trainingDetails?.description) || "No description available"}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-muted/30">
-                        {training.trainingDetails?.category || category}
+                        {safeTextValue(training.trainingDetails?.category) || safeTextValue(category)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -96,10 +112,10 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {training.notes || "No notes"}
+                        {safeTextValue(training.notes) || "No notes"}
                         {training.instructor && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            Instructor: {training.instructor}
+                            Instructor: {safeTextValue(training.instructor)}
                           </div>
                         )}
                       </div>
