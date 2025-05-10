@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from "./pages/Login";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +25,7 @@ import { UserProvider } from './contexts/UserContext';
 import { QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { prefetchBambooHRData } from '@/services/dataCacheService';
+import { AuthGuard } from './components/auth/AuthGuard';
 
 // Initialize the query client at the app level
 const queryClient = new QueryClient({
@@ -62,7 +63,11 @@ function App() {
       <Router>
         <Routes>
           <Route path="login" element={<Login />} />
-          <Route path="/" element={<Layout />}>
+          <Route path="/" element={
+            <AuthGuard>
+              <Layout />
+            </AuthGuard>
+          }>
             <Route index element={<Index />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="employees" element={<Employees />} />
@@ -82,6 +87,8 @@ function App() {
             <Route path="bamboo-test" element={<BambooConnectionTest />} />
             <Route path="*" element={<NotFound />} />
           </Route>
+          {/* Catch-all route redirects to login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </UserProvider>

@@ -24,6 +24,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { instance, activeAccount } = useMsal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authAttempted, setAuthAttempted] = useState(false);
   const [adminSettings, setAdminSettings] = useState<AdminSettings>(DEFAULT_ADMIN_CONFIGURATION);
   const { getEmployeeIdByEmail } = useEmployeeMapping();
   
@@ -104,18 +105,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               // Set active account to the first one
               instance.setActiveAccount(accounts[0]);
-              const user = await mapAccountToUser(accounts[0], adminSettings, getEmployeeIdByEmail);
+              const response = await instance.acquireTokenSilent({
+                ...loginRequest,
+                account: accounts[0],
+              });
+              
+              const user = await mapAccountToUser(response.account, adminSettings, getEmployeeIdByEmail);
               setCurrentUser(user);
             } catch (error) {
               // Silent token acquisition failed
               console.log("Silent token acquisition failed");
               setCurrentUser(null);
+              setAuthAttempted(true);
             }
+          } else {
+            // No accounts found, user is not authenticated
+            setCurrentUser(null);
+            setAuthAttempted(true);
           }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
         setCurrentUser(null);
+        setAuthAttempted(true);
       } finally {
         setIsLoading(false);
       }
@@ -169,7 +181,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = currentUser?.role === "admin";
 
   return (
-    <UserContext.Provider value={{ currentUser, isLoading, isAdmin, login, logout, refreshEmployeeId }}>
+    <UserContext.Provider value={{ 
+      currentUser, 
+      isLoading, 
+      isAdmin, 
+      login, 
+      logout, 
+      refreshEmployeeId,
+      authAttempted 
+    }}>
       {children}
     </UserContext.Provider>
   );

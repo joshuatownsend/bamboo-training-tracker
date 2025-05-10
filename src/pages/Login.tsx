@@ -10,7 +10,7 @@ export default function Login() {
   const { login, currentUser, isLoading } = useUser();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Redirect immediately if authenticated
   useEffect(() => {
     if (currentUser && !isLoading) {
       navigate('/');
@@ -29,9 +29,17 @@ export default function Login() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-company-yellow"></div>
+          <p className="text-company-grey">Checking authentication status...</p>
+        </div>
       </div>
     );
+  }
+
+  // If already logged in, don't render the login form at all
+  if (currentUser) {
+    return null;
   }
 
   return (
