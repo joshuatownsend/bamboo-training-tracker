@@ -19,7 +19,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
 
     if (!subdomain || !apiKey) {
-      throw new Error("Missing BambooHR credentials");
+      throw new Error("Missing BambooHR credentials in environment variables");
     }
 
     // Create a Supabase client
@@ -29,94 +29,69 @@ serve(async (req) => {
 
     console.log("Fetching training types from BambooHR...");
 
-    // Fetch training types from BambooHR
+    // Fetch training types from BambooHR with proper authentication
     const response = await fetch(
       `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/training/type`,
       {
         headers: {
-          Accept: "application/json",
-          Authorization: `Basic ${btoa(`${apiKey}:x`)}`,
+          "Accept": "application/json",
+          "Authorization": `Basic ${btoa(`${apiKey}:x`)}`
         },
       }
     );
 
     if (!response.ok) {
-      throw new Error(`BambooHR API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error("BambooHR API error status:", response.status, response.statusText);
+      console.error("Error details:", errorText);
+      throw new Error(`BambooHR API error (${response.status}): ${errorText}`);
     }
 
     const trainingsData = await response.json();
     
-    // Check if trainingsData is an array, if not, handle appropriately
-    if (!Array.isArray(trainingsData)) {
-      console.log(`Retrieved data is not an array. Data type: ${typeof trainingsData}`);
-      console.log("Data structure:", JSON.stringify(trainingsData).substring(0, 200) + "...");
-      
-      // If it's an object with a data field that's an array, use that
-      const trainings = Array.isArray(trainingsData.data) 
-        ? trainingsData.data 
-        : Array.isArray(trainingsData) 
-          ? trainingsData 
-          : [];
-      
-      console.log(`Extracted ${trainings.length} training types from response`);
+    console.log("BambooHR response type:", typeof trainingsData);
+    console.log("BambooHR response structure:", JSON.stringify(trainingsData).substring(0, 200) + "...");
     
-      // Process and upsert training types to Supabase
-      if (trainings.length === 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: "No training types found or could not parse response",
-            raw_data_type: typeof trainingsData
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          }
-        );
-      }
-      
-      // Process and upsert available training types
-      const processedTrainings = trainings.map((training) => ({
-        id: String(training.id),
-        name: training.name || `Training ${training.id}`,
-        category: training.category || null,
-        description: training.description || null,
-      }));
-
-      console.log("Upserting training types to Supabase...");
-      
-      // Use upsert to either update existing records or insert new ones
-      const { data, error } = await supabase
-        .from("bamboo_training_types")
-        .upsert(processedTrainings)
-        .select();
-
-      if (error) {
-        throw error;
-      }
-
-      console.log(`Successfully synced ${processedTrainings.length} training types to Supabase`);
-
+    // Process the training data based on its format
+    let trainings = [];
+    
+    if (typeof trainingsData === 'object' && !Array.isArray(trainingsData)) {
+      // Handle object format (key-value pairs of trainings)
+      trainings = Object.values(trainingsData);
+      console.log(`Extracted ${trainings.length} trainings from object format`);
+    } else if (Array.isArray(trainingsData)) {
+      // Handle array format (direct array of trainings)
+      trainings = trainingsData;
+      console.log(`Found ${trainings.length} trainings in array format`);
+    } else {
+      console.error("Unexpected training data format:", typeof trainingsData);
       return new Response(
         JSON.stringify({
-          success: true,
-          message: `Successfully synced ${processedTrainings.length} training types`,
-          data,
+          success: false,
+          message: "Unexpected data format from BambooHR API",
+          data_type: typeof trainingsData
         }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
     
-    console.log(`Retrieved ${trainingsData.length} training types from BambooHR`);
-
-    // Process and upsert training types to Supabase
-    const processedTrainings = trainingsData.map((training) => ({
+    // Process and upsert trainings only if we have data
+    if (trainings.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "No training types found in the BambooHR response",
+          raw_data_type: typeof trainingsData
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+    
+    // Process and normalize training data for database storage
+    const processedTrainings = trainings.map((training) => ({
       id: String(training.id),
       name: training.name || `Training ${training.id}`,
-      category: training.category || null,
+      category: training.category?.name || training.category || null,
       description: training.description || null,
     }));
 
@@ -129,6 +104,7 @@ serve(async (req) => {
       .select();
 
     if (error) {
+      console.error("Supabase upsert error:", error);
       throw error;
     }
 
