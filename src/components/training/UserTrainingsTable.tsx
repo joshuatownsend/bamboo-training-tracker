@@ -13,7 +13,11 @@ interface UserTrainingsTableProps {
 export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
   // Group trainings by category for better organization
   const groupedTrainings = trainings.reduce((acc, training) => {
-    const category = training.trainingDetails?.category || 'Uncategorized';
+    // Make sure to extract category as string
+    const category = typeof training.trainingDetails?.category === 'string' 
+      ? training.trainingDetails.category 
+      : 'Uncategorized';
+      
     if (!acc[category]) {
       acc[category] = [];
     }
@@ -42,18 +46,27 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     }
   };
 
-  // Function to safely get text value from potentially object values
+  // Enhanced function to safely get text value from any value type
   const safeTextValue = (value: any): string => {
     if (value === null || value === undefined) return "";
     if (typeof value === "string") return value;
     if (typeof value === "number") return value.toString();
+    if (typeof value === "boolean") return value.toString();
     if (typeof value === "object") {
-      // If it's an object with id and name properties, return the name
+      // Check if it's an object by verifying it's not null and is an object
+      if (value === null || typeof value !== "object") return String(value);
+      
+      // Handle specific object properties we know about
       if ('name' in value && value.name) return safeTextValue(value.name);
       if ('title' in value && value.title) return safeTextValue(value.title);
       if ('id' in value && value.id) return `ID: ${safeTextValue(value.id)}`;
-      // Convert object to JSON string as fallback
-      return JSON.stringify(value);
+      
+      // Last resort for objects - stringify with error handling
+      try {
+        return JSON.stringify(value);
+      } catch (e) {
+        return "[Object]";
+      }
     }
     return String(value);
   };
@@ -84,8 +97,8 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
             </TableRow>
           ) : (
             categories.map((category) => (
-              <>
-                <TableRow key={`category-${category}`} className="bg-muted/20 hover:bg-muted/20">
+              <React.Fragment key={`category-${category}`}>
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
                   <TableCell colSpan={5} className="font-medium py-2">
                     {safeTextValue(category)}
                   </TableCell>
@@ -133,7 +146,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                     </TableCell>
                   </TableRow>
                 ))}
-              </>
+              </React.Fragment>
             ))
           )}
         </TableBody>
