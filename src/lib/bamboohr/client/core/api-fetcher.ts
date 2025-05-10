@@ -109,12 +109,27 @@ export class ApiFetcher extends BaseBambooClient {
     
     while (attempt <= this.retryCount) {
       try {
+        // FIXED: Add authorization header to the edge function request
+        // Get the Supabase anon key for authorization
+        const supabaseAnonKey = this.getSupabaseAnonKey();
+        
+        // Create the headers for the edge function request
+        const headers = new Headers({
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        });
+        
+        // Add any custom headers from options
+        if (options.headers) {
+          const optionsHeaders = new Headers(options.headers);
+          optionsHeaders.forEach((value, key) => {
+            headers.append(key, value);
+          });
+        }
+        
         const response = await fetch(url, {
           ...options,
-          headers: {
-            ...options.headers,
-            'Accept': 'application/json',
-          }
+          headers
         });
         
         if (!response.ok) {
@@ -173,6 +188,21 @@ export class ApiFetcher extends BaseBambooClient {
     }
     
     throw lastError;
+  }
+
+  /**
+   * Get the Supabase anon key from the environment or hardcoded value
+   * This is needed for authenticating with the edge function
+   */
+  private getSupabaseAnonKey(): string {
+    // Try to get the key from window.ENV if it exists
+    const envKey = (window as any).ENV?.SUPABASE_ANON_KEY;
+    if (envKey) {
+      return envKey;
+    }
+    
+    // Fallback to the hardcoded value for the project
+    return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cGJra21uemx4YmN4b2t4a2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NTY1NDIsImV4cCI6MjA2MjIzMjU0Mn0.82Za5hPaRoR3kha2hwMF4pdAmPIYA79dCFwGDwnuaKk";
   }
 
   /**

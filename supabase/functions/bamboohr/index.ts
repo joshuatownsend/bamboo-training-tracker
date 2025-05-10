@@ -17,6 +17,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
+  // FIXED: Check for required authorization header
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return new Response(
+      JSON.stringify({
+        code: 401,
+        message: "Missing authorization header"
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 401 
+      }
+    );
+  }
+
   // Common error handler with detailed logging
   try {
     const url = new URL(req.url);
