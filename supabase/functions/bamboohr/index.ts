@@ -1,224 +1,36 @@
-
 // BambooHR API proxy edge function
 // This function proxies requests to BambooHR API to avoid CORS issues and keep API keys secure
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-// Define CORS headers to allow cross-origin requests
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-client-auth-check, x-bamboohr-auth",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Content-Type": "application/json"
-};
-
-// Helper function to clean up secret values
-const cleanSecret = (secret: string | null): string | null => {
-  if (!secret) return null;
-  // Remove any whitespace, newlines, carriage returns
-  return secret.trim().replace(/[\r\n]+/g, '');
-};
-
-// Timeout for API requests to BambooHR - 5 seconds
-const BAMBOOHR_REQUEST_TIMEOUT = 5000;
+import { handleCorsPreflightRequest, logWithTimestamp, createErrorResponse } from "./utils.ts";
+import { handleSecretsCheck, handleBambooHRRequest } from "./handlers.ts";
 
 // Handle requests
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS request");
-    return new Response(null, { headers: corsHeaders, status: 204 });
-  }
-  
-  // Log the incoming request
-  const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/bamboohr/, "");
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] BambooHR Edge Function received request: ${req.method} ${url}`);
-  
-  // Special endpoint to check if secrets are properly configured
-  if (path === "/check-secrets") {
-    console.log(`[${timestamp}] Checking secrets configuration...`);
-    
-    // Check for existence of environment variables and log their exact names
-    const allEnvKeys = Object.keys(Deno.env.toObject());
-    console.log(`[${timestamp}] All environment keys: ${JSON.stringify(allEnvKeys)}`);
-    
-    // Try different case variations of the subdomain secret
-    // Clean each secret value to remove any whitespace/newlines
-    const subdomainRaw = Deno.env.get("BAMBOOHR_SUBDOMAIN");
-    const subdomain = cleanSecret(subdomainRaw);
-    const subdomainLower = cleanSecret(Deno.env.get("bamboohr_subdomain"));
-    const subdomainUpper = cleanSecret(Deno.env.get("BAMBOOHR_SUBDOMAIN"));
-    const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
-    
-    // Log the raw value to help with debugging
-    console.log(`[${timestamp}] Raw BAMBOOHR_SUBDOMAIN value: "${subdomainRaw}"`);
-    console.log(`[${timestamp}] Cleaned BAMBOOHR_SUBDOMAIN value: "${subdomain}"`);
-    
-    console.log(`[${timestamp}] Secret check detailed results:`);
-    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomain} (value: ${subdomain ? `"${subdomain}"` : 'undefined'})`);
-    console.log(`[${timestamp}] - bamboohr_subdomain: ${!!subdomainLower} (value: ${subdomainLower ? `"${subdomainLower}"` : 'undefined'})`);
-    console.log(`[${timestamp}] - BAMBOOHR_SUBDOMAIN: ${!!subdomainUpper} (value: ${subdomainUpper ? `"${subdomainUpper}"` : 'undefined'})`);
-    console.log(`[${timestamp}] - BAMBOOHR_API_KEY: ${!!apiKey} (value: ${apiKey ? '[REDACTED]' : 'undefined'})`);
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        secrets: {
-          BAMBOOHR_SUBDOMAIN: !!subdomain,
-          bamboohr_subdomain: !!subdomainLower,
-          BAMBOOHR_SUBDOMAIN_UPPER: !!subdomainUpper,
-          BAMBOOHR_API_KEY: !!apiKey
-        },
-        environmentKeys: allEnvKeys,
-        rawSubdomainLength: subdomainRaw ? subdomainRaw.length : 0,
-        cleanedSubdomainLength: subdomain ? subdomain.length : 0,
-        rawCharCodes: subdomainRaw ? Array.from(subdomainRaw).map(c => c.charCodeAt(0)) : [],
-        timestamp: timestamp,
-        deploymentVerification: "Debug function updated with whitespace cleaning and timeouts"
-      }),
-      { headers: corsHeaders, status: 200 }
-    );
-  }
-  
   try {
-    // Get BambooHR credentials from environment variables
-    // Clean the subdomain value to handle potential whitespace issues
-    const subdomainRaw = Deno.env.get("BAMBOOHR_SUBDOMAIN") || Deno.env.get("bamboohr_subdomain") || url.searchParams.get("subdomain") || "";
-    const subdomain = cleanSecret(subdomainRaw) || "";
-    const apiKey = Deno.env.get("BAMBOOHR_API_KEY") || Deno.env.get("bamboohr_api_key") || "";
-    
-    console.log(`[${timestamp}] Using subdomain: "${subdomain || '(not found)'}", raw length: ${subdomainRaw.length}, cleaned length: ${subdomain.length}`);
-    
-    // Check for required credentials
-    if (!subdomain || !apiKey) {
-      console.error(`[${timestamp}] Missing BambooHR credentials - BAMBOOHR_SUBDOMAIN: ${!!subdomain}, BAMBOOHR_API_KEY: ${!!apiKey}`);
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing BambooHR credentials in environment variables", 
-          details: {
-            BAMBOOHR_SUBDOMAIN: !!subdomain,
-            BAMBOOHR_API_KEY: !!apiKey
-          },
-          timestamp: timestamp
-        }),
-        { headers: corsHeaders, status: 500 }
-      );
+    // Handle CORS preflight requests
+    if (req.method === "OPTIONS") {
+      return handleCorsPreflightRequest();
     }
     
-    // Check for requests to endpoints known to be slow
-    // For individual employee training records, we should add a timeout
-    if (path.includes('/training/record/employee/')) {
-      console.log(`[${timestamp}] Detected request for individual employee training records, adding timeout of ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
+    // Log the incoming request
+    const url = new URL(req.url);
+    const path = url.pathname.replace(/^\/bamboohr/, "");
+    const timestamp = new Date().toISOString();
+    logWithTimestamp(`BambooHR Edge Function received request: ${req.method} ${url}`);
+    
+    // Special endpoint to check if secrets are properly configured
+    if (path === "/check-secrets") {
+      return await handleSecretsCheck(req);
     }
     
-    // Build the target BambooHR URL
-    const targetUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}${url.search}`;
+    // Handle BambooHR API request
+    return await handleBambooHRRequest(req, path, url.searchParams);
     
-    // Construct headers for BambooHR API request
-    const headers = new Headers();
-    
-    // Add Basic Authentication header for BambooHR
-    const authHeader = "Basic " + btoa(`${apiKey}:`);
-    headers.append("Authorization", authHeader);
-    
-    // Copy content-type if present
-    const contentType = req.headers.get("content-type");
-    if (contentType) {
-      headers.append("Content-Type", contentType);
-    }
-    
-    // Copy accept header or default to JSON
-    const accept = req.headers.get("accept") || "application/json";
-    headers.append("Accept", accept);
-    
-    // Log request details (excluding sensitive info)
-    console.log(`[${timestamp}] Forwarding request to: ${targetUrl}`);
-    console.log(`[${timestamp}] Headers: ${JSON.stringify([...headers.entries()]
-      .filter(([key]) => key.toLowerCase() !== "authorization")
-      .map(([key, value]) => [key, value])
-    )}`);
-    
-    // Create an AbortController for timeout management
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-      console.log(`[${timestamp}] Request timed out after ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
-    }, BAMBOOHR_REQUEST_TIMEOUT);
-    
-    try {
-      // Forward the request to BambooHR with timeout
-      const bambooResponse = await fetch(targetUrl, {
-        method: req.method,
-        headers: headers,
-        body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text(),
-        signal: controller.signal
-      });
-      
-      // Clear the timeout since we got a response
-      clearTimeout(timeoutId);
-      
-      // Get response data
-      let responseData;
-      const responseContentType = bambooResponse.headers.get("content-type") || "";
-      
-      if (responseContentType.includes("application/json")) {
-        responseData = await bambooResponse.text();
-        // Log truncated response for debugging
-        console.log(`[${timestamp}] BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
-      } else {
-        responseData = await bambooResponse.text();
-        console.log(`[${timestamp}] BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
-      }
-      
-      // Return the response with CORS headers
-      return new Response(responseData, {
-        status: bambooResponse.status,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": responseContentType
-        }
-      });
-    } catch (fetchError) {
-      // Clear the timeout since we got an error
-      clearTimeout(timeoutId);
-      
-      // Check if this is an abort error (timeout)
-      if (fetchError.name === 'AbortError') {
-        console.error(`[${timestamp}] Request timed out for ${targetUrl}`);
-        return new Response(
-          JSON.stringify({
-            error: "BambooHR API request timed out",
-            timestamp: timestamp
-          }),
-          { headers: corsHeaders, status: 503 }
-        );
-      }
-      
-      // Handle other fetch errors
-      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-      console.error(`[${timestamp}] Fetch error for ${targetUrl}:`, errorMessage);
-      return new Response(
-        JSON.stringify({
-          error: "Error connecting to BambooHR API",
-          message: errorMessage,
-          timestamp: timestamp
-        }),
-        { headers: corsHeaders, status: 503 }
-      );
-    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[${timestamp}] Error processing BambooHR request:`, errorMessage);
+    logWithTimestamp(`Error processing BambooHR request: ${errorMessage}`);
     
-    return new Response(
-      JSON.stringify({
-        error: "Error processing BambooHR request",
-        message: errorMessage,
-        timestamp: timestamp
-      }),
-      { headers: corsHeaders, status: 500 }
-    );
+    return createErrorResponse(500, "Error processing BambooHR request", { message: errorMessage });
   }
 });

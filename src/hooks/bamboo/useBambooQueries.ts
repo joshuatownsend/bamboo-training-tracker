@@ -29,7 +29,7 @@ export const useBambooQueries = () => {
           
           const service = getBambooService();
           // Use regular mode for UI data loading (not connection test mode)
-          const result = await service.fetchAllData(false);
+          const result = await service.fetchAllData();
           console.log("Query fetched data:", result ? "Success" : "No data");
           
           if (result && result.employees && result.employees.length > 0) {
