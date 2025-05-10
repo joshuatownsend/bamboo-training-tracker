@@ -30,4 +30,8 @@ export interface BambooHRClientInterface {
   getTrainings(): Promise<any[]>;
   getUserTrainings(employeeId: string, timeoutMs?: number): Promise<any[]>;
   checkEdgeFunctionSecrets(): Promise<EdgeFunctionSecretsResult>;
+  // Add the missing properties to fix the TypeScript errors
+  useEdgeFunction?: boolean;
+  edgeFunctionUrl?: string;
 }
+
