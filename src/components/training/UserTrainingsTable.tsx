@@ -91,8 +91,8 @@ export function UserTrainingsTable({ trainings, onSort }: UserTrainingsTableProp
     }
     
     // Try other properties that might contain the name
-    if (training.name) {
-      return safeTextValue(training.name);
+    if (training.type) {
+      return safeTextValue(training.type);
     }
     
     // Last resort - use training ID with a prefix
