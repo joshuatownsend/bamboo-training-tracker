@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { Search, RefreshCw, AlertCircle, Stethoscope } from "lucide-react";
+import { Search, RefreshCw, AlertCircle, Stethoscope, ChevronDown, ChevronUp } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,8 @@ export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortField, setSortField] = useState<string>("completionDate");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const { toast } = useToast();
   
   const {
@@ -108,22 +110,78 @@ export default function MyTrainings() {
     ),
   ];
   
-  // Apply filters
-  const filteredTrainings = userTrainings.filter((training) => {
-    const title = safeString(training.trainingDetails?.title).toLowerCase();
-    const description = safeString(training.trainingDetails?.description).toLowerCase();
-    const notes = safeString(training.notes).toLowerCase();
+  // Function to handle sorting
+  const handleSort = (field: string, direction: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
+  
+  // Function to sort trainings
+  const sortTrainings = (trainings: UserTraining[]): UserTraining[] => {
+    return [...trainings].sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+      
+      // Extract values to compare based on the sort field
+      switch(sortField) {
+        case 'title':
+          valueA = safeString(a.trainingDetails?.title);
+          valueB = safeString(b.trainingDetails?.title);
+          break;
+        case 'category':
+          valueA = safeString(a.trainingDetails?.category);
+          valueB = safeString(b.trainingDetails?.category);
+          break;
+        case 'completionDate':
+          valueA = a.completionDate || '';
+          valueB = b.completionDate || '';
+          break;
+        default:
+          valueA = a[sortField as keyof UserTraining] || '';
+          valueB = b[sortField as keyof UserTraining] || '';
+      }
+      
+      // Handle string comparison
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        return sortDirection === 'asc' 
+          ? valueA.localeCompare(valueB) 
+          : valueB.localeCompare(valueA);
+      }
+      
+      // Handle number comparison
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return sortDirection === 'asc'
+          ? valueA - valueB
+          : valueB - valueA;
+      }
+      
+      // Default comparison for mixed types
+      return sortDirection === 'asc'
+        ? String(valueA).localeCompare(String(valueB))
+        : String(valueB).localeCompare(String(valueA));
+    });
+  };
+  
+  // Apply filters and sorting
+  const filteredTrainings = userTrainings
+    .filter((training) => {
+      const title = safeString(training.trainingDetails?.title).toLowerCase();
+      const description = safeString(training.trainingDetails?.description).toLowerCase();
+      const notes = safeString(training.notes).toLowerCase();
+      
+      const matchesSearch = 
+        title.includes(searchQuery.toLowerCase()) ||
+        description.includes(searchQuery.toLowerCase()) ||
+        notes.includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = categoryFilter === "all" || 
+        safeString(training.trainingDetails?.category) === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
     
-    const matchesSearch = 
-      title.includes(searchQuery.toLowerCase()) ||
-      description.includes(searchQuery.toLowerCase()) ||
-      notes.includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "all" || 
-      safeString(training.trainingDetails?.category) === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
+  // Apply sorting after filtering
+  const sortedTrainings = sortTrainings(filteredTrainings);
   
   // Calculate statistics
   const totalTrainings = userTrainings.length;
@@ -152,6 +210,30 @@ export default function MyTrainings() {
   
   // Check if there was an API error
   const hasApiError = error !== null && error !== undefined;
+
+  // Table header components with sort functionality
+  const SortableHeader = ({ field, label }: { field: string, label: string }) => {
+    const isActive = sortField === field;
+    
+    const handleHeaderClick = () => {
+      if (isActive) {
+        // Toggle direction if already sorting by this field
+        handleSort(field, sortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+        // Default to ascending order when selecting a new field
+        handleSort(field, 'asc');
+      }
+    };
+    
+    return (
+      <div className="flex items-center gap-1 cursor-pointer" onClick={handleHeaderClick}>
+        <span>{label}</span>
+        {isActive && (
+          sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -267,6 +349,14 @@ export default function MyTrainings() {
           <CardTitle>Training Records</CardTitle>
           <CardDescription>
             These are your completed training records from BambooHR
+            <div className="flex mt-2 items-center gap-2 text-sm text-muted-foreground">
+              <span>Sort by:</span>
+              <div className="flex flex-wrap gap-4">
+                <SortableHeader field="title" label="Training Name" />
+                <SortableHeader field="category" label="Category" />
+                <SortableHeader field="completionDate" label="Completion Date" />
+              </div>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -287,7 +377,7 @@ export default function MyTrainings() {
               </Button>
             </div>
           ) : (
-            <UserTrainingsTable trainings={filteredTrainings} />
+            <UserTrainingsTable trainings={sortedTrainings} />
           )}
         </CardContent>
       </Card>

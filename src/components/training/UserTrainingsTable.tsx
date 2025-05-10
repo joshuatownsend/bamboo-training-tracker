@@ -1,17 +1,18 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserTraining } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 
 interface UserTrainingsTableProps {
   trainings: UserTraining[];
+  onSort?: (field: string, direction: 'asc' | 'desc') => void;
 }
 
-export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
+export function UserTrainingsTable({ trainings, onSort }: UserTrainingsTableProps) {
   // Group trainings by category for better organization
   const groupedTrainings = trainings.reduce((acc, training) => {
     // Make sure to extract category as string
@@ -73,6 +74,31 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     return String(value);
   };
 
+  // Function to get proper training name - prioritize display name options
+  const getTrainingName = (training: UserTraining): string => {
+    // First try to get the name from trainingDetails
+    if (training.trainingDetails) {
+      // Use title first as it's most likely to be user-friendly
+      if (training.trainingDetails.title) {
+        return safeTextValue(training.trainingDetails.title);
+      }
+      
+      // Fallback to type if it looks like a name (not just an ID)
+      if (training.trainingDetails.type && 
+          !training.trainingDetails.type.match(/^\d+$/)) {
+        return safeTextValue(training.trainingDetails.type);
+      }
+    }
+    
+    // Try other properties that might contain the name
+    if (training.name) {
+      return safeTextValue(training.name);
+    }
+    
+    // Last resort - use training ID with a prefix
+    return `Training ${safeTextValue(training.trainingId || training.id)}`;
+  };
+
   // Function to open BambooHR training page for the employee
   const openInBambooHR = (employeeId: any) => {
     // Make sure employeeId is a string
@@ -112,7 +138,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {safeTextValue(training.trainingDetails?.title) || `Training ${safeTextValue(training.trainingId || training.id)}`}
+                          {getTrainingName(training)}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {safeTextValue(training.trainingDetails?.description) || "No description available"}
