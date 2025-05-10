@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Employee, UserTraining } from "@/lib/types";
+import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { ValidationIssue, ValidationStats, SortField, SortDirection } from "./types";
 
 // Define the validation rules for training completion dates
@@ -9,7 +9,7 @@ const MIN_VALID_DATE = new Date(1990, 0, 1); // January 1, 1990
 export function useValidationData(
   employees?: Employee[], 
   trainings?: { id: string; title: string }[], 
-  completions?: UserTraining[]
+  completions?: TrainingCompletion[]
 ) {
   const [validationStats, setValidationStats] = useState<ValidationStats>({
     totalCompletions: 0,
