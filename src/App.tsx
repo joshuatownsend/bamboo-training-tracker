@@ -41,11 +41,13 @@ function App() {
             <Route path="/bamboo-troubleshooting" element={<AuthGuard><BambooTroubleshooting /></AuthGuard>} />
             <Route path="/bamboo-diagnostics" element={<AuthGuard><BambooApiDiagnostics /></AuthGuard>} />
             
-            {/* Adding the missing admin routes */}
+            {/* Reports section - accessible to all authenticated users */}
             <Route path="/admin-reports" element={<AuthGuard><AdminReports /></AuthGuard>} />
+            <Route path="/training-impact" element={<AuthGuard><TrainingImpact /></AuthGuard>} />
+            
+            {/* Admin-only section */}
             <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
             <Route path="/training-requirement-management" element={<AuthGuard><TrainingRequirementManagement /></AuthGuard>} />
-            <Route path="/training-impact" element={<AuthGuard><TrainingImpact /></AuthGuard>} />
           </Route>
         </Routes>
         <Toaster />

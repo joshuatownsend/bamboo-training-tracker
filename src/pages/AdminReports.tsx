@@ -1,21 +1,10 @@
 
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser } from "@/contexts/UserContext";
-import { Shield, User, Book, FileCheck } from "lucide-react";
+import { Shield, User, Book, FileChartLine } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const AdminReports = () => {
-  const { isAdmin } = useUser();
-
-  if (!isAdmin) {
-    return (
-      <div className="text-center p-6">
-        <h3 className="text-lg font-medium">Access Denied</h3>
-        <p className="text-muted-foreground">You do not have permission to view this page.</p>
-      </div>
-    );
-  }
-
   const reports = [
     {
       title: "Volunteer Qualification Report",
@@ -38,7 +27,7 @@ const AdminReports = () => {
     {
       title: "Compliance Report",
       description: "View overall training compliance across the department",
-      icon: FileCheck,
+      icon: FileChartLine,
       path: "/admin/reports/compliance"
     }
   ];
@@ -46,7 +35,7 @@ const AdminReports = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Admin Reports</h1>
+        <h1 className="text-3xl font-bold">Qualification Reports</h1>
         <p className="text-muted-foreground">
           Access and generate reports for training and qualification data
         </p>
@@ -54,15 +43,17 @@ const AdminReports = () => {
 
       <div className="grid gap-4 md:grid-cols-2">
         {reports.map((report, index) => (
-          <Card key={index} className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl">{report.title}</CardTitle>
-              <report.icon className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <CardDescription>{report.description}</CardDescription>
-            </CardContent>
-          </Card>
+          <Link to={report.path} key={index}>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xl">{report.title}</CardTitle>
+                <report.icon className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{report.description}</CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

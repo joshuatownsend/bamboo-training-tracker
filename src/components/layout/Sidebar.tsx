@@ -11,6 +11,7 @@ import {
   BarChart3,
   Users,
   AlertCircle,
+  FileChartLine,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -89,14 +90,23 @@ const Sidebar = () => {
       ],
     },
     {
-      title: "Administration",
+      title: "Reports",
       items: [
         {
-          name: "Admin Reports",
+          name: "Qualification Reports",
           href: "/admin-reports",
-          icon: BarChart3,
-          admin: true,
+          icon: FileChartLine,
         },
+        {
+          name: "Training Impact",
+          href: "/training-impact",
+          icon: BarChart3,
+        },
+      ],
+    },
+    {
+      title: "Administration",
+      items: [
         {
           name: "Position Management",
           href: "/position-management",
@@ -107,12 +117,6 @@ const Sidebar = () => {
           name: "Training Requirements",
           href: "/training-requirement-management",
           icon: Book,
-          admin: true,
-        },
-        {
-          name: "Training Impact",
-          href: "/training-impact",
-          icon: BarChart3,
           admin: true,
         },
         {
