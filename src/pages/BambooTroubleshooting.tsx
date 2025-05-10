@@ -4,9 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight } from 'lucide-react';
 import { Link } from "react-router-dom";
-import ConnectionTests from '@/components/bamboo-troubleshooting/ConnectionTests';
-import CommonIssues from '@/components/bamboo-troubleshooting/CommonIssues';
-import EdgeFunctionConfig from '@/components/bamboo-troubleshooting/EdgeFunctionConfig';
+import { ConnectionTests, CommonIssues, EdgeFunctionConfig } from '@/components/bamboo';
 
 const BambooTroubleshooting = () => {
   const [activeTab, setActiveTab] = useState("tests");

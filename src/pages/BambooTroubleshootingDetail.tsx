@@ -1,9 +1,7 @@
 
 import React from 'react';
-import ConnectionSettings from '@/components/bamboo-troubleshooting-detail/ConnectionSettings';
-import ApiEndpointExplorer from '@/components/bamboo-troubleshooting-detail/ApiEndpointExplorer';
-import CommonSolutions from '@/components/bamboo-troubleshooting-detail/CommonSolutions';
 import useBambooTroubleshooting from '@/hooks/useBambooTroubleshooting';
+import { ConnectionSettings, ApiEndpointExplorer, CommonSolutions } from '@/components/bamboo';
 
 const BambooTroubleshootingDetail = () => {
   const {
