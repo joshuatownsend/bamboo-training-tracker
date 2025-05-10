@@ -72,9 +72,14 @@ const Employees = () => {
   const filteredEmployees = employeesData?.filter(employee => {
     if (!employee) return false;
     
-    const matchesSearch = 
-      (employee.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-      (employee.position?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
+    // Normalize data and search query for case-insensitive search
+    const searchQueryLower = searchQuery.toLowerCase();
+    const employeeName = employee.name || employee.displayName || ''; // Add displayName as fallback
+    const employeePosition = employee.position || employee.jobTitle || ''; // Add jobTitle as fallback
+    
+    const matchesSearch = searchQuery === '' || 
+      employeeName.toLowerCase().includes(searchQueryLower) ||
+      employeePosition.toLowerCase().includes(searchQueryLower);
       
     const matchesDivision = departmentFilter === "all" || employee.division === departmentFilter;
     

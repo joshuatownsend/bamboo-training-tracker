@@ -15,7 +15,24 @@ export class DataFetcher extends ConnectionTester {
       const directory = await this.fetchFromBamboo('/employees/directory');
       
       if (!directory || !Array.isArray(directory.employees)) {
-        console.warn("Invalid employee directory response:", directory);
+        console.warn("Invalid employee directory response format:", directory);
+        
+        // Try to process the raw response in case it's structured differently
+        if (directory && typeof directory === 'object') {
+          if ('employees' in directory && Array.isArray(directory.employees)) {
+            console.log(`Found ${directory.employees.length} employees in directory`);
+            return directory.employees;
+          } else {
+            // Maybe the directory itself is an array
+            const possibleEmployees = Object.values(directory).filter(Array.isArray);
+            if (possibleEmployees.length > 0) {
+              const employees = possibleEmployees[0];
+              console.log(`Found ${employees.length} employees through alternative parsing`);
+              return employees;
+            }
+          }
+        }
+        
         return [];
       }
       
@@ -28,13 +45,22 @@ export class DataFetcher extends ConnectionTester {
         console.log("Trying alternative employee directory endpoint");
         const directoryAlt = await this.fetchFromBamboo('/employees');
         
-        if (!directoryAlt || !Array.isArray(directoryAlt)) {
+        if (!directoryAlt) {
           console.warn("Invalid alternative employee directory response");
           return [];
         }
         
-        console.log(`Found ${directoryAlt.length} employees in alternative directory`);
-        return directoryAlt;
+        // Handle both array and object formats
+        if (Array.isArray(directoryAlt)) {
+          console.log(`Found ${directoryAlt.length} employees in alternative directory (array format)`);
+          return directoryAlt;
+        } else if (typeof directoryAlt === 'object') {
+          const employees = Object.values(directoryAlt);
+          console.log(`Found ${employees.length} employees in alternative directory (object format)`);
+          return employees;
+        }
+        
+        return [];
       } catch (fallbackError) {
         console.error("Fallback employee fetch also failed:", fallbackError);
         return [];

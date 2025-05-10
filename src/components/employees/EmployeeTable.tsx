@@ -145,9 +145,20 @@ export function EmployeeTable({
             if (progress < 70) badgeColor = "bg-red-500";
             else if (progress < 100) badgeColor = "bg-yellow-500";
             
+            // Get name from various possible fields in the employee record
+            const employeeName = employee.name || 
+                            employee.displayName || 
+                            `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                            'Unknown';
+            
+            // Get employee position/title from various possible fields
+            const employeePosition = employee.position || 
+                               employee.jobTitle || 
+                               'No Position';
+
             // Get initials for avatar with safety checks
-            const initials = employee.name
-              ? employee.name
+            const initials = employeeName
+              ? employeeName
                   .split(" ")
                   .map((n) => n && n[0])
                   .filter(Boolean)
@@ -165,13 +176,13 @@ export function EmployeeTable({
                       <AvatarFallback className="bg-yellow-200 text-black">{initials}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{employee.name || 'Unknown'}</div>
-                      <div className="text-xs text-muted-foreground">{employee.email || 'No Email'}</div>
+                      <div className="font-medium">{employeeName}</div>
+                      <div className="text-xs text-muted-foreground">{employee.email || employee.workEmail || 'No Email'}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{employee.position || 'No Position'}</TableCell>
-                <TableCell>{employee.division || 'Unassigned'}</TableCell>
+                <TableCell>{employeePosition}</TableCell>
+                <TableCell>{employee.division || employee.department || 'Unassigned'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${badgeColor}`} />
