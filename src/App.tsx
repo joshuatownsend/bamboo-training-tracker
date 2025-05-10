@@ -15,6 +15,7 @@ import AdminReports from "./pages/AdminReports";
 import PositionManagement from "./pages/PositionManagement";
 import TrainingRequirementManagement from "./pages/TrainingRequirementManagement";
 import TrainingImpact from "./pages/TrainingImpact";
+import TrainingDataValidation from "./pages/TrainingDataValidation";
 import BambooTroubleshooting from "./pages/BambooTroubleshooting";
 import BambooTroubleshootingDetail from "./pages/BambooTroubleshootingDetail";
 import BambooConnectionTest from "./pages/BambooConnectionTest";
@@ -66,6 +67,7 @@ function App() {
             <Route path="position-management" element={<PositionManagement />} />
             <Route path="training-requirement-management" element={<TrainingRequirementManagement />} />
             <Route path="training-impact" element={<TrainingImpact />} />
+            <Route path="training-validation" element={<TrainingDataValidation />} />
             <Route path="bamboo-troubleshooting" element={<BambooTroubleshooting />} />
             <Route path="bamboo-diagnostics" element={<BambooTroubleshootingDetail />} />
             <Route path="bamboo-test" element={<BambooConnectionTest />} />

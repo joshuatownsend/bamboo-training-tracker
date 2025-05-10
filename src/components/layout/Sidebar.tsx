@@ -10,6 +10,7 @@ import {
   BookCheck,
   BarChart3,
   Users,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -112,6 +113,12 @@ const Sidebar = () => {
           name: "Training Impact",
           href: "/training-impact",
           icon: BarChart3,
+          admin: true,
+        },
+        {
+          name: "Training Validation",
+          href: "/training-validation",
+          icon: AlertCircle,
           admin: true,
         },
         {
