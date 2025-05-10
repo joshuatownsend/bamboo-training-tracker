@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { TableRow, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { UserTraining } from "@/lib/types";
@@ -10,10 +9,9 @@ import { safeTextValue, formatDate, openInBambooHR } from '@/lib/training-utils'
 export interface TrainingTableRowProps {
   training: UserTraining;
   trainingTypeNames: Record<string, string>;
-  category?: string;
 }
 
-export function TrainingTableRow({ training, trainingTypeNames, category }: TrainingTableRowProps) {
+export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableRowProps) {
   // Helper function to get training name from type ID
   const getTrainingName = (training: UserTraining): string => {
     if (training.trainingDetails?.title) {
@@ -23,6 +21,11 @@ export function TrainingTableRow({ training, trainingTypeNames, category }: Trai
     // Use the training type ID to look up the name in trainingTypeNames
     const typeId = training.trainingId || training.type?.toString() || '';
     return trainingTypeNames[typeId] || `Training ${typeId}`;
+  };
+
+  // Get the category from training details or display "Uncategorized"
+  const getCategory = (training: UserTraining): string => {
+    return safeTextValue(training.trainingDetails?.category) || "Uncategorized";
   };
 
   return (
@@ -38,10 +41,12 @@ export function TrainingTableRow({ training, trainingTypeNames, category }: Trai
         </div>
       </TableCell>
       <TableCell>
+        {getCategory(training)}
+      </TableCell>
+      <TableCell>
         {formatDate(safeTextValue(training.completionDate))}
       </TableCell>
       <TableCell>
-        {/* Fix the property access - the property might not exist on the Training type */}
         {training.trainingDetails && 
           ('expirationDate' in training.trainingDetails) ? 
           formatDate(safeTextValue(training.trainingDetails.expirationDate as string)) : 
