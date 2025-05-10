@@ -15,9 +15,9 @@ interface ValidationTableProps {
 }
 
 export function ValidationTable({ issues, sortField, sortDirection, onSort }: ValidationTableProps) {
-  // Function to open BambooHR training record
-  const openInBambooHR = (employeeId: string, trainingId: string) => {
-    window.open(`https://avfrd.bamboohr.com/app/settings/training/employee/${employeeId}/edit/${trainingId}`, '_blank');
+  // Function to open BambooHR employee training page
+  const openInBambooHR = (employeeId: string) => {
+    window.open(`https://avfrd.bamboohr.com/employees/training/?id=${employeeId}&page=2109`, '_blank');
   };
 
   // Helper function for sort header display
@@ -77,11 +77,11 @@ export function ValidationTable({ issues, sortField, sortDirection, onSort }: Va
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => openInBambooHR(issue.employeeId, issue.trainingId)}
+                onClick={() => openInBambooHR(issue.employeeId)}
                 className="gap-1"
               >
                 <ExternalLink className="h-4 w-4" /> 
-                Edit in BambooHR
+                View Training Record
               </Button>
             </TableCell>
           </TableRow>

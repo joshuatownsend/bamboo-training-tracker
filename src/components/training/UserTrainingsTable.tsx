@@ -24,9 +24,9 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
   // Get categories and sort them
   const categories = Object.keys(groupedTrainings).sort();
 
-  // Function to open BambooHR training in a new tab
-  const openInBambooHR = (id: string) => {
-    window.open(`https://avfrd.bamboohr.com/app/settings/training/edit/${id}`, '_blank');
+  // Function to open BambooHR training page for the employee
+  const openInBambooHR = (employeeId: string) => {
+    window.open(`https://avfrd.bamboohr.com/employees/training/?id=${employeeId}&page=2109`, '_blank');
   };
 
   return (
@@ -88,11 +88,11 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => openInBambooHR(training.trainingId)}
+                        onClick={() => openInBambooHR(training.employeeId)}
                         className="gap-1"
                       >
                         <ExternalLink className="h-4 w-4" /> 
-                        View in BambooHR
+                        View Training Record
                       </Button>
                     </TableCell>
                   </TableRow>
