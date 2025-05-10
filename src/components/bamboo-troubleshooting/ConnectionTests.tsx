@@ -49,6 +49,7 @@ const ConnectionTests = () => {
       setTestResults(results);
       
       const service = getBambooService();
+      // Fixed: Remove the argument from testConnection()
       await service.testConnection();
       
       results[results.length - 1] = {
