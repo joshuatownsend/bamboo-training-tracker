@@ -41,7 +41,7 @@ const safeString = (value: any): string => {
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<string>("completionDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isSyncingTrainingTypes, setIsSyncingTrainingTypes] = useState(false);
