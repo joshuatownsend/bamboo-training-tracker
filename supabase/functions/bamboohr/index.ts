@@ -19,6 +19,9 @@ const cleanSecret = (secret: string | null): string | null => {
   return secret.trim().replace(/[\r\n]+/g, '');
 };
 
+// Timeout for API requests to BambooHR - 5 seconds
+const BAMBOOHR_REQUEST_TIMEOUT = 5000;
+
 // Handle requests
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -73,7 +76,7 @@ serve(async (req) => {
         cleanedSubdomainLength: subdomain ? subdomain.length : 0,
         rawCharCodes: subdomainRaw ? Array.from(subdomainRaw).map(c => c.charCodeAt(0)) : [],
         timestamp: timestamp,
-        deploymentVerification: "Debug function updated with whitespace cleaning"
+        deploymentVerification: "Debug function updated with whitespace cleaning and timeouts"
       }),
       { headers: corsHeaders, status: 200 }
     );
@@ -104,6 +107,12 @@ serve(async (req) => {
       );
     }
     
+    // Check for requests to endpoints known to be slow
+    // For individual employee training records, we should add a timeout
+    if (path.includes('/training/record/employee/')) {
+      console.log(`[${timestamp}] Detected request for individual employee training records, adding timeout of ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
+    }
+    
     // Build the target BambooHR URL
     const targetUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}${url.search}`;
     
@@ -131,35 +140,74 @@ serve(async (req) => {
       .map(([key, value]) => [key, value])
     )}`);
     
-    // Forward the request to BambooHR
-    const bambooResponse = await fetch(targetUrl, {
-      method: req.method,
-      headers: headers,
-      body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text(),
-    });
+    // Create an AbortController for timeout management
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.log(`[${timestamp}] Request timed out after ${BAMBOOHR_REQUEST_TIMEOUT}ms`);
+    }, BAMBOOHR_REQUEST_TIMEOUT);
     
-    // Get response data
-    let responseData;
-    const responseContentType = bambooResponse.headers.get("content-type") || "";
-    
-    if (responseContentType.includes("application/json")) {
-      responseData = await bambooResponse.text();
-      // Log truncated response for debugging
-      console.log(`[${timestamp}] BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
-    } else {
-      responseData = await bambooResponse.text();
-      console.log(`[${timestamp}] BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
-    }
-    
-    // Return the response with CORS headers
-    return new Response(responseData, {
-      status: bambooResponse.status,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": responseContentType
+    try {
+      // Forward the request to BambooHR with timeout
+      const bambooResponse = await fetch(targetUrl, {
+        method: req.method,
+        headers: headers,
+        body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text(),
+        signal: controller.signal
+      });
+      
+      // Clear the timeout since we got a response
+      clearTimeout(timeoutId);
+      
+      // Get response data
+      let responseData;
+      const responseContentType = bambooResponse.headers.get("content-type") || "";
+      
+      if (responseContentType.includes("application/json")) {
+        responseData = await bambooResponse.text();
+        // Log truncated response for debugging
+        console.log(`[${timestamp}] BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
+      } else {
+        responseData = await bambooResponse.text();
+        console.log(`[${timestamp}] BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
       }
-    });
-    
+      
+      // Return the response with CORS headers
+      return new Response(responseData, {
+        status: bambooResponse.status,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": responseContentType
+        }
+      });
+    } catch (fetchError) {
+      // Clear the timeout since we got an error
+      clearTimeout(timeoutId);
+      
+      // Check if this is an abort error (timeout)
+      if (fetchError.name === 'AbortError') {
+        console.error(`[${timestamp}] Request timed out for ${targetUrl}`);
+        return new Response(
+          JSON.stringify({
+            error: "BambooHR API request timed out",
+            timestamp: timestamp
+          }),
+          { headers: corsHeaders, status: 503 }
+        );
+      }
+      
+      // Handle other fetch errors
+      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      console.error(`[${timestamp}] Fetch error for ${targetUrl}:`, errorMessage);
+      return new Response(
+        JSON.stringify({
+          error: "Error connecting to BambooHR API",
+          message: errorMessage,
+          timestamp: timestamp
+        }),
+        { headers: corsHeaders, status: 503 }
+      );
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[${timestamp}] Error processing BambooHR request:`, errorMessage);

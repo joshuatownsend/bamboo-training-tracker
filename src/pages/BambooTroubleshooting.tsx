@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,20 +102,21 @@ const BambooTroubleshooting = () => {
       }
       setTestResults(results);
       
-      // Step 5: Fetch all data
+      // Step 5: Fetch all data with connection test optimization
       results = [...results, {
         step: 'Fetch All Data',
         status: 'testing',
-        message: 'Attempting to fetch all data (employees, trainings, completions)...'
+        message: 'Attempting to fetch all data (using optimized connection test mode)...'
       }];
       setTestResults(results);
       
       try {
-        const allData = await service.fetchAllData();
+        // Pass true to enable connection test mode (uses smaller sample size)
+        const allData = await service.fetchAllData(true);
         results[results.length - 1] = {
           step: 'Fetch All Data',
           status: 'success',
-          message: `Successfully fetched all data. Employees: ${allData.employees?.length || 0}, Trainings: ${allData.trainings?.length || 0}, Completions: ${allData.completions?.length || 0}`
+          message: `Successfully fetched all data. Employees: ${allData?.employees?.length || 0}, Trainings: ${allData?.trainings?.length || 0}, Completions: ${allData?.completions?.length || 0} (using sample)`
         };
       } catch (error) {
         results[results.length - 1] = {

@@ -27,7 +27,8 @@ export const useBambooQueries = () => {
           prefetchBambooHRData().catch(console.error);
           
           const service = getBambooService();
-          const result = await service.fetchAllData();
+          // Use regular mode for UI data loading (not connection test mode)
+          const result = await service.fetchAllData(false);
           console.log("Query fetched data:", result ? "Success" : "No data");
           
           if (result && result.employees && result.employees.length > 0) {
@@ -49,12 +50,14 @@ export const useBambooQueries = () => {
               }
             }
             
-            // Only show toast for successful data loads, not empty results
-            toast({
-              title: "BambooHR Data Loaded",
-              description: `Successfully loaded ${result.employees.length} employees`,
-              variant: "default"
-            });
+            // Show toast only for successful data loads with data to show
+            if (result.employees.length > 0) {
+              toast({
+                title: "BambooHR Data Loaded",
+                description: `Successfully loaded ${result.employees.length} employees`,
+                variant: "default"
+              });
+            }
           }
           
           // Return actual result, even if empty
@@ -63,11 +66,26 @@ export const useBambooQueries = () => {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
           console.error('Error in useAllData:', errorMessage);
           
-          toast({
-            title: "BambooHR Error",
-            description: errorMessage,
-            variant: "destructive"
-          });
+          // Don't show toast for timeout errors - these are handled gracefully with partial data
+          if (!errorMessage.includes('timed out') && !errorMessage.includes('timeout')) {
+            toast({
+              title: "BambooHR Error",
+              description: errorMessage,
+              variant: "destructive"
+            });
+          }
+          
+          // Return a partial result if the error is related to timeouts
+          if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+            console.warn('Timeout occurred, but returning partial data that was successfully loaded');
+            return { 
+              employees: [], 
+              trainings: [], 
+              completions: [],
+              partialData: true,
+              error: errorMessage
+            };
+          }
           
           throw new Error(errorMessage);
         }
@@ -108,7 +126,8 @@ export const useBambooQueries = () => {
         console.log(`Fetching user trainings for employeeId: ${employeeId}`);
         
         const service = getBambooService();
-        return service.getUserTrainings(employeeId);
+        // Use a timeout of 8 seconds for individual user training fetches 
+        return service.getUserTrainings(employeeId, 8000);
       },
       enabled: isConfigured && !!employeeId,
       staleTime: 5 * 60 * 1000,

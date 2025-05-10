@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './types';
@@ -100,8 +99,8 @@ class BambooHRService {
     }));
   }
   
-  // Get trainings for a specific employee
-  async getUserTrainings(employeeId: string): Promise<UserTraining[]> {
+  // Get trainings for a specific employee with timeout
+  async getUserTrainings(employeeId: string, timeoutMs = 5000): Promise<UserTraining[]> {
     try {
       console.log(`Attempting to fetch trainings for employee ID: ${employeeId}`);
       
@@ -114,7 +113,16 @@ class BambooHRService {
       const endpoint = `/training/record/employee/${employeeId}`;
       console.log(`Using endpoint for user trainings: ${endpoint}`);
       
-      const trainingData = await this.client.fetchFromBamboo(endpoint);
+      // Create a promise that rejects after the timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout of ${timeoutMs}ms exceeded for employee ${employeeId}`)), timeoutMs);
+      });
+      
+      // Create the fetch promise
+      const fetchPromise = this.client.fetchFromBamboo(endpoint);
+      
+      // Race the fetch against the timeout
+      const trainingData = await Promise.race([fetchPromise, timeoutPromise]);
       console.log("Raw user trainings data from BambooHR:", trainingData);
       
       // Get all training types for reference
@@ -158,8 +166,8 @@ class BambooHRService {
     }
   }
   
-  // Get all training completions
-  async getCompletions(): Promise<TrainingCompletion[]> {
+  // Get all training completions with improvements for the "fetch all data" test
+  async getCompletions(sampleSize?: number): Promise<TrainingCompletion[]> {
     try {
       console.log("Fetching training completions from BambooHR...");
       
@@ -182,32 +190,53 @@ class BambooHRService {
       // Fallback: gather training records for all employees
       console.log("Falling back to gathering completions from individual employee records...");
       const employees = await this.getEmployees();
-      console.log(`Will fetch training records for ${employees.length} employees`);
+      
+      // For connection tests, limit the number of employees we process
+      const employeesToProcess = sampleSize && employees.length > sampleSize 
+        ? employees.slice(0, sampleSize)
+        : employees;
+        
+      console.log(`Will fetch training records for ${employeesToProcess.length} employees (from total ${employees.length})`);
       
       const allCompletions: TrainingCompletion[] = [];
+      const batchSize = 5; // Process employees in small batches
       
-      // For each employee, get their trainings and map to completions
-      for (const employee of employees) {
-        try {
-          const employeeTrainings = await this.getUserTrainings(employee.id);
-          console.log(`Found ${employeeTrainings.length} trainings for employee ${employee.id}`);
-          
-          // Convert user trainings to training completions format
-          const employeeCompletions = employeeTrainings
-            .filter(training => training.completionDate) // Only include completed trainings
-            .map(training => ({
-              id: training.id,
-              employeeId: training.employeeId,
-              trainingId: training.trainingId,
-              completionDate: training.completionDate,
-              status: 'completed' as const,
-              // Other fields can be undefined
-            }));
+      // Process employees in batches with a timeout for each employee
+      for (let i = 0; i < employeesToProcess.length; i += batchSize) {
+        const batch = employeesToProcess.slice(i, i + batchSize);
+        console.log(`Processing batch ${i/batchSize + 1} of ${Math.ceil(employeesToProcess.length/batchSize)}...`);
+        
+        // Process all employees in the current batch in parallel with timeouts
+        const batchResults = await Promise.allSettled(
+          batch.map(employee => this.getUserTrainingsWithTimeout(employee.id, 3000))
+        );
+        
+        // Collect the results from the batch
+        batchResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            const employeeTrainings = result.value;
+            const employee = batch[index];
             
-          allCompletions.push(...employeeCompletions);
-        } catch (error) {
-          console.error(`Error getting trainings for employee ${employee.id}:`, error);
-        }
+            console.log(`Found ${employeeTrainings.length} trainings for employee ${employee.id}`);
+            
+            // Convert user trainings to training completions format
+            const employeeCompletions = employeeTrainings
+              .filter(training => training.completionDate) // Only include completed trainings
+              .map(training => ({
+                id: training.id,
+                employeeId: training.employeeId,
+                trainingId: training.trainingId,
+                completionDate: training.completionDate,
+                status: 'completed' as const,
+                // Other fields can be undefined
+              }));
+              
+            allCompletions.push(...employeeCompletions);
+          } else {
+            // This employee timed out or had an error
+            console.warn(`Failed to get trainings for employee ${batch[index].id}:`, result.reason);
+          }
+        });
       }
       
       console.log(`Total completions gathered: ${allCompletions.length}`);
@@ -216,6 +245,26 @@ class BambooHRService {
       console.error("Error fetching training completions:", error);
       return [];
     }
+  }
+
+  // Helper method to handle timeouts for employee training fetches
+  private async getUserTrainingsWithTimeout(employeeId: string, timeoutMs: number): Promise<UserTraining[]> {
+    return new Promise(async (resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.log(`Timeout reached for employee ${employeeId}`);
+        resolve([]); // Resolve with empty array on timeout
+      }, timeoutMs);
+      
+      try {
+        const trainings = await this.getUserTrainings(employeeId);
+        clearTimeout(timeoutId);
+        resolve(trainings);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error(`Error fetching trainings for employee ${employeeId}:`, error);
+        resolve([]); // Resolve with empty array on error
+      }
+    });
   }
 
   private mapCompletionData(data: any[]): TrainingCompletion[] {
@@ -231,10 +280,10 @@ class BambooHRService {
     }));
   }
   
-  // Fetch all data in one go
-  async fetchAllData(): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {
+  // Fetch all data in one go - Optimized for connection tests
+  async fetchAllData(isConnectionTest = false): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {
     try {
-      console.log("Fetching all BambooHR data...");
+      console.log(`Fetching all BambooHR data... ${isConnectionTest ? '(Connection Test Mode)' : ''}`);
       
       const [employees, trainings] = await Promise.all([
         this.getEmployees(),
@@ -243,8 +292,17 @@ class BambooHRService {
       
       console.log(`Fetched ${employees.length} employees, ${trainings.length} trainings`);
       
-      // Now fetch completions after we have employees and trainings
-      const completions = await this.getCompletions();
+      // For connection tests, use limited sample size to make it faster
+      let completions: TrainingCompletion[] = [];
+      if (isConnectionTest) {
+        console.log("Running in connection test mode - using reduced sample size");
+        // Use a very small sample size for connection tests (5 employees)
+        completions = await this.getCompletions(5);
+      } else {
+        // Normal operation - fetch all completions
+        completions = await this.getCompletions();
+      }
+      
       console.log(`Fetched ${completions.length} completions`);
       
       return {

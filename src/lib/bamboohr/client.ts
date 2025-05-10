@@ -15,6 +15,7 @@ export class BambooHRClient {
   private apiKey: string;
   private useEdgeFunction: boolean;
   private edgeFunctionUrl: string;
+  private defaultTimeout = 10000; // 10 seconds default timeout
 
   constructor(options: BambooApiOptions) {
     this.subdomain = options.subdomain || '';
@@ -25,8 +26,8 @@ export class BambooHRClient {
     console.log(`BambooHR Client initialized - Using Edge Function: ${this.useEdgeFunction}`);
   }
 
-  // Return the raw response for advanced parsing
-  async fetchRawResponse(endpoint: string, method = 'GET', body?: any) {
+  // Return the raw response for advanced parsing with timeout handling
+  async fetchRawResponse(endpoint: string, method = 'GET', body?: any, timeoutMs = this.defaultTimeout) {
     const headers = new Headers();
     
     let url: string;
@@ -76,12 +77,21 @@ export class BambooHRClient {
         key.toLowerCase() === 'authorization' ? [key, '[REDACTED]'] : [key, value]
       ))}`);
       
-      const response = await fetch(url, {
+      // Create a timeout promise to race against the fetch
+      const timeoutPromise = new Promise<Response>((_, reject) => {
+        setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
+      });
+      
+      // Create the fetch promise
+      const fetchPromise = fetch(url, {
         method,
         headers,
         body: ["GET", "HEAD", "OPTIONS"].includes(method) ? undefined : JSON.stringify(body),
         credentials: 'omit', // Don't send cookies
       });
+      
+      // Race the fetch against the timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
       
       console.log(`Response status: ${response.status}`);
       
@@ -124,6 +134,7 @@ export class BambooHRClient {
 
   async fetchFromBamboo(endpoint: string, method = 'GET', body?: any) {
     try {
+      // Get response with a timeout (the Edge Function also has its own timeout)
       const response = await this.fetchRawResponse(endpoint, method, body);
       
       if (!response.ok) {
@@ -139,6 +150,21 @@ export class BambooHRClient {
           console.error('Received HTML response instead of JSON:', responseText.substring(0, 200) + '...');
           
           throw new Error(`BambooHR authentication failed. ${this.useEdgeFunction ? 'Edge Function' : 'Server'} returned HTML instead of JSON data.`);
+        }
+        
+        // For service unavailable (503) errors from the edge function
+        if (response.status === 503) {
+          // Try to parse as JSON if it might be JSON
+          try {
+            const errorJson = JSON.parse(responseText);
+            if (errorJson.error && errorJson.error.includes('timed out')) {
+              throw new Error(`BambooHR API request timed out for ${endpoint}`);
+            }
+            throw new Error(`BambooHR API error (503): ${JSON.stringify(errorJson)}`);
+          } catch (parseError) {
+            // If not parseable as JSON, could be a timeout or other server issue
+            throw new Error(`BambooHR API error (503): ${responseText || 'Service unavailable'}`);
+          }
         }
         
         // Try to parse as JSON if it might be JSON
