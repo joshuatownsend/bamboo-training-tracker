@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Login from "./pages/Login";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -22,10 +23,10 @@ import BambooConnectionTest from "./pages/BambooConnectionTest";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/layout/Layout";
 import { UserProvider } from './contexts/UserContext';
-import { QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { prefetchBambooHRData } from '@/services/dataCacheService';
+import { prefetchBambooHRData, initializeQueryClient } from '@/services/dataCacheService';
 import { AuthGuard } from './components/auth/AuthGuard';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 // Initialize the query client at the app level
 const queryClient = new QueryClient({
@@ -38,6 +39,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Initialize the query client in the cache service
+initializeQueryClient(queryClient);
 
 function App() {
   // Start background refresh when the app loads
@@ -59,39 +63,42 @@ function App() {
   }, []);
 
   return (
-    <UserProvider>
-      <Router>
-        <Routes>
-          <Route path="login" element={<Login />} />
-          <Route path="/" element={
-            <AuthGuard>
-              <Layout />
-            </AuthGuard>
-          }>
-            <Route index element={<Index />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="employees" element={<Employees />} />
-            <Route path="employees/:id" element={<EmployeeDetail />} />
-            <Route path="courses" element={<Courses />} />
-            <Route path="my-trainings" element={<MyTrainings />} />
-            <Route path="my-qualifications" element={<MyQualifications />} />
-            <Route path="required-trainings" element={<RequiredTrainings />} />
-            <Route path="admin-settings" element={<AdminSettings />} />
-            <Route path="admin-reports" element={<AdminReports />} />
-            <Route path="position-management" element={<PositionManagement />} />
-            <Route path="training-requirement-management" element={<TrainingRequirementManagement />} />
-            <Route path="training-impact" element={<TrainingImpact />} />
-            <Route path="training-validation" element={<TrainingDataValidation />} />
-            <Route path="bamboo-troubleshooting" element={<BambooTroubleshooting />} />
-            <Route path="bamboo-diagnostics" element={<BambooTroubleshootingDetail />} />
-            <Route path="bamboo-test" element={<BambooConnectionTest />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-          {/* Catch-all route redirects to login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </Router>
-    </UserProvider>
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <Router>
+          <Routes>
+            <Route path="login" element={<Login />} />
+            <Route path="/" element={
+              <AuthGuard>
+                <Layout />
+              </AuthGuard>
+            }>
+              <Route index element={<Index />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="employees" element={<Employees />} />
+              <Route path="employees/:id" element={<EmployeeDetail />} />
+              <Route path="courses" element={<Courses />} />
+              <Route path="my-trainings" element={<MyTrainings />} />
+              <Route path="my-qualifications" element={<MyQualifications />} />
+              <Route path="required-trainings" element={<RequiredTrainings />} />
+              <Route path="admin-settings" element={<AdminSettings />} />
+              <Route path="admin-reports" element={<AdminReports />} />
+              <Route path="position-management" element={<PositionManagement />} />
+              <Route path="training-requirement-management" element={<TrainingRequirementManagement />} />
+              <Route path="training-impact" element={<TrainingImpact />} />
+              <Route path="training-validation" element={<TrainingDataValidation />} />
+              <Route path="bamboo-troubleshooting" element={<BambooTroubleshooting />} />
+              <Route path="bamboo-diagnostics" element={<BambooTroubleshootingDetail />} />
+              <Route path="bamboo-test" element={<BambooConnectionTest />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+            {/* Catch-all route redirects to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Router>
+      </UserProvider>
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools />}
+    </QueryClientProvider>
   );
 }
 

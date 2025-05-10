@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, UserPlus } from "lucide-react";
 import { useState } from "react";
 import useEmployeeMapping from "@/hooks/useEmployeeMapping";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -16,7 +16,7 @@ interface EmployeeTableProps {
 }
 
 export function EmployeeTable({ 
-  employees, 
+  employees = [], 
   trainings = [],
   completions = [],
 }: EmployeeTableProps) {
@@ -24,13 +24,17 @@ export function EmployeeTable({
   const { saveBulkEmployeeMappings } = useEmployeeMapping();
   const { toast } = useToast();
 
+  // For debugging
+  console.log("EmployeeTable received employees:", employees.length);
+  console.log("First few employees:", employees.slice(0, 3));
+
   // Function to save email to employee ID mappings
   const saveEmailMappings = async () => {
     // Filter employees who have emails
     const mappings = employees
-      .filter(emp => emp.email && emp.id)
+      .filter(emp => emp && emp.email && emp.id)
       .map(emp => ({
-        email: emp.email,
+        email: emp.email?.toLowerCase(),
         employeeId: emp.id
       }));
     
@@ -55,6 +59,11 @@ export function EmployeeTable({
       }
     } catch (error) {
       console.error("Error saving mappings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save email mappings",
+        variant: "destructive"
+      });
     } finally {
       setSavingMappings(false);
     }
@@ -96,23 +105,26 @@ export function EmployeeTable({
         <TableBody>
           {employees.map((employee) => {
             // Ensure employee exists and has an ID before proceeding
-            if (!employee || !employee.id) return null;
+            if (!employee || !employee.id) {
+              console.warn("Found invalid employee record:", employee);
+              return null;
+            }
             
             // Calculate training status with null checks
             const requiredTrainings = (trainings || []).filter(t => 
-              t.requiredFor?.includes(employee.division || '')
+              t && t.requiredFor?.includes(employee.division || '')
             );
             
             const employeeCompletions = (completions || []).filter(c => 
-              c.employeeId === employee.id
+              c && c.employeeId === employee.id
             );
             
             const completed = employeeCompletions.filter(c => 
-              c.status === "completed"
+              c && c.status === "completed"
             ).length;
             
             const expired = employeeCompletions.filter(c => 
-              c.status === "expired"
+              c && c.status === "expired"
             ).length;
             
             const total = requiredTrainings.length;
@@ -126,7 +138,8 @@ export function EmployeeTable({
             const initials = employee.name
               ? employee.name
                   .split(" ")
-                  .map((n) => n[0])
+                  .map((n) => n && n[0])
+                  .filter(Boolean)
                   .join("")
               : "??";
 

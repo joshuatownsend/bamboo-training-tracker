@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isBambooConfigured } from '@/lib/bamboohr/config';
@@ -23,46 +22,43 @@ export const useBambooQueries = () => {
         }
         
         try {
+          console.log('Fetching BambooHR data for UI...');
+          
           // Try to prefetch data in background if not available in cache
           // No argument needed for prefetchBambooHRData
-          prefetchBambooHRData().catch(console.error);
+          await prefetchBambooHRData().catch(console.error);
           
           const service = getBambooService();
           // Use regular mode for UI data loading (not connection test mode)
           const result = await service.fetchAllData();
-          console.log("Query fetched data:", result ? "Success" : "No data");
           
-          if (result && result.employees && result.employees.length > 0) {
-            console.log(`Successfully loaded ${result.employees.length} employees from BambooHR`);
-            console.log(`Successfully loaded ${result.trainings?.length || 0} trainings from BambooHR`);
-            console.log(`Successfully loaded ${result.completions?.length || 0} training completions from BambooHR`);
+          // Ensure we always return objects, even if undefined
+          const normalizedResult = {
+            employees: result?.employees || [],
+            trainings: result?.trainings || [],
+            completions: result?.completions || [],
+            partialData: result?.partialData || false,
+            error: result?.error || null
+          };
+          
+          console.log("Query fetched data:", normalizedResult);
+          console.log(`Employees count: ${normalizedResult.employees.length}`);
+          console.log(`Trainings count: ${normalizedResult.trainings.length}`);
+          console.log(`Completions count: ${normalizedResult.completions.length}`);
+          
+          // Validate employees data structure
+          if (normalizedResult.employees && normalizedResult.employees.length > 0) {
+            // Log a sample employee
+            console.log("Sample employee:", normalizedResult.employees[0]);
             
-            // Log some sample data for debugging
-            if (result.completions && result.completions.length > 0) {
-              const futureCompletions = result.completions.filter(c => {
-                if (!c.completionDate) return false;
-                const completionDate = new Date(c.completionDate);
-                return completionDate > new Date();
-              });
-              
-              console.log(`Found ${futureCompletions.length} completions with future dates`);
-              if (futureCompletions.length > 0) {
-                console.log("Sample future completion:", futureCompletions[0]);
-              }
-            }
-            
-            // Show toast only for successful data loads with data to show
-            if (result.employees.length > 0) {
-              toast({
-                title: "BambooHR Data Loaded",
-                description: `Successfully loaded ${result.employees.length} employees`,
-                variant: "default"
-              });
+            // Check for required fields
+            const missingIds = normalizedResult.employees.filter(e => !e.id).length;
+            if (missingIds > 0) {
+              console.warn(`Warning: ${missingIds} employees are missing ID fields`);
             }
           }
           
-          // Return actual result, even if empty
-          return result || { employees: [], trainings: [], completions: [] };
+          return normalizedResult;
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
           console.error('Error in useAllData:', errorMessage);

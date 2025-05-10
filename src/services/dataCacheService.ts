@@ -18,7 +18,7 @@ const dataCache: {
 // Initialize the QueryClient
 export function initializeQueryClient(client: QueryClient): void {
   queryClient = client;
-  console.log("Query client initialized");
+  console.log("Query client initialized in dataCacheService");
 }
 
 // Start background refresh of data
@@ -83,12 +83,31 @@ export async function prefetchBambooHRData(): Promise<void> {
     const data = await service.fetchAllData();
     
     if (data) {
+      // Log what we got
+      console.log(`Prefetched data:`, {
+        employeesCount: data.employees?.length || 0,
+        trainingsCount: data.trainings?.length || 0,
+        completionsCount: data.completions?.length || 0,
+      });
+      
+      if (data.employees && data.employees.length > 0) {
+        console.log("Sample employee:", data.employees[0]);
+      }
+      
       // Update cache
-      dataCache.employees = data.employees;
-      dataCache.trainings = data.trainings;
-      dataCache.completions = data.completions;
+      dataCache.employees = data.employees || [];
+      dataCache.trainings = data.trainings || [];
+      dataCache.completions = data.completions || [];
       dataCache.lastFetch = now;
       console.log("BambooHR data prefetched and cached");
+      
+      // Update React Query cache if available
+      if (queryClient) {
+        queryClient.setQueryData(['bamboohr', 'allData'], data);
+        console.log("Updated React Query cache with prefetched data");
+      }
+    } else {
+      console.warn("No data returned from fetchAllData");
     }
   } catch (error) {
     console.error("Error prefetching BambooHR data:", error);
@@ -125,4 +144,10 @@ export function clearBambooCache() {
   dataCache.trainings = undefined;
   dataCache.completions = undefined;
   console.log("BambooHR cache cleared");
+  
+  // Also clear React Query cache if available
+  if (queryClient) {
+    queryClient.invalidateQueries({ queryKey: ['bamboohr'] });
+    console.log("React Query cache invalidated");
+  }
 }

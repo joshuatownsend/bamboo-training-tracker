@@ -14,6 +14,7 @@ import useBambooHR from "@/hooks/useBambooHR";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
+import { useToast } from "@/components/ui/use-toast";
 
 // Import mock data for fallback only when absolutely necessary
 import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
@@ -22,6 +23,7 @@ const Employees = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Get data from BambooHR
   const { isConfigured, useAllData } = useBambooHR();
@@ -35,31 +37,45 @@ const Employees = () => {
     console.log('Is Loading:', isLoading);
     console.log('Error:', error);
     
+    if (data) {
+      console.log(`Employees data:`, data.employees);
+      console.log(`Employees count: ${data.employees?.length || 0}`);
+      console.log(`Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
+    }
+    
     if (isLoading) {
       setLoadingMessage("Loading data from BambooHR...");
     } else {
       setLoadingMessage(null);
     }
-    
-    if (data) {
-      console.log(`Employees: ${data.employees?.length || 0}, Trainings: ${data.trainings?.length || 0}, Completions: ${data.completions?.length || 0}`);
-    }
   }, [data, isConfigured, isLoading, error, status]);
   
   // Only use mock data when BambooHR is NOT configured OR when there's an error
   // Otherwise, always try to use the real data, even if it's empty
-  const employeesData: Employee[] = (!isConfigured || error) ? mockEmployees : (data?.employees || []);
-  const trainingsData: Training[] = (!isConfigured || error) ? mockTrainings : (data?.trainings || []);
-  const completionsData: TrainingCompletion[] = (!isConfigured || error) ? mockCompletions : (data?.completions || []);
+  const employeesData: Employee[] = (!isConfigured || error) 
+    ? mockEmployees 
+    : (data?.employees || []);
+    
+  const trainingsData: Training[] = (!isConfigured || error) 
+    ? mockTrainings 
+    : (data?.trainings || []);
+    
+  const completionsData: TrainingCompletion[] = (!isConfigured || error) 
+    ? mockCompletions 
+    : (data?.completions || []);
   
   // Get unique divisions for filter
   const divisions = [...new Set(employeesData?.map(e => e.division).filter(Boolean))];
   
   // Filter employees based on search and division
   const filteredEmployees = employeesData?.filter(employee => {
-    const matchesSearch = employee?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          employee?.position?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDivision = departmentFilter === "all" || employee?.division === departmentFilter;
+    if (!employee) return false;
+    
+    const matchesSearch = 
+      (employee.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+      (employee.position?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
+      
+    const matchesDivision = departmentFilter === "all" || employee.division === departmentFilter;
     
     return matchesSearch && matchesDivision;
   }) || [];
@@ -67,7 +83,14 @@ const Employees = () => {
   const handleRefresh = () => {
     console.log('Manually refreshing BambooHR data');
     setLoadingMessage("Refreshing data from BambooHR...");
-    refetch();
+    refetch().then(() => {
+      toast({
+        title: "Refresh complete",
+        description: "Employee data has been refreshed",
+      });
+    }).catch((error) => {
+      console.error("Error refreshing data:", error);
+    });
   };
 
   // Check if we're actually using mock data despite having BambooHR configured
