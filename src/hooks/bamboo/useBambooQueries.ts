@@ -24,6 +24,7 @@ export const useBambooQueries = () => {
         
         try {
           // Try to prefetch data in background if not available in cache
+          // Fix: Remove the argument since prefetchBambooHRData expects 0 arguments
           prefetchBambooHRData().catch(console.error);
           
           const service = getBambooService();
@@ -126,8 +127,8 @@ export const useBambooQueries = () => {
         console.log(`Fetching user trainings for employeeId: ${employeeId}`);
         
         const service = getBambooService();
-        // Use a timeout of 8 seconds for individual user training fetches 
-        return service.getUserTrainings(employeeId, 8000);
+        // Fix: Remove the second argument as getUserTrainings expects just the employeeId
+        return service.getUserTrainings(employeeId);
       },
       enabled: isConfigured && !!employeeId,
       staleTime: 5 * 60 * 1000,
