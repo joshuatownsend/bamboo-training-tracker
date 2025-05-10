@@ -14,6 +14,12 @@ export function checkPositionQualification(
   const position = positions.find(p => p.id === positionId);
   if (!position) return null;
 
+  // Map of training IDs to training objects for quick lookup
+  const trainingsMap = trainings.reduce((acc, training) => {
+    acc[training.id] = training;
+    return acc;
+  }, {} as Record<string, Training>);
+
   // Get all of the employee's completed trainings (not expired)
   const employeeCompletedTrainings = completions
     .filter(c => c.employeeId === employeeId && c.status === "completed")
@@ -42,13 +48,13 @@ export function checkPositionQualification(
     id => !employeeCompletedTrainings.includes(id)
   );
   
-  const missingCountyTrainings = trainings.filter(
-    t => missingCountyTrainingIds.includes(t.id)
-  );
+  const missingCountyTrainings = missingCountyTrainingIds
+    .map(id => trainingsMap[id])
+    .filter(Boolean); // Filter out undefined values
   
-  const missingAVFRDTrainings = trainings.filter(
-    t => missingAVFRDTrainingIds.includes(t.id)
-  );
+  const missingAVFRDTrainings = missingAVFRDTrainingIds
+    .map(id => trainingsMap[id])
+    .filter(Boolean); // Filter out undefined values
 
   return {
     positionId,
