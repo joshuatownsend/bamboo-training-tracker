@@ -120,10 +120,12 @@ export default function MyTrainings() {
   let topCategory = 'None';
   let topCount = 0;
   
-  // Fix TypeScript errors by adding type safety to Object.entries
+  // Fix TypeScript errors by properly typing the object entries
   Object.entries(categoryCounts).forEach(([category, count]) => {
-    if (count > topCount) {
-      topCount = count;
+    // Use type assertion to tell TypeScript that count is definitely a number
+    const countAsNumber = count as number;
+    if (countAsNumber > topCount) {
+      topCount = countAsNumber;
       topCategory = category;
     }
   });
