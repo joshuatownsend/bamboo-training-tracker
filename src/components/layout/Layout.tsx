@@ -1,19 +1,14 @@
 
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useMobile } from "@/hooks/useMobile";
 import { useUser } from "@/contexts/UserContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface LayoutProps {
-  children?: React.ReactNode;
-}
-
-export function Layout({ children }: LayoutProps) {
+export function Layout() {
   const { isMobile } = useMobile();
   const { isLoading: userLoading } = useUser();
-  const location = useLocation();
 
   // If user is loading, show a loading skeleton
   if (userLoading) {
@@ -38,7 +33,7 @@ export function Layout({ children }: LayoutProps) {
       <div className={`flex flex-1 flex-col ${isMobile ? 'w-full' : 'ml-4'}`}>
         <Header />
         <main className="flex-1 p-6">
-          {children || <Outlet />}
+          <Outlet />
         </main>
       </div>
     </div>
