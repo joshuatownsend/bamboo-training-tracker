@@ -1,49 +1,23 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { Search, RefreshCw, AlertCircle, Stethoscope, ChevronDown, ChevronUp, Database } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Link } from "react-router-dom";
-import { UserTraining } from "@/lib/types";
+import { LoadingState } from "@/components/training/LoadingState";
+import { ErrorState } from "@/components/training/ErrorState";
 import { supabase } from "@/integrations/supabase/client";
-
-// Helper function to safely get string values
-const safeString = (value: any): string => {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (typeof value === "object") {
-    if (value && 'name' in value) return String(value.name);
-    if (value && 'title' in value) return String(value.title);
-    if (value && 'id' in value) return String(value.id);
-    try {
-      return JSON.stringify(value);
-    } catch (e) {
-      return "[Object]";
-    }
-  }
-  return String(value);
-};
+import { useTrainingFilters } from "@/hooks/useTrainingFilters";
+import { StatCards } from "@/components/training/stats/StatCards";
+import { SearchAndFilter } from "@/components/training/filters/SearchAndFilter";
+import { PageHeader } from "@/components/training/headers/PageHeader";
+import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
+import { ApiErrorAlert } from "@/components/training/alerts/ApiErrorAlert";
+import { SortableHeader } from "@/components/training/headers/SortableHeader";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<string>("completionDate");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isSyncingTrainingTypes, setIsSyncingTrainingTypes] = useState(false);
   const { toast } = useToast();
   
@@ -53,7 +27,7 @@ export default function MyTrainings() {
   
   const employeeId = currentUser?.employeeId;
   
-  // Add logging to debug the employee ID
+  // Log employee ID for debugging
   useEffect(() => {
     console.log("Current user:", currentUser);
     console.log("Employee ID being used for training fetch:", employeeId);
@@ -67,13 +41,27 @@ export default function MyTrainings() {
     isRefetching,
   } = useUserTrainings(employeeId);
   
-  // Add logging to see what data we're getting back
+  // Log fetched trainings
   useEffect(() => {
     console.log("User trainings fetched:", userTrainings);
     if (error) {
       console.error("Error fetching user trainings:", error);
     }
   }, [userTrainings, error]);
+
+  // Use the training filters hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    categoryFilter,
+    setCategoryFilter,
+    sortField,
+    sortDirection,
+    handleSort,
+    categories,
+    categoryCounts,
+    sortedTrainings
+  } = useTrainingFilters(userTrainings);
   
   // Handle refresh button click
   const handleRefresh = async () => {
@@ -102,7 +90,7 @@ export default function MyTrainings() {
     }
   };
   
-  // New function to sync training types
+  // Sync training types
   const handleSyncTrainingTypes = async () => {
     if (!isAdmin) return;
     
@@ -133,111 +121,6 @@ export default function MyTrainings() {
       setIsSyncingTrainingTypes(false);
     }
   };
-  
-  // Get unique categories for filter
-  const categories = [
-    ...new Set(
-      userTrainings
-        .map((t) => safeString(t.trainingDetails?.category))
-        .filter(Boolean)
-    ),
-  ];
-  
-  // Function to handle sorting
-  const handleSort = (field: string, direction: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(direction);
-  };
-  
-  // Function to sort trainings
-  const sortTrainings = (trainings: UserTraining[]): UserTraining[] => {
-    return [...trainings].sort((a, b) => {
-      let valueA: any;
-      let valueB: any;
-      
-      // Extract values to compare based on the sort field
-      switch(sortField) {
-        case 'title':
-          valueA = safeString(a.trainingDetails?.title);
-          valueB = safeString(b.trainingDetails?.title);
-          break;
-        case 'category':
-          valueA = safeString(a.trainingDetails?.category);
-          valueB = safeString(b.trainingDetails?.category);
-          break;
-        case 'completionDate':
-          valueA = a.completionDate || '';
-          valueB = b.completionDate || '';
-          break;
-        default:
-          valueA = a[sortField as keyof UserTraining] || '';
-          valueB = b[sortField as keyof UserTraining] || '';
-      }
-      
-      // Handle string comparison
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortDirection === 'asc' 
-          ? valueA.localeCompare(valueB) 
-          : valueB.localeCompare(valueA);
-      }
-      
-      // Handle number comparison
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return sortDirection === 'asc'
-          ? valueA - valueB
-          : valueB - valueA;
-      }
-      
-      // Default comparison for mixed types
-      return sortDirection === 'asc'
-        ? String(valueA).localeCompare(String(valueB))
-        : String(valueB).localeCompare(String(valueA));
-    });
-  };
-  
-  // Apply filters and sorting
-  const filteredTrainings = userTrainings
-    .filter((training) => {
-      const title = safeString(training.trainingDetails?.title).toLowerCase();
-      const description = safeString(training.trainingDetails?.description).toLowerCase();
-      const notes = safeString(training.notes).toLowerCase();
-      
-      const matchesSearch = 
-        title.includes(searchQuery.toLowerCase()) ||
-        description.includes(searchQuery.toLowerCase()) ||
-        notes.includes(searchQuery.toLowerCase());
-      
-      // Fix the type issue by ensuring both sides are strings
-      const trainingCategory = safeString(training.trainingDetails?.category);
-      const matchesCategory = categoryFilter === "all" || trainingCategory === categoryFilter;
-      
-      return matchesSearch && matchesCategory;
-    });
-    
-  // Apply sorting after filtering
-  const sortedTrainings = sortTrainings(filteredTrainings);
-  
-  // Calculate statistics
-  const totalTrainings = userTrainings.length;
-  const categoryCounts = userTrainings.reduce((acc, training) => {
-    const category = safeString(training.trainingDetails?.category || 'Uncategorized');
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Find the top category
-  let topCategory = 'None';
-  let topCount = 0;
-  
-  // Fix TypeScript errors by properly typing the object entries
-  Object.entries(categoryCounts).forEach(([category, count]) => {
-    // Use type assertion to tell TypeScript that count is definitely a number
-    const countAsNumber = count as number;
-    if (countAsNumber > topCount) {
-      topCount = countAsNumber;
-      topCategory = category;
-    }
-  });
 
   // Check if employee ID is missing
   const isMissingEmployeeId = !employeeId || employeeId === currentUser?.id;
@@ -245,151 +128,28 @@ export default function MyTrainings() {
   // Check if there was an API error
   const hasApiError = error !== null && error !== undefined;
 
-  // Table header components with sort functionality
-  const SortableHeader = ({ field, label }: { field: string, label: string }) => {
-    const isActive = sortField === field;
-    
-    const handleHeaderClick = () => {
-      if (isActive) {
-        // Toggle direction if already sorting by this field
-        handleSort(field, sortDirection === 'asc' ? 'desc' : 'asc');
-      } else {
-        // Default to ascending order when selecting a new field
-        handleSort(field, 'asc');
-      }
-    };
-    
-    return (
-      <div className="flex items-center gap-1 cursor-pointer" onClick={handleHeaderClick}>
-        <span>{label}</span>
-        {isActive && (
-          sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Trainings</h1>
-          <p className="text-muted-foreground">
-            View your completed training records from BambooHR
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {isAdmin && (
-            <Button 
-              onClick={handleSyncTrainingTypes}
-              disabled={isSyncingTrainingTypes}
-              variant="outline"
-              className="gap-2"
-            >
-              <Database className={`h-4 w-4 ${isSyncingTrainingTypes ? 'animate-pulse' : ''}`} />
-              Sync Training Types
-            </Button>
-          )}
-          <Button 
-            onClick={handleRefresh}
-            disabled={isLoading || isRefetching}
-            variant="outline"
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+      <PageHeader 
+        isAdmin={isAdmin}
+        isSyncingTrainingTypes={isSyncingTrainingTypes}
+        handleSyncTrainingTypes={handleSyncTrainingTypes}
+        isRefetching={isRefetching}
+        handleRefresh={handleRefresh}
+      />
 
-      {isMissingEmployeeId && (
-        <Alert variant="destructive" className="bg-yellow-50 border-yellow-200">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Employee ID Not Found</AlertTitle>
-          <AlertDescription>
-            Your email address is not mapped to a BambooHR employee ID. 
-            {isAdmin ? (
-              <span> Please set up the mapping in the <Link to="/admin-settings" className="font-medium underline">Admin Settings</Link> under Employee Mappings.</span>
-            ) : (
-              <span> Please contact an administrator to set up this mapping for you.</span>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+      {isMissingEmployeeId && <MissingEmployeeIdAlert isAdmin={isAdmin} />}
+      {hasApiError && <ApiErrorAlert error={error} />}
 
-      {hasApiError && (
-        <Alert variant="destructive" className="bg-red-50 border-red-200">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Training Data</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>{error instanceof Error ? error.message : String(error)}</p>
-            <div className="flex gap-2 mt-2">
-              <Button asChild size="sm" variant="outline" className="bg-red-100">
-                <Link to="/bamboo-diagnostics" className="text-red-800">
-                  <Stethoscope className="h-4 w-4 mr-1" />
-                  Diagnose API Issues
-                </Link>
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+      <StatCards userTrainings={userTrainings} categoryCounts={categoryCounts} />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Trainings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalTrainings}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Top Training Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{safeString(topCategory)}</div>
-            {topCount > 0 && <div className="text-xs text-muted-foreground">{topCount} trainings</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Categories</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Object.keys(categoryCounts).length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search trainings..."
-            className="w-full pl-8 bg-background"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        {categories.length > 0 && (
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {safeString(category) || 'Uncategorized'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+      <SearchAndFilter
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        categories={categories}
+      />
 
       <Card>
         <CardHeader>
@@ -399,30 +159,36 @@ export default function MyTrainings() {
             <div className="flex mt-2 items-center gap-2 text-sm text-muted-foreground">
               <span>Sort by:</span>
               <div className="flex flex-wrap gap-4">
-                <SortableHeader field="title" label="Training Name" />
-                <SortableHeader field="category" label="Category" />
-                <SortableHeader field="completionDate" label="Completion Date" />
+                <SortableHeader 
+                  field="title" 
+                  label="Training Name" 
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  handleSort={handleSort}
+                />
+                <SortableHeader 
+                  field="category" 
+                  label="Category" 
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  handleSort={handleSort}
+                />
+                <SortableHeader 
+                  field="completionDate" 
+                  label="Completion Date" 
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  handleSort={handleSort}
+                />
               </div>
             </div>
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mb-4"></div>
-              <p className="text-muted-foreground">Loading training records...</p>
-            </div>
+            <LoadingState />
           ) : error ? (
-            <div className="p-8 text-center">
-              <p className="text-red-500">Error loading training records</p>
-              <p className="text-sm text-muted-foreground mt-2">{error instanceof Error ? error.message : String(error)}</p>
-              <Button asChild variant="outline" className="gap-2 mt-4">
-                <Link to="/bamboo-diagnostics">
-                  <Stethoscope className="h-4 w-4" />
-                  Diagnose API Issues
-                </Link>
-              </Button>
-            </div>
+            <ErrorState error={error} />
           ) : (
             <UserTrainingsTable trainings={sortedTrainings} />
           )}
