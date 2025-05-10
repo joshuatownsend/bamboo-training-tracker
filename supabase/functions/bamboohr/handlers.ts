@@ -1,184 +1,233 @@
 
-import { corsHeaders, cleanSecret, getBambooCredentials, logWithTimestamp } from "./utils.ts";
+import { corsHeaders, getBambooCredentials, logWithTimestamp, cleanSecret } from "./utils.ts";
 
-// BambooHR API timeout (increased to 60 seconds for better chance of success)
-export const BAMBOOHR_REQUEST_TIMEOUT = 60000;
-
-// Handle secrets check endpoint
-export async function handleSecretsCheck(req: Request): Promise<Response> {
-  const timestamp = new Date().toISOString();
-  logWithTimestamp(`Checking secrets configuration...`);
+/**
+ * Handle BambooHR API request
+ * @param req Original request
+ * @param path Path to forward to BambooHR
+ * @param params URL search parameters
+ * @returns Response from BambooHR
+ */
+export async function handleBambooHRRequest(req: Request, path: string, params: URLSearchParams): Promise<Response> {
+  // Get credentials from request or environment
+  const { subdomain, apiKey, hasCredentials } = getBambooCredentials(params);
   
-  // Check for existence of environment variables and log their exact names
-  const allEnvKeys = Object.keys(Deno.env.toObject());
-  logWithTimestamp(`All environment keys: ${JSON.stringify(allEnvKeys)}`);
-  
-  // Try different case variations of the subdomain secret
-  // Clean each secret value to remove any whitespace/newlines
-  const subdomainRaw = Deno.env.get("BAMBOOHR_SUBDOMAIN");
-  const subdomain = cleanSecret(subdomainRaw);
-  const subdomainLower = cleanSecret(Deno.env.get("bamboohr_subdomain"));
-  const subdomainUpper = cleanSecret(Deno.env.get("BAMBOOHR_SUBDOMAIN"));
-  const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
-  
-  // Log the raw value to help with debugging
-  logWithTimestamp(`Raw BAMBOOHR_SUBDOMAIN value: "${subdomainRaw}"`);
-  logWithTimestamp(`Cleaned BAMBOOHR_SUBDOMAIN value: "${subdomain}"`);
-  
-  logWithTimestamp(`Secret check detailed results:`);
-  logWithTimestamp(`- BAMBOOHR_SUBDOMAIN: ${!!subdomain} (value: ${subdomain ? `"${subdomain}"` : 'undefined'})`);
-  logWithTimestamp(`- bamboohr_subdomain: ${!!subdomainLower} (value: ${subdomainLower ? `"${subdomainLower}"` : 'undefined'})`);
-  logWithTimestamp(`- BAMBOOHR_SUBDOMAIN: ${!!subdomainUpper} (value: ${subdomainUpper ? `"${subdomainUpper}"` : 'undefined'})`);
-  logWithTimestamp(`- BAMBOOHR_API_KEY: ${!!apiKey} (value: ${apiKey ? '[REDACTED]' : 'undefined'})`);
-  
-  return new Response(
-    JSON.stringify({
-      success: true,
-      secrets: {
-        BAMBOOHR_SUBDOMAIN: !!subdomain,
-        bamboohr_subdomain: !!subdomainLower,
-        BAMBOOHR_SUBDOMAIN_UPPER: !!subdomainUpper,
-        BAMBOOHR_API_KEY: !!apiKey
-      },
-      environmentKeys: allEnvKeys,
-      rawSubdomainLength: subdomainRaw ? subdomainRaw.length : 0,
-      cleanedSubdomainLength: subdomain ? subdomain.length : 0,
-      rawCharCodes: subdomainRaw ? Array.from(subdomainRaw).map(c => c.charCodeAt(0)) : [],
-      timestamp: timestamp,
-      deploymentVerification: "Debug function updated with whitespace cleaning and timeouts"
-    }),
-    { headers: corsHeaders, status: 200 }
-  );
-}
-
-// Handle BambooHR API request
-export async function handleBambooHRRequest(req: Request, path: string, searchParams: URLSearchParams): Promise<Response> {
-  const { subdomain, apiKey, hasCredentials } = getBambooCredentials(searchParams);
-  const timestamp = new Date().toISOString();
-  
-  logWithTimestamp(`Using subdomain: "${subdomain || '(not found)'}", raw length: ${subdomain?.length || 0}, cleaned length: ${subdomain?.length || 0}`);
-  
-  // Check for required credentials
   if (!hasCredentials) {
-    logWithTimestamp(`Missing BambooHR credentials - BAMBOOHR_SUBDOMAIN: ${!!subdomain}, BAMBOOHR_API_KEY: ${!!apiKey}`);
-    return createErrorResponse(500, "Missing BambooHR credentials in environment variables", {
-      BAMBOOHR_SUBDOMAIN: !!subdomain,
-      BAMBOOHR_API_KEY: !!apiKey
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Configuration error",
+        message: "BambooHR credentials not provided in request or environment variables",
+        timestamp: new Date().toISOString()
+      }),
+      {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      }
+    );
   }
   
-  // Check for requests to endpoints known to be slow
-  const requestTimeout = path.includes('/training/record/employee/') || 
-                        path.includes('/tables/trainingCompleted') ||
-                        path.includes('/tables/certifications')
-    ? BAMBOOHR_REQUEST_TIMEOUT  // Use longer timeout for these endpoints
-    : 30000;  // Default 30s timeout
+  // Detect requests that typically take longer and use extended timeout
+  const slowEndpoints = ['training/record', 'tables/trainingCompleted', 'tables/certifications'];
+  const isSlowEndpoint = slowEndpoints.some(endpoint => path.includes(endpoint));
+  const timeoutMs = isSlowEndpoint ? 60000 : 30000; // 60 seconds for slow endpoints, 30 for others
   
-  if (requestTimeout > 30000) {
-    logWithTimestamp(`Detected request for endpoint that may be slow, using extended timeout of ${requestTimeout}ms`);
+  if (isSlowEndpoint) {
+    logWithTimestamp(`Detected request for endpoint that may be slow, using extended timeout of ${timeoutMs}ms`);
   }
   
-  // Build the target BambooHR URL
-  const targetUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+  // Clean and log the subdomain
+  logWithTimestamp(`Using subdomain: "${subdomain}", raw length: ${subdomain.length}, cleaned length: ${cleanSecret(subdomain).length}`);
   
-  // Construct headers for BambooHR API request
-  const headers = new Headers();
+  // Build the request URL for BambooHR
+  const url = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}?subdomain=${subdomain}`;
+  logWithTimestamp(`Forwarding request to: ${url}`);
   
-  // Add Basic Authentication header for BambooHR
-  const authHeader = "Basic " + btoa(`${apiKey}:`);
-  headers.append("Authorization", authHeader);
+  // Forward the headers (except host & origin)
+  const headers: {[key: string]: string} = {
+    'Accept': 'application/json',
+    'Authorization': `Basic ${btoa(`${apiKey}:x`)}` 
+  };
   
-  // Copy content-type if present
-  const contentType = req.headers.get("content-type");
-  if (contentType) {
-    headers.append("Content-Type", contentType);
-  }
+  // Log headers (without auth)
+  logWithTimestamp(`Headers: ${JSON.stringify(Array.from(req.headers.entries())
+    .filter(([key]) => !['authorization', 'host', 'origin'].includes(key.toLowerCase())))}`);
   
-  // Copy accept header or default to JSON
-  const accept = req.headers.get("accept") || "application/json";
-  headers.append("Accept", accept);
-  
-  // Log request details (excluding sensitive info)
-  logWithTimestamp(`Forwarding request to: ${targetUrl}`);
-  logWithTimestamp(`Headers: ${JSON.stringify([...headers.entries()]
-    .filter(([key]) => key.toLowerCase() !== "authorization")
-    .map(([key, value]) => [key, value])
-  )}`);
-  
-  return await makeProxyRequest(req, targetUrl, headers, requestTimeout);
-}
-
-// Function to make the actual proxy request with timeout handling
-async function makeProxyRequest(req: Request, targetUrl: string, headers: Headers, timeoutMs: number): Promise<Response> {
-  // Create an AbortController for timeout management
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-    logWithTimestamp(`Request timed out after ${timeoutMs}ms`);
-  }, timeoutMs);
-  
+  // Forward the request with timeout
   try {
-    // Forward the request to BambooHR with timeout
-    const bambooResponse = await fetch(targetUrl, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    const response = await fetch(url, {
       method: req.method,
       headers: headers,
-      body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : await req.text(),
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined,
       signal: controller.signal
     });
     
-    // Clear the timeout since we got a response
     clearTimeout(timeoutId);
     
-    // Get response data
-    let responseData;
-    const responseContentType = bambooResponse.headers.get("content-type") || "";
+    // Check content type to determine how to handle the response
+    const contentType = response.headers.get('content-type') || '';
     
-    if (responseContentType.includes("application/json")) {
-      responseData = await bambooResponse.text();
-      // Log truncated response for debugging
-      logWithTimestamp(`BambooHR API response (JSON): ${responseData.substring(0, 200)}...`);
-    } else {
-      responseData = await bambooResponse.text();
-      logWithTimestamp(`BambooHR API response (${responseContentType}): [${responseData.length} bytes]`);
-    }
-    
-    // Return the response with CORS headers
-    return new Response(responseData, {
-      status: bambooResponse.status,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": responseContentType
+    // For error responses, try to get more details
+    if (!response.ok) {
+      let errorBody: string | object;
+      
+      try {
+        if (contentType.includes('application/json')) {
+          errorBody = await response.json();
+        } else {
+          errorBody = await response.text();
+        }
+      } catch (e) {
+        errorBody = "Could not parse error response";
       }
-    });
-  } catch (fetchError) {
-    // Clear the timeout since we got an error
-    clearTimeout(timeoutId);
-    
-    // Check if this is an abort error (timeout)
-    if (fetchError.name === 'AbortError') {
-      logWithTimestamp(`Request timed out for ${targetUrl}`);
-      return createErrorResponse(503, "BambooHR API request timed out");
+      
+      logWithTimestamp(`BambooHR API error: HTTP ${response.status}, Body: ${typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody)}`);
+      
+      return new Response(
+        JSON.stringify({
+          error: `BambooHR API Error (HTTP ${response.status})`,
+          message: errorBody,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: response.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     }
     
-    // Handle other fetch errors
-    const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-    logWithTimestamp(`Fetch error for ${targetUrl}: ${errorMessage}`);
-    return createErrorResponse(503, "Error connecting to BambooHR API", { message: errorMessage });
+    // For successful responses
+    if (contentType.includes('application/json')) {
+      const data = await response.text();
+      logWithTimestamp(`BambooHR API response (JSON): ${data.length > 200 ? data.substring(0, 200) + '...' : data}`);
+      
+      return new Response(data, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    } else {
+      const text = await response.text();
+      logWithTimestamp(`BambooHR API response (${contentType}): [${text.length} bytes]`);
+      
+      return new Response(text, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': contentType
+        }
+      });
+    }
+    
+  } catch (error) {
+    const isTimeout = error.name === 'AbortError';
+    logWithTimestamp(`Error forwarding request: ${error.message}`);
+    
+    return new Response(
+      JSON.stringify({
+        error: isTimeout ? "Request timeout" : "Request failed",
+        message: error.message,
+        timeout: isTimeout,
+        timestamp: new Date().toISOString()
+      }),
+      {
+        status: isTimeout ? 504 : 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
   }
 }
 
-// Helper function for error responses
-function createErrorResponse(status: number, message: string, details: Record<string, any> = {}): Response {
-  const timestamp = new Date().toISOString();
-  return new Response(
-    JSON.stringify({ 
-      error: message, 
-      details,
-      timestamp 
-    }),
-    { 
-      headers: corsHeaders, 
-      status 
-    }
-  );
+/**
+ * Handle secrets check request
+ * @param req Original request
+ * @returns Response with secrets check result
+ */
+export async function handleSecretsCheck(req: Request): Promise<Response> {
+  try {
+    logWithTimestamp("Checking for BambooHR secrets in environment");
+    
+    // Try to get secrets with different casing variations
+    const subdomain = cleanSecret(Deno.env.get('BAMBOOHR_SUBDOMAIN'));
+    const subdomainLower = cleanSecret(Deno.env.get('bamboohr_subdomain'));
+    const subdomainUpper = cleanSecret(Deno.env.get('BAMBOOHR_SUBDOMAIN')); // Same as first but explicit uppercase
+    
+    const apiKey = cleanSecret(Deno.env.get('BAMBOOHR_API_KEY'));
+    const apiKeyLower = cleanSecret(Deno.env.get('bamboohr_api_key'));
+    
+    // Get all environment keys for debugging (without revealing values)
+    const envKeys = Object.keys(Deno.env.toObject());
+    
+    // Construct the result
+    const result = {
+      success: true,
+      message: "Secrets check completed",
+      secretsConfigured: Boolean(subdomain && apiKey),
+      secrets: {
+        BAMBOOHR_SUBDOMAIN: Boolean(subdomain),
+        BAMBOOHR_API_KEY: Boolean(apiKey),
+        // Include alternative casings for debugging
+        bamboohr_subdomain: Boolean(subdomainLower),
+        BAMBOOHR_SUBDOMAIN_UPPER: Boolean(subdomainUpper),
+        bamboohr_api_key: Boolean(apiKeyLower)
+      },
+      environmentKeys: envKeys,
+      timestamp: new Date().toISOString(),
+      // Add a verification string to help with debugging
+      deploymentVerification: "Edge Function is working"
+    };
+    
+    logWithTimestamp(`Secrets check result: ${JSON.stringify({
+      success: result.success,
+      secretsConfigured: result.secretsConfigured,
+      secrets: result.secrets,
+      envKeysCount: envKeys.length
+    })}`);
+    
+    return new Response(
+      JSON.stringify(result),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  } catch (error) {
+    logWithTimestamp(`Error during secrets check: ${error.message}`);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: `Error checking secrets: ${error.message}`,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        secrets: {
+          BAMBOOHR_SUBDOMAIN: false,
+          BAMBOOHR_API_KEY: false
+        }
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
 }
