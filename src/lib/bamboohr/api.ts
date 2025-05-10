@@ -1,6 +1,9 @@
-import { BambooHRClient } from './client';
+
+import { BambooHRClient } from './client/base';
+import { BambooHRApiClient } from './client/api-client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import BambooHRService from './service';
+import { BambooHRClientInterface } from './client/types';
 
 interface BambooHRServiceOptions {
   subdomain: string;
@@ -9,12 +12,12 @@ interface BambooHRServiceOptions {
   edgeFunctionUrl?: string;
 }
 
-class BambooHRApiClient {
-  private client: BambooHRClient;
+class BambooHRApi {
+  private client: BambooHRClientInterface;
   private service: BambooHRService;
 
   constructor(options: BambooHRServiceOptions) {
-    this.client = new BambooHRClient({
+    this.client = new BambooHRApiClient({
       subdomain: options.subdomain,
       apiKey: options.apiKey,
       useEdgeFunction: options.useEdgeFunction || false,
@@ -25,7 +28,8 @@ class BambooHRApiClient {
       subdomain: options.subdomain,
       apiKey: options.apiKey,
       useEdgeFunction: options.useEdgeFunction || false,
-      edgeFunctionUrl: options.edgeFunctionUrl
+      edgeFunctionUrl: options.edgeFunctionUrl,
+      client: this.client
     });
   }
   
@@ -49,117 +53,9 @@ class BambooHRApiClient {
     return this.service.getUserTrainings(employeeId);
   }
 
-  async fetchAllEmployees(): Promise<Employee[]> {
+  async fetchAllData(isConnectionTest = false): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {
     try {
-      const data = await this.client.fetchFromBamboo('/employees/directory');
-      console.log("Raw employees data:", data);
-      
-      if (Array.isArray(data)) {
-        return this.mapEmployeeData(data);
-      } else if (data && typeof data === 'object' && data.employees) {
-        return this.mapEmployeeData(data.employees);
-      }
-      
-      return [];
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      throw error;
-    }
-  }
-  
-  private mapEmployeeData(data: any[]): Employee[] {
-    return data.map(emp => ({
-      id: emp.id?.toString() || '',
-      name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
-      position: emp.jobTitle?.name || emp.jobTitle || '',
-      department: emp.department?.name || emp.department || '',
-      division: emp.division?.name || emp.division || '',
-      email: emp.workEmail || '',
-      hireDate: emp.hireDate || '',
-    }));
-  }
-
-  async fetchAllTrainings(): Promise<Training[]> {
-    try {
-      console.log("Fetching trainings from BambooHR...");
-      // Use the correct endpoint for training types
-      const data = await this.client.fetchFromBamboo('/training/type');
-      console.log("Raw trainings data:", data);
-      
-      // Handle the object format where IDs are keys
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        const trainingsArray = Object.values(data);
-        return this.mapTrainingData(trainingsArray);
-      }
-      // Handle array format (fallback)
-      else if (Array.isArray(data)) {
-        return this.mapTrainingData(data);
-      } 
-      // Handle other nested structures
-      else if (data && typeof data === 'object') {
-        const trainingArray = data.trainings || data.data || data.rows || [];
-        return this.mapTrainingData(trainingArray);
-      }
-      
-      console.warn("Unexpected training data format:", data);
-      return [];
-    } catch (error) {
-      console.error("Error fetching trainings:", error);
-      throw error;
-    }
-  }
-  
-  private mapTrainingData(data: any[]): Training[] {
-    return data.map(training => ({
-      id: training.id?.toString() || '',
-      title: training.name || '',
-      // Extract type from category name if possible (format: "NUMBER - TYPE - CATEGORY")
-      type: (training.category?.name?.split(' - ')[0] || '').replace(/^\d+ - /, ''),
-      // Extract category from category name if possible
-      category: training.category?.name?.split(' - ')[1] || 'General',
-      description: training.description || '',
-      durationHours: parseFloat(training.hours) || 0,
-      // Use 'required' flag to populate requiredFor
-      requiredFor: training.required ? ['Required'] : [],
-    }));
-  }
-
-  async fetchAllCompletions(): Promise<TrainingCompletion[]> {
-    try {
-      const data = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
-      console.log("Raw completions data:", data);
-      
-      if (Array.isArray(data)) {
-        return this.mapCompletionData(data);
-      } else if (data && typeof data === 'object') {
-        // Try to find completion data in different possible structures
-        const completionsArray = data.completions || data.data || data.rows || [];
-        return this.mapCompletionData(completionsArray);
-      }
-      
-      return [];
-    } catch (error) {
-      console.error("Error fetching completions:", error);
-      throw error;
-    }
-  }
-  
-  private mapCompletionData(data: any[]): TrainingCompletion[] {
-    return data.map(completion => ({
-      id: completion.id?.toString() || '',
-      employeeId: completion.employeeId?.toString() || '',
-      trainingId: completion.trainingId?.toString() || '',
-      completionDate: completion.completedDate || '',
-      expirationDate: completion.expirationDate || undefined,
-      status: completion.status || 'completed',
-      score: completion.score ? parseFloat(completion.score) : undefined,
-      certificateUrl: completion.certificateUrl || undefined,
-    }));
-  }
-
-  async fetchAllData(): Promise<{ employees: Employee[], trainings: Training[], completions: TrainingCompletion[] } | null> {
-    try {
-      return this.service.fetchAllData();
+      return this.service.fetchAllData(isConnectionTest);
     } catch (error) {
       console.error("Error fetching all data from BambooHR:", error);
       throw error;
@@ -167,4 +63,4 @@ class BambooHRApiClient {
   }
 }
 
-export default BambooHRApiClient;
+export default BambooHRApi;

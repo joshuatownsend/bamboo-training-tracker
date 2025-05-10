@@ -1,14 +1,15 @@
-import { BambooHRClient } from './client';
+import { BambooHRClientInterface } from './client/types';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
 import { BambooApiOptions } from './types';
 
 class BambooHRService {
-  private client: BambooHRClient;
+  private client: BambooHRClientInterface;
   private subdomain: string;
 
   constructor(options: BambooApiOptions) {
     this.subdomain = options.subdomain;
-    this.client = new BambooHRClient(options);
+    // Note: This assumes that the client passed in implements the BambooHRClientInterface
+    this.client = options.client as unknown as BambooHRClientInterface;
   }
 
   // Test connection to BambooHR API
@@ -25,16 +26,10 @@ class BambooHRService {
   // Get all employees
   async getEmployees(): Promise<Employee[]> {
     try {
-      const data = await this.client.fetchFromBamboo('/employees/directory');
+      const data = await this.client.getEmployees();
       console.log("Raw employees data:", data);
       
-      if (Array.isArray(data)) {
-        return this.mapEmployeeData(data);
-      } else if (data && typeof data === 'object' && data.employees) {
-        return this.mapEmployeeData(data.employees);
-      }
-      
-      return [];
+      return this.mapEmployeeData(data);
     } catch (error) {
       console.error("Error fetching employees:", error);
       return [];
@@ -57,27 +52,11 @@ class BambooHRService {
   async getTrainings(): Promise<Training[]> {
     try {
       console.log("Fetching trainings from BambooHR...");
-      // Use the correct endpoint for training types
-      const data = await this.client.fetchFromBamboo('/training/type');
-      console.log("Raw trainings data:", data);
+      // Get trainings using the client
+      const trainingsData = await this.client.getTrainings();
+      console.log("Raw trainings data:", trainingsData);
       
-      // Handle the object format where IDs are keys
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        const trainingsArray = Object.values(data);
-        return this.mapTrainingData(trainingsArray);
-      }
-      // Handle array format (fallback)
-      else if (Array.isArray(data)) {
-        return this.mapTrainingData(data);
-      } 
-      // Handle other nested structures
-      else if (data && typeof data === 'object') {
-        const trainingArray = data.trainings || data.data || data.rows || [];
-        return this.mapTrainingData(trainingArray);
-      }
-      
-      console.warn("Unexpected training data format:", data);
-      return [];
+      return this.mapTrainingData(trainingsData);
     } catch (error) {
       console.error("Error fetching trainings:", error);
       return [];
@@ -109,21 +88,14 @@ class BambooHRService {
         return [];
       }
       
-      // Use the correct endpoint for employee training records
-      const endpoint = `/training/record/employee/${employeeId}`;
-      console.log(`Using endpoint for user trainings: ${endpoint}`);
+      // Get user trainings from client
+      const trainingsArray = await this.client.getUserTrainings(employeeId, timeoutMs);
+      console.log(`Found ${trainingsArray.length} training records for user`);
       
-      // Create a promise that rejects after the timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout of ${timeoutMs}ms exceeded for employee ${employeeId}`)), timeoutMs);
-      });
-      
-      // Create the fetch promise
-      const fetchPromise = this.client.fetchFromBamboo(endpoint);
-      
-      // Race the fetch against the timeout
-      const trainingData = await Promise.race([fetchPromise, timeoutPromise]);
-      console.log("Raw user trainings data from BambooHR:", trainingData);
+      if (trainingsArray.length === 0) {
+        console.log("No trainings found for this employee");
+        return [];
+      }
       
       // Get all training types for reference
       const allTrainings = await this.getTrainings();
@@ -131,23 +103,6 @@ class BambooHRService {
         map[training.id] = training;
         return map;
       }, {} as Record<string, Training>);
-      
-      // Parse the response based on its format
-      let trainingsArray: any[] = [];
-      
-      // Handle the object format where IDs are keys
-      if (trainingData && typeof trainingData === 'object' && !Array.isArray(trainingData)) {
-        trainingsArray = Object.values(trainingData);
-      } else if (Array.isArray(trainingData)) {
-        trainingsArray = trainingData;
-      }
-      
-      console.log(`Found ${trainingsArray.length} training records for user`);
-      
-      if (trainingsArray.length === 0) {
-        console.log("No trainings found for this employee");
-        return [];
-      }
       
       // Convert the data to our UserTraining format
       return trainingsArray.map((record: any) => ({

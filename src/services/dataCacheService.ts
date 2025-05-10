@@ -1,77 +1,101 @@
 
-import { QueryClient } from '@tanstack/react-query';
-import { BambooHRClient } from '@/lib/bamboohr/client';
-import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
+import { BambooHRApiClient } from "@/lib/bamboohr/client/api-client";
+import { BambooHRClientInterface } from "@/lib/bamboohr/client/types";
+import { getEffectiveBambooConfig } from '@/lib/bamboohr/config';
 
-// Singleton instance for the query client
-let queryClientInstance: QueryClient | null = null;
+// Cache for sharing service instances across components
+let bambooServiceInstance: BambooHRApiClient | null = null;
 
-// Initialize the query client (should be called in App.tsx or similar)
-export const initializeQueryClient = (queryClient: QueryClient) => {
-  queryClientInstance = queryClient;
-};
+// Cache for prefetched data
+const dataCache: {
+  employees?: any[];
+  trainings?: any[];
+  completions?: any[];
+  lastFetch?: number;
+} = {};
 
-// Get the query client instance
-export const getQueryClient = (): QueryClient => {
-  if (!queryClientInstance) {
-    throw new Error('Query client not initialized. Call initializeQueryClient first.');
+// Get or create a singleton BambooHR service instance
+export function getBambooService(): BambooHRApiClient {
+  if (bambooServiceInstance) {
+    return bambooServiceInstance;
   }
-  return queryClientInstance;
-};
-
-// Get a configured BambooHR service instance
-export const getBambooService = () => {
+  
   const config = getEffectiveBambooConfig();
-  if (!config.useEdgeFunction && !config.subdomain) {
-    throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings or use Edge Function.');
-  }
-  return new BambooHRClient({
-    subdomain: config.subdomain,
-    apiKey: config.apiKey,
-    useEdgeFunction: config.useEdgeFunction,
-    edgeFunctionUrl: config.edgeFunctionUrl
+  
+  // We create a new BambooHRApiClient instance
+  bambooServiceInstance = new BambooHRApiClient({
+    subdomain: config.subdomain || 'avfrd',
+    apiKey: config.apiKey || '',
+    useEdgeFunction: config.useEdgeFunction || false,
+    edgeFunctionUrl: config.edgeFunctionUrl || '/api/bamboohr',
   });
-};
+  
+  return bambooServiceInstance;
+}
 
-// Prefetch BambooHR data and store in the React Query cache
-export const prefetchBambooHRData = async () => {
+// Reset the service instance (for testing or when config changes)
+export function resetBambooService(): void {
+  bambooServiceInstance = null;
+  dataCache.lastFetch = undefined;
+}
+
+// Prefetch BambooHR data in the background for faster UI loading
+export async function prefetchBambooHRData(): Promise<void> {
+  // Skip if we have recent data (less than 5 minutes old)
+  const now = Date.now();
+  const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+  
+  if (dataCache.lastFetch && now - dataCache.lastFetch < cacheExpiry) {
+    console.log("Using cached BambooHR data");
+    return;
+  }
+  
   try {
-    if (!isBambooConfigured()) {
-      console.log('BambooHR is not configured, skipping prefetch');
-      return false;
-    }
-
-    console.log('Prefetching BambooHR data...');
-    const queryClient = getQueryClient();
+    console.log("Prefetching BambooHR data in background");
     const service = getBambooService();
-    
-    // Fetch the data
     const data = await service.fetchAllData();
     
-    // Update the React Query cache
     if (data) {
-      queryClient.setQueryData(['bamboohr', 'allData'], data);
-      console.log('BambooHR data prefetched and cached');
-      return true;
+      // Update cache
+      dataCache.employees = data.employees;
+      dataCache.trainings = data.trainings;
+      dataCache.completions = data.completions;
+      dataCache.lastFetch = now;
+      console.log("BambooHR data prefetched and cached");
     }
-    
-    return false;
   } catch (error) {
-    console.error('Error prefetching BambooHR data:', error);
-    return false;
+    console.error("Error prefetching BambooHR data:", error);
+    // Don't update the cache timestamp on error
   }
-};
+}
 
-// Set up a background refresh interval (in milliseconds)
-export const startBackgroundRefresh = (intervalMs = 5 * 60 * 1000) => {
-  // Initial prefetch
-  prefetchBambooHRData();
-  
-  // Set up interval for subsequent prefetches
-  const intervalId = setInterval(() => {
-    console.log('Running background refresh of BambooHR data');
-    prefetchBambooHRData();
-  }, intervalMs);
-  
-  return () => clearInterval(intervalId); // Return cleanup function
-};
+// Get cached data (or fetch if not available)
+export async function getCachedEmployees() {
+  if (!dataCache.employees) {
+    await prefetchBambooHRData();
+  }
+  return dataCache.employees || [];
+}
+
+export async function getCachedTrainings() {
+  if (!dataCache.trainings) {
+    await prefetchBambooHRData();
+  }
+  return dataCache.trainings || [];
+}
+
+export async function getCachedCompletions() {
+  if (!dataCache.completions) {
+    await prefetchBambooHRData();
+  }
+  return dataCache.completions || [];
+}
+
+// Clear the cache to force a refresh on next fetch
+export function clearBambooCache() {
+  dataCache.lastFetch = undefined;
+  dataCache.employees = undefined;
+  dataCache.trainings = undefined;
+  dataCache.completions = undefined;
+  console.log("BambooHR cache cleared");
+}

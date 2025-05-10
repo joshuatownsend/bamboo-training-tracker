@@ -1,11 +1,11 @@
 
-import { BambooApiOptions, EdgeFunctionSecretsResult } from './types';
+import { BambooApiOptions, BambooHRClientInterface, EdgeFunctionSecretsResult } from './types';
 
 /**
  * Base BambooHRClient provides the low-level API communication with BambooHR.
  * It handles authentication, request formatting, and error handling.
  */
-export class BambooHRClient {
+export class BambooHRClient implements BambooHRClientInterface {
   protected subdomain: string;
   protected apiKey: string;
   protected useEdgeFunction: boolean;
@@ -138,6 +138,38 @@ export class BambooHRClient {
       console.error(`Error checking endpoint ${endpoint}:`, error);
       return false;
     }
+  }
+  
+  // Default implementation of API methods that should be overridden by derived classes
+  
+  // Fetch from BambooHR API with parsing
+  async fetchFromBamboo(endpoint: string, method = 'GET', body?: any): Promise<any> {
+    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+  }
+  
+  // Test connection to BambooHR API
+  async testConnection(): Promise<boolean> {
+    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+  }
+  
+  // Get employees
+  async getEmployees(): Promise<any[]> {
+    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+  }
+  
+  // Get trainings
+  async getTrainings(): Promise<any[]> {
+    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+  }
+  
+  // Get user trainings
+  async getUserTrainings(employeeId: string): Promise<any[]> {
+    throw new Error("Method not implemented in base class. Use BambooHRApiClient instead.");
+  }
+  
+  // Return the client itself (for testing)
+  getClient(): BambooHRClientInterface {
+    return this;
   }
   
   // Add minimal implementation for fetchAllData to satisfy service usage

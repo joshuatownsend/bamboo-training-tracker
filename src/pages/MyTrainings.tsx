@@ -18,6 +18,7 @@ import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
+import { UserTraining } from "@/lib/types";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
@@ -82,7 +83,13 @@ export default function MyTrainings() {
   };
   
   // Get unique categories for filter
-  const categories = [...new Set(userTrainings.map((t) => t.trainingDetails?.category).filter(Boolean))];
+  const categories = [
+    ...new Set(
+      userTrainings
+        .map((t) => t.trainingDetails?.category)
+        .filter(Boolean) as string[]
+    ),
+  ];
   
   // Apply filters
   const filteredTrainings = userTrainings.filter((training) => {
@@ -204,7 +211,7 @@ export default function MyTrainings() {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((category) => (
-                <SelectItem key={category} value={category || ''}>
+                <SelectItem key={category} value={category}>
                   {category || 'Uncategorized'}
                 </SelectItem>
               ))}

@@ -1,10 +1,11 @@
 
 import { BambooHRClient } from './base';
+import { BambooHRClientInterface } from './types';
 
 /**
  * Extended BambooHRClient with higher-level methods for working with the API data
  */
-export class BambooHRApiClient extends BambooHRClient {
+export class BambooHRApiClient extends BambooHRClient implements BambooHRClientInterface {
   /**
    * Fetch data from BambooHR API with error handling and JSON parsing
    */
@@ -112,13 +113,6 @@ export class BambooHRApiClient extends BambooHRClient {
   }
 
   /**
-   * Gets the client instance for use with the API tester
-   */
-  getClient(): BambooHRClient {
-    return this;
-  }
-
-  /**
    * Test the connection to BambooHR API
    */
   async testConnection(): Promise<boolean> {
@@ -136,23 +130,95 @@ export class BambooHRApiClient extends BambooHRClient {
    * Get employees from BambooHR
    */
   async getEmployees(): Promise<any[]> {
-    // Implementation would go here
-    return [];
+    try {
+      const data = await this.fetchFromBamboo('/employees/directory');
+      
+      if (Array.isArray(data)) {
+        return data;
+      } else if (data && typeof data === 'object' && data.employees) {
+        return data.employees;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      return [];
+    }
   }
 
   /**
    * Get trainings from BambooHR
    */
   async getTrainings(): Promise<any[]> {
-    // Implementation would go here
-    return [];
+    try {
+      console.log("Fetching trainings from BambooHR...");
+      // Use the correct endpoint for training types
+      const data = await this.fetchFromBamboo('/training/type');
+      
+      // Handle the object format where IDs are keys
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        return Object.values(data);
+      }
+      // Handle array format (fallback)
+      else if (Array.isArray(data)) {
+        return data;
+      } 
+      // Handle other nested structures
+      else if (data && typeof data === 'object') {
+        return data.trainings || data.data || data.rows || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching trainings:", error);
+      return [];
+    }
   }
 
   /**
-   * Fetch all BambooHR data
+   * Get trainings for a specific employee
    */
-  async fetchAllData(isConnectionTest = false): Promise<any> {
-    // Implementation would go here
-    return {};
+  async getUserTrainings(employeeId: string, timeoutMs = 5000): Promise<any[]> {
+    try {
+      console.log(`Fetching trainings for employee ID: ${employeeId}`);
+      
+      if (!employeeId) {
+        console.error("No employee ID provided for getUserTrainings");
+        return [];
+      }
+      
+      // Use the correct endpoint for employee training records
+      const endpoint = `/training/record/employee/${employeeId}`;
+      console.log(`Using endpoint for user trainings: ${endpoint}`);
+      
+      // Create a promise that rejects after the timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout of ${timeoutMs}ms exceeded for employee ${employeeId}`)), timeoutMs);
+      });
+      
+      // Create the fetch promise
+      const fetchPromise = this.fetchFromBamboo(endpoint);
+      
+      // Race the fetch against the timeout
+      const trainingData = await Promise.race([fetchPromise, timeoutPromise]);
+      console.log("Raw user trainings data from BambooHR:", trainingData);
+      
+      // Parse the response based on its format
+      let trainingsArray: any[] = [];
+      
+      // Handle the object format where IDs are keys
+      if (trainingData && typeof trainingData === 'object' && !Array.isArray(trainingData)) {
+        trainingsArray = Object.values(trainingData);
+      } else if (Array.isArray(trainingData)) {
+        trainingsArray = trainingData;
+      }
+      
+      console.log(`Found ${trainingsArray.length} training records for user`);
+      return trainingsArray;
+      
+    } catch (error) {
+      console.error("Error getting user trainings from BambooHR:", error);
+      return [];
+    }
   }
 }
