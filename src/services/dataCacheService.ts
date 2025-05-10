@@ -1,6 +1,6 @@
 
 import { QueryClient } from '@tanstack/react-query';
-import { BambooHRApiClient } from '@/lib/bamboohr/client';
+import { BambooHRClient } from '@/lib/bamboohr/client';
 import { getEffectiveBambooConfig, isBambooConfigured } from '@/lib/bamboohr/config';
 
 // Singleton instance for the query client
@@ -25,7 +25,7 @@ export const getBambooService = () => {
   if (!config.useEdgeFunction && !config.subdomain) {
     throw new Error('BambooHR is not configured. Add your subdomain and API key in Admin Settings or use Edge Function.');
   }
-  return new BambooHRApiClient({
+  return new BambooHRClient({
     subdomain: config.subdomain,
     apiKey: config.apiKey,
     useEdgeFunction: config.useEdgeFunction,

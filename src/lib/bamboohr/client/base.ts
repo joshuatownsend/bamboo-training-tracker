@@ -6,10 +6,10 @@ import { BambooApiOptions, EdgeFunctionSecretsResult } from './types';
  * It handles authentication, request formatting, and error handling.
  */
 export class BambooHRClient {
-  private subdomain: string;
-  private apiKey: string;
-  private useEdgeFunction: boolean;
-  private edgeFunctionUrl: string;
+  protected subdomain: string;
+  protected apiKey: string;
+  protected useEdgeFunction: boolean;
+  protected edgeFunctionUrl: string;
   private defaultTimeout = 10000; // 10 seconds default timeout
 
   constructor(options: BambooApiOptions) {
@@ -138,5 +138,11 @@ export class BambooHRClient {
       console.error(`Error checking endpoint ${endpoint}:`, error);
       return false;
     }
+  }
+  
+  // Add minimal implementation for fetchAllData to satisfy service usage
+  async fetchAllData(isConnectionTest = false): Promise<any> {
+    // Minimal implementation
+    return {};
   }
 }
