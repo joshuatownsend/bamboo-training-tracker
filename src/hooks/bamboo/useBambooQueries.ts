@@ -30,8 +30,10 @@ export const useBambooQueries = () => {
           const result = await service.fetchAllData();
           console.log("Query fetched data:", result ? "Success" : "No data");
           
-          // Show success toast if we got data
           if (result && result.employees && result.employees.length > 0) {
+            console.log(`Successfully loaded ${result.employees.length} employees from BambooHR`);
+            
+            // Only show toast for successful data loads, not empty results
             toast({
               title: "BambooHR Data Loaded",
               description: `Successfully loaded ${result.employees.length} employees`,
@@ -39,6 +41,7 @@ export const useBambooQueries = () => {
             });
           }
           
+          // Return actual result, even if empty
           return result || { employees: [], trainings: [], completions: [] };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -56,7 +59,6 @@ export const useBambooQueries = () => {
       enabled: isConfigured, // Only run the query if BambooHR is configured
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false, // Don't refetch on window focus
-      placeholderData: { employees: [], trainings: [], completions: [] },
     });
   }, [isConfigured, toast]);
   

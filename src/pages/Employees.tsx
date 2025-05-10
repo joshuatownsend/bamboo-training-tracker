@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -16,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
 
-// Import mock data for fallback
+// Import mock data for fallback only when absolutely necessary
 import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
 
 const Employees = () => {
@@ -24,7 +23,7 @@ const Employees = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   
-  // Get data from BambooHR or use mock data as fallback
+  // Get data from BambooHR
   const { isConfigured, useAllData } = useBambooHR();
   const { data, isLoading, error, refetch, status } = useAllData();
   
@@ -47,10 +46,11 @@ const Employees = () => {
     }
   }, [data, isConfigured, isLoading, error, status]);
   
-  // Use BambooHR data if available, otherwise fall back to mock data
-  const employeesData: Employee[] = (isConfigured && data?.employees && data.employees.length > 0) ? data.employees : mockEmployees;
-  const trainingsData: Training[] = (isConfigured && data?.trainings && data.trainings.length > 0) ? data.trainings : mockTrainings;
-  const completionsData: TrainingCompletion[] = (isConfigured && data?.completions && data.completions.length > 0) ? data.completions : mockCompletions;
+  // Only use mock data when BambooHR is NOT configured OR when there's an error
+  // Otherwise, always try to use the real data, even if it's empty
+  const employeesData: Employee[] = (!isConfigured || error) ? mockEmployees : (data?.employees || []);
+  const trainingsData: Training[] = (!isConfigured || error) ? mockTrainings : (data?.trainings || []);
+  const completionsData: TrainingCompletion[] = (!isConfigured || error) ? mockCompletions : (data?.completions || []);
   
   // Get unique divisions for filter
   const divisions = [...new Set(employeesData?.map(e => e.division).filter(Boolean))];

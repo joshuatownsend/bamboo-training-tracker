@@ -18,12 +18,12 @@ const Dashboard = () => {
 
   // Process BambooHR data to generate statistics
   useEffect(() => {
-    if (data && data.employees && data.trainings) {
+    if (data && data.employees) {
       setIsCalculating(true);
       
       console.log("Dashboard received data from BambooHR:", {
         employees: data.employees.length,
-        trainings: data.trainings.length,
+        trainings: data.trainings?.length || 0,
         completions: data.completions?.length || 0
       });
       
@@ -32,7 +32,7 @@ const Dashboard = () => {
         try {
           const statistics = calculateTrainingStatistics(
             data.employees, 
-            data.trainings, 
+            data.trainings || [], 
             data.completions || []
           );
           
