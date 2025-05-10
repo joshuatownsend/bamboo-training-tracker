@@ -36,8 +36,8 @@ function App() {
             <Route path="/bamboo-diagnostics" element={<AuthGuard><BambooApiDiagnostics /></AuthGuard>} />
           </Route>
         </Routes>
+        <Toaster />
       </UserProvider>
-      <Toaster />
     </div>
   );
 }
