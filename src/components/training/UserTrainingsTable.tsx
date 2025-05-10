@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserTraining } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserTrainingsTableProps {
   trainings: UserTraining[];
@@ -13,6 +14,53 @@ interface UserTrainingsTableProps {
 }
 
 export function UserTrainingsTable({ trainings, onSort }: UserTrainingsTableProps) {
+  const [trainingTypeNames, setTrainingTypeNames] = useState<Record<string, string>>({});
+  const [isLoadingNames, setIsLoadingNames] = useState(true);
+
+  // Fetch training type names from Supabase
+  useEffect(() => {
+    const fetchTrainingTypeNames = async () => {
+      setIsLoadingNames(true);
+      
+      try {
+        // Extract all unique training IDs
+        const trainingIds = [...new Set(trainings.map(t => 
+          t.trainingId || t.type?.toString() || ''))]
+          .filter(id => id);
+
+        if (trainingIds.length === 0) {
+          setIsLoadingNames(false);
+          return;
+        }
+
+        // Fetch training names from Supabase
+        const { data, error } = await supabase
+          .from('bamboo_training_types')
+          .select('id, name')
+          .in('id', trainingIds);
+
+        if (error) {
+          console.error('Error fetching training names:', error);
+          return;
+        }
+
+        // Create a mapping of ID to name
+        const nameMap = data.reduce((acc, item) => {
+          acc[item.id] = item.name;
+          return acc;
+        }, {} as Record<string, string>);
+
+        setTrainingTypeNames(nameMap);
+      } catch (error) {
+        console.error('Error in fetchTrainingTypeNames:', error);
+      } finally {
+        setIsLoadingNames(false);
+      }
+    };
+
+    fetchTrainingTypeNames();
+  }, [trainings]);
+
   // Group trainings by category for better organization
   const groupedTrainings = trainings.reduce((acc, training) => {
     // Make sure to extract category as string
@@ -74,8 +122,15 @@ export function UserTrainingsTable({ trainings, onSort }: UserTrainingsTableProp
     return String(value);
   };
 
-  // Function to get proper training name - prioritize display name options
+  // Function to get proper training name - prioritize Supabase data
   const getTrainingName = (training: UserTraining): string => {
+    // First check if we have the name from Supabase
+    const trainingId = training.trainingId || training.type?.toString() || '';
+    if (trainingId && trainingTypeNames[trainingId]) {
+      return trainingTypeNames[trainingId];
+    }
+    
+    // If not in Supabase, try the fallback options
     // First try to get the name from trainingDetails
     if (training.trainingDetails) {
       // Use title first as it's most likely to be user-friendly
@@ -108,6 +163,11 @@ export function UserTrainingsTable({ trainings, onSort }: UserTrainingsTableProp
 
   return (
     <div className="rounded-md border bg-white">
+      {isLoadingNames && (
+        <div className="bg-yellow-50 text-yellow-800 p-2 text-xs text-center">
+          Loading training names from database...
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +11,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUser } from "@/contexts/UserContext";
-import { Search, RefreshCw, AlertCircle, Stethoscope, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, RefreshCw, AlertCircle, Stethoscope, ChevronDown, ChevronUp, Database } from "lucide-react";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 import { UserTraining } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to safely get string values
 const safeString = (value: any): string => {
@@ -44,6 +44,7 @@ export default function MyTrainings() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortField, setSortField] = useState<string>("completionDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [isSyncingTrainingTypes, setIsSyncingTrainingTypes] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -98,6 +99,51 @@ export default function MyTrainings() {
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
+    }
+  };
+  
+  // New function to sync training types
+  const handleSyncTrainingTypes = async () => {
+    if (!isAdmin) return;
+    
+    setIsSyncingTrainingTypes(true);
+    
+    try {
+      // First try using the database function
+      const { data: dbResult, error: dbError } = await supabase.rpc('sync_bamboohr_trainings');
+      
+      if (dbError) {
+        console.error("Error using database function:", dbError);
+        
+        // Fallback to calling the edge function directly
+        const { data: funcResult, error: funcError } = await supabase.functions.invoke('sync-bamboo-trainings');
+        
+        if (funcError) throw new Error(funcError.message);
+        
+        console.log("Edge function result:", funcResult);
+        toast({
+          title: "Training Types Synced",
+          description: "Successfully synced training types from BambooHR.",
+        });
+      } else {
+        console.log("Database function result:", dbResult);
+        toast({
+          title: "Training Types Sync Initiated",
+          description: "Training types sync has been initiated.",
+        });
+      }
+      
+      // Refetch trainings to use the updated names
+      await refetch();
+    } catch (error) {
+      console.error("Error syncing training types:", error);
+      toast({
+        title: "Error Syncing Training Types",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingTrainingTypes(false);
     }
   };
   
@@ -244,15 +290,28 @@ export default function MyTrainings() {
             View your completed training records from BambooHR
           </p>
         </div>
-        <Button 
-          onClick={handleRefresh}
-          disabled={isLoading || isRefetching}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Button 
+              onClick={handleSyncTrainingTypes}
+              disabled={isSyncingTrainingTypes}
+              variant="outline"
+              className="gap-2"
+            >
+              <Database className={`h-4 w-4 ${isSyncingTrainingTypes ? 'animate-pulse' : ''}`} />
+              Sync Training Types
+            </Button>
+          )}
+          <Button 
+            onClick={handleRefresh}
+            disabled={isLoading || isRefetching}
+            variant="outline"
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {isMissingEmployeeId && (

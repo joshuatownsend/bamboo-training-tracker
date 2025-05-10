@@ -85,7 +85,7 @@ export interface User {
 export interface UserTraining {
   id: string;
   employeeId: string;
-  trainingId: string;
+  trainingId?: string;
   completionDate: string;
   instructor?: string;
   notes?: string;
@@ -93,4 +93,11 @@ export interface UserTraining {
   // Add type or any other fields that might be present in the BambooHR response
   type?: string;  
   completed?: string;
+}
+
+export interface TrainingType {
+  id: string;
+  name: string;
+  category?: string;
+  description?: string;
 }
