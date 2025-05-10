@@ -11,15 +11,17 @@ export interface BambooApiOptions {
 export interface BambooEmployee {
   id: string;
   displayName?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   jobTitle?: {
     name: string;
-  };
+  } | string;
   department?: {
     name: string;
-  };
+  } | string;
+  division?: string;
   workEmail?: string;
+  email?: string;
   photoUrl?: string;
   hireDate?: string;
 }

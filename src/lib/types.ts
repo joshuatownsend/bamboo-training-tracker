@@ -7,6 +7,13 @@ export interface Employee {
   email: string;
   avatar?: string;
   hireDate: string;
+  
+  // Add these missing properties that are used in the components
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string;
+  workEmail?: string;
 }
 
 export interface Training {

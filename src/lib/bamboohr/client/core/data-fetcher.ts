@@ -1,5 +1,6 @@
-
 import { ConnectionTester } from './connection-tester';
+import { Employee } from '@/lib/types';
+import { BambooEmployee } from '../../types';
 
 /**
  * Handles BambooHR data fetching for employees and trainings
@@ -21,14 +22,14 @@ export class DataFetcher extends ConnectionTester {
         if (directory && typeof directory === 'object') {
           if ('employees' in directory && Array.isArray(directory.employees)) {
             console.log(`Found ${directory.employees.length} employees in directory`);
-            return directory.employees;
+            return this.mapEmployeesToStandardFormat(directory.employees);
           } else {
             // Maybe the directory itself is an array
             const possibleEmployees = Object.values(directory).filter(Array.isArray);
             if (possibleEmployees.length > 0) {
               const employees = possibleEmployees[0];
               console.log(`Found ${employees.length} employees through alternative parsing`);
-              return employees;
+              return this.mapEmployeesToStandardFormat(employees);
             }
           }
         }
@@ -37,7 +38,7 @@ export class DataFetcher extends ConnectionTester {
       }
       
       console.log(`Found ${directory.employees.length} employees in directory`);
-      return directory.employees;
+      return this.mapEmployeesToStandardFormat(directory.employees);
     } catch (error) {
       console.error("Error fetching employees:", error);
       // Fallback to smaller employee directory if available
@@ -53,11 +54,11 @@ export class DataFetcher extends ConnectionTester {
         // Handle both array and object formats
         if (Array.isArray(directoryAlt)) {
           console.log(`Found ${directoryAlt.length} employees in alternative directory (array format)`);
-          return directoryAlt;
+          return this.mapEmployeesToStandardFormat(directoryAlt);
         } else if (typeof directoryAlt === 'object') {
           const employees = Object.values(directoryAlt);
           console.log(`Found ${employees.length} employees in alternative directory (object format)`);
-          return employees;
+          return this.mapEmployeesToStandardFormat(employees);
         }
         
         return [];
@@ -66,6 +67,32 @@ export class DataFetcher extends ConnectionTester {
         return [];
       }
     }
+  }
+  
+  /**
+   * Maps BambooHR employee data to our standardized Employee format
+   * @param employees Raw employee data from BambooHR
+   * @returns Standardized employee records
+   */
+  private mapEmployeesToStandardFormat(employees: any[]): Employee[] {
+    return employees.map(emp => {
+      // Ensure all required fields are present with appropriate fallbacks
+      return {
+        id: emp.id,
+        name: emp.displayName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || 'Unknown',
+        displayName: emp.displayName,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        position: emp.jobTitle?.name || emp.jobTitle || emp.position || 'No Position',
+        jobTitle: emp.jobTitle?.name || emp.jobTitle || emp.position, 
+        department: emp.department?.name || emp.department || 'Unassigned',
+        division: emp.division || emp.department?.name || emp.department || 'Unassigned',
+        email: emp.email || emp.workEmail || '',
+        workEmail: emp.workEmail || emp.email || '',
+        avatar: emp.photoUrl,
+        hireDate: emp.hireDate || ''
+      };
+    });
   }
   
   /**
