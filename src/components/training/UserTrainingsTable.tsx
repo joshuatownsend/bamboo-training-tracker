@@ -56,7 +56,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     if (typeof value === "object") {
       // Special handling for objects with id and name properties
       if (value && 'id' in value && 'name' in value) {
-        return typeof value.name === 'string' ? value.name : `ID: ${value.id}`;
+        return typeof value.name === 'string' ? value.name : `ID: ${String(value.id)}`;
       }
       // Handle specific object properties we know about
       if ('name' in value && value.name) return safeTextValue(value.name);
@@ -101,14 +101,14 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
             </TableRow>
           ) : (
             categories.map((category) => (
-              <React.Fragment key={`category-${category}`}>
+              <React.Fragment key={`category-${safeTextValue(category)}`}>
                 <TableRow className="bg-muted/20 hover:bg-muted/20">
                   <TableCell colSpan={5} className="font-medium py-2">
                     {safeTextValue(category)}
                   </TableCell>
                 </TableRow>
                 {groupedTrainings[category].map((training) => (
-                  <TableRow key={training.id}>
+                  <TableRow key={safeTextValue(training.id)}>
                     <TableCell>
                       <div>
                         <div className="font-medium">

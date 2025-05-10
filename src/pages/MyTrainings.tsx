@@ -20,6 +20,24 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 import { UserTraining } from "@/lib/types";
 
+// Helper function to safely get string values
+const safeString = (value: any): string => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "object") {
+    if (value && 'name' in value) return String(value.name);
+    if (value && 'title' in value) return String(value.title);
+    if (value && 'id' in value) return String(value.id);
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return "[Object]";
+    }
+  }
+  return String(value);
+};
+
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,16 +103,16 @@ export default function MyTrainings() {
   const categories = [
     ...new Set(
       userTrainings
-        .map((t) => t.trainingDetails?.category)
-        .filter(Boolean) as string[]
+        .map((t) => safeString(t.trainingDetails?.category))
+        .filter(Boolean)
     ),
   ];
   
   // Apply filters
   const filteredTrainings = userTrainings.filter((training) => {
-    const title = training.trainingDetails?.title?.toLowerCase() || '';
-    const description = training.trainingDetails?.description?.toLowerCase() || '';
-    const notes = training.notes?.toLowerCase() || '';
+    const title = safeString(training.trainingDetails?.title).toLowerCase();
+    const description = safeString(training.trainingDetails?.description).toLowerCase();
+    const notes = safeString(training.notes).toLowerCase();
     
     const matchesSearch = 
       title.includes(searchQuery.toLowerCase()) ||
@@ -102,7 +120,7 @@ export default function MyTrainings() {
       notes.includes(searchQuery.toLowerCase());
     
     const matchesCategory = categoryFilter === "all" || 
-      training.trainingDetails?.category === categoryFilter;
+      safeString(training.trainingDetails?.category) === categoryFilter;
     
     return matchesSearch && matchesCategory;
   });
@@ -110,7 +128,7 @@ export default function MyTrainings() {
   // Calculate statistics
   const totalTrainings = userTrainings.length;
   const categoryCounts = userTrainings.reduce((acc, training) => {
-    const category = training.trainingDetails?.category || 'Uncategorized';
+    const category = safeString(training.trainingDetails?.category || 'Uncategorized');
     acc[category] = (acc[category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -202,7 +220,7 @@ export default function MyTrainings() {
             <CardTitle className="text-sm font-medium">Top Training Category</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{topCategory}</div>
+            <div className="text-2xl font-bold">{safeString(topCategory)}</div>
             {topCount > 0 && <div className="text-xs text-muted-foreground">{topCount} trainings</div>}
           </CardContent>
         </Card>
@@ -236,7 +254,7 @@ export default function MyTrainings() {
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category} value={category}>
-                  {category || 'Uncategorized'}
+                  {safeString(category) || 'Uncategorized'}
                 </SelectItem>
               ))}
             </SelectContent>
