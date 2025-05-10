@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -22,6 +22,9 @@ interface ValidationIssue {
   issueType: 'past' | 'future';
 }
 
+type SortField = 'employeeName' | 'trainingName' | 'completionDate' | 'issueType';
+type SortDirection = 'asc' | 'desc';
+
 const TrainingDataValidation = () => {
   const { useAllData } = useBambooHR();
   const { data, isLoading, error } = useAllData();
@@ -30,6 +33,22 @@ const TrainingDataValidation = () => {
     futureCompletions: 0,
     pastCompletions: 0
   });
+  
+  // Add sort state
+  const [sortField, setSortField] = useState<SortField>('employeeName');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Function to handle sort
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      // Toggle direction if same field clicked
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // Function to identify validation issues
   const getValidationIssues = (): ValidationIssue[] => {
@@ -118,6 +137,32 @@ const TrainingDataValidation = () => {
   // Get validation issues
   const validationIssues = getValidationIssues();
   
+  // Apply sorting to issues
+  const sortedIssues = [...validationIssues].sort((a, b) => {
+    let comparison = 0;
+    
+    // Sort based on the selected field
+    switch (sortField) {
+      case 'employeeName':
+        comparison = a.employeeName.localeCompare(b.employeeName);
+        break;
+      case 'trainingName':
+        comparison = a.trainingName.localeCompare(b.trainingName);
+        break;
+      case 'completionDate':
+        comparison = new Date(a.completionDate).getTime() - new Date(b.completionDate).getTime();
+        break;
+      case 'issueType':
+        comparison = a.issueType.localeCompare(b.issueType);
+        break;
+      default:
+        break;
+    }
+    
+    // Apply sort direction
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
+  
   // Effects to re-run validation when data changes
   useEffect(() => {
     if (data) {
@@ -128,6 +173,25 @@ const TrainingDataValidation = () => {
       });
     }
   }, [data]);
+  
+  // Helper function for sort header display
+  const SortHeader = ({ field, label }: { field: SortField, label: string }) => {
+    return (
+      <TableHead 
+        className="cursor-pointer hover:bg-muted/60 transition-colors"
+        onClick={() => handleSort(field)}
+      >
+        <div className="flex items-center justify-between">
+          <span>{label}</span>
+          {sortField === field && (
+            sortDirection === 'asc' ? 
+              <ArrowUp className="h-4 w-4 ml-1" /> : 
+              <ArrowDown className="h-4 w-4 ml-1" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
   
   if (isLoading) {
     return (
@@ -181,7 +245,7 @@ const TrainingDataValidation = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {validationIssues.length === 0 ? (
+          {sortedIssues.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No date validation issues found.
             </div>
@@ -189,15 +253,15 @@ const TrainingDataValidation = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead>Employee Name</TableHead>
-                  <TableHead>Training</TableHead>
-                  <TableHead>Completion Date</TableHead>
-                  <TableHead>Issue</TableHead>
+                  <SortHeader field="employeeName" label="Employee Name" />
+                  <SortHeader field="trainingName" label="Training" />
+                  <SortHeader field="completionDate" label="Completion Date" />
+                  <SortHeader field="issueType" label="Issue" />
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {validationIssues.map((issue, index) => (
+                {sortedIssues.map((issue, index) => (
                   <TableRow key={`${issue.employeeId}-${issue.trainingId}-${index}`}>
                     <TableCell>{issue.employeeName}</TableCell>
                     <TableCell>{issue.trainingName}</TableCell>
