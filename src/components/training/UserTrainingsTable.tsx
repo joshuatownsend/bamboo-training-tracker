@@ -56,7 +56,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
     if (typeof value === "object") {
       // Special handling for objects with id and name properties
       if (value && 'id' in value && 'name' in value) {
-        return value.name?.toString() || `ID: ${value.id}`;
+        return typeof value.name === 'string' ? value.name : `ID: ${value.id}`;
       }
       // Handle specific object properties we know about
       if ('name' in value && value.name) return safeTextValue(value.name);
@@ -125,7 +125,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {formatDate(training.completionDate)}
+                      {formatDate(safeTextValue(training.completionDate))}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
