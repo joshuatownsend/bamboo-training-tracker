@@ -1,3 +1,4 @@
+
 export interface Employee {
   id: string;
   name: string;
@@ -57,7 +58,7 @@ export interface TrainingStatistics {
   departmentStats: DepartmentStats[];
 }
 
-// New interfaces for AVFRD specific requirements
+// Updated Position interface to match Supabase table structure
 export interface Position {
   id: string;
   title: string;
@@ -65,6 +66,8 @@ export interface Position {
   department: string;
   countyRequirements: string[]; // Training IDs required by Loudoun County
   avfrdRequirements: string[]; // Training IDs required by AVFRD
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface QualificationStatus {

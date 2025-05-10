@@ -72,6 +72,39 @@ export type Database = {
         }
         Relationships: []
       }
+      positions: {
+        Row: {
+          avfrd_requirements: string[]
+          county_requirements: string[]
+          created_at: string
+          department: string | null
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          avfrd_requirements?: string[]
+          county_requirements?: string[]
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          avfrd_requirements?: string[]
+          county_requirements?: string[]
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

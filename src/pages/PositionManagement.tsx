@@ -47,9 +47,9 @@ export default function PositionManagement() {
       {isError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error loading training data</AlertTitle>
+          <AlertTitle>Error loading data</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : "Could not load training data from BambooHR"}
+            {error instanceof Error ? error.message : "Could not load position data"}
           </AlertDescription>
         </Alert>
       )}
