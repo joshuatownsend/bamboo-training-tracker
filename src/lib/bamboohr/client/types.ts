@@ -24,8 +24,8 @@ export interface EdgeFunctionSecretsResult {
 export interface BambooHRClientInterface {
   testEndpointExists(path: string): Promise<boolean>;
   testConnection(): Promise<boolean>;
-  fetchRawResponse(path: string): Promise<Response>;
-  fetchFromBamboo(path: string): Promise<any>;
+  fetchRawResponse(path: string, options?: RequestInit): Promise<Response>;
+  fetchFromBamboo(path: string, options?: RequestInit): Promise<any>;
   getEmployees(): Promise<any[]>;
   getTrainings(): Promise<any[]>;
   getUserTrainings(employeeId: string, timeoutMs?: number): Promise<any[]>;

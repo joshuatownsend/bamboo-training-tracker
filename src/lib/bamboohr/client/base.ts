@@ -1,3 +1,4 @@
+
 import { BambooApiOptions, BambooHRClientInterface, EdgeFunctionSecretsResult } from './types';
 
 /**
