@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchPositions } from "@/services/positionService";
 import { usePositionMutations } from "@/hooks/mutations/usePositionMutations";
 import { useTrainings } from "@/hooks/training/useTrainings";
+import { useTrainingRequirements } from "@/hooks/training/useTrainingRequirements";
 
 export function usePositionManagement() {
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -20,12 +21,24 @@ export function usePositionManagement() {
     deletePositionMutation
   } = usePositionMutations();
 
+  // Fetch all trainings
   const {
-    trainings,
+    trainings: allTrainings,
     isLoadingTrainings,
     isError: isTrainingsError,
     error: trainingsError
   } = useTrainings();
+
+  // Get selected trainings from Training Requirements
+  const {
+    selectedTrainings: selectedTrainingRequirements,
+    loading: loadingSelectedTrainings
+  } = useTrainingRequirements();
+
+  // Filter trainings to only include the ones selected in Training Requirements
+  const trainings = allTrainings.filter(training => 
+    selectedTrainingRequirements[training.id]
+  );
 
   // Fetch positions from Supabase
   const { 
@@ -109,7 +122,7 @@ export function usePositionManagement() {
     });
   };
 
-  const isLoading = isLoadingTrainings || isLoadingPositions;
+  const isLoading = isLoadingTrainings || isLoadingPositions || loadingSelectedTrainings;
   const isError = isTrainingsError || !!positionsError;
   const error = trainingsError || positionsError;
 

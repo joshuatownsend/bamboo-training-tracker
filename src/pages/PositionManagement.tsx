@@ -9,8 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePositionManagement } from "@/hooks/usePositionManagement";
 import { PositionList } from "@/components/positions/PositionList";
 import { PositionForm } from "@/components/positions/PositionForm";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PositionManagement() {
+  const { toast } = useToast();
   const {
     editingPosition,
     positionsList,
@@ -28,6 +30,17 @@ export default function PositionManagement() {
     toggleTraining,
     setDialogOpen
   } = usePositionManagement();
+
+  // Show toast message if no trainings are selected in Training Requirements
+  React.useEffect(() => {
+    if (!isLoading && trainings.length === 0) {
+      toast({
+        title: "No trainings selected",
+        description: "Please select trainings in the Training Requirements page first.",
+        variant: "destructive"
+      });
+    }
+  }, [isLoading, trainings.length, toast]);
 
   return (
     <div className="space-y-6">
@@ -50,6 +63,16 @@ export default function PositionManagement() {
           <AlertTitle>Error loading data</AlertTitle>
           <AlertDescription>
             {error instanceof Error ? error.message : "Could not load position data"}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isLoading && trainings.length === 0 && (
+        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">No trainings selected</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Please go to the Training Requirements page to select trainings before defining positions.
           </AlertDescription>
         </Alert>
       )}

@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import { Position, Training } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface PositionFormProps {
   editingPosition: Position | null;
@@ -39,6 +41,7 @@ export function PositionForm({
 }: PositionFormProps) {
   
   const isCreating = editingPosition?.id.startsWith("new-");
+  const hasTrainings = trainings.length > 0;
 
   return (
     <DialogContent className="sm:max-w-[700px]">
@@ -50,6 +53,16 @@ export function PositionForm({
           Define the requirements for this position for both County and AVFRD.
         </DialogDescription>
       </DialogHeader>
+      
+      {!hasTrainings && !isLoading && (
+        <Alert className="bg-amber-50 border-amber-200 mb-4">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-700">
+            No trainings are currently selected in Training Requirements.
+            Position requirements cannot be defined until trainings are selected.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-2 gap-4">
@@ -99,9 +112,9 @@ export function PositionForm({
                   <Skeleton className="h-6 w-full" />
                   <Skeleton className="h-6 w-full" />
                 </div>
-              ) : trainings.length === 0 ? (
+              ) : !hasTrainings ? (
                 <div className="text-center p-4 text-muted-foreground">
-                  No trainings available from BambooHR
+                  No trainings available - please select trainings in Training Requirements
                 </div>
               ) : (
                 trainings.map((training) => (
@@ -136,9 +149,9 @@ export function PositionForm({
                   <Skeleton className="h-6 w-full" />
                   <Skeleton className="h-6 w-full" />
                 </div>
-              ) : trainings.length === 0 ? (
+              ) : !hasTrainings ? (
                 <div className="text-center p-4 text-muted-foreground">
-                  No trainings available from BambooHR
+                  No trainings available - please select trainings in Training Requirements
                 </div>
               ) : (
                 trainings.map((training) => (
@@ -173,7 +186,10 @@ export function PositionForm({
         >
           Cancel
         </Button>
-        <Button onClick={onSave} disabled={!editingPosition?.title}>
+        <Button 
+          onClick={onSave} 
+          disabled={!editingPosition?.title || !hasTrainings}
+        >
           <Save className="mr-1 h-4 w-4" />
           Save Position
         </Button>
