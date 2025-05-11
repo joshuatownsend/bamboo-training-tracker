@@ -14,19 +14,41 @@ export function useTrainingRequirements() {
     const loadSelectedTrainings = async () => {
       setLoading(true);
       try {
-        // In a real app, you'd fetch the selected trainings from your database
-        // For now, we'll just simulate this with localStorage
-        const savedSelections = localStorage.getItem('training_selections');
-        if (savedSelections) {
-          setSelectedTrainings(JSON.parse(savedSelections));
+        // Fetch from Supabase
+        const { data, error } = await supabase
+          .from('training_selections')
+          .select('training_id, is_selected');
+          
+        if (error) {
+          throw error;
         }
+
+        // Convert array to record
+        const selections: Record<string, boolean> = {};
+        if (data) {
+          data.forEach((item) => {
+            selections[item.training_id] = item.is_selected;
+          });
+        }
+
+        setSelectedTrainings(selections);
       } catch (error) {
         console.error("Error loading selected trainings:", error);
         toast({
           title: "Error",
-          description: "Failed to load training selections",
+          description: "Failed to load training selections from database",
           variant: "destructive",
         });
+        
+        // Fallback to localStorage if available
+        const savedSelections = localStorage.getItem('training_selections');
+        if (savedSelections) {
+          setSelectedTrainings(JSON.parse(savedSelections));
+          toast({
+            title: "Info",
+            description: "Loaded selections from local storage as fallback",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -38,15 +60,34 @@ export function useTrainingRequirements() {
   // Save selections to database
   const saveSelections = async (selections: Record<string, boolean>) => {
     try {
-      // In a real app, you'd save to your database
-      // For now, just use localStorage
+      // First, store in localStorage as backup
       localStorage.setItem('training_selections', JSON.stringify(selections));
+      
+      // Then save to Supabase
+      // Get array of training IDs
+      const trainingIds = Object.keys(selections);
+      
+      // Create array of upsert objects
+      const upsertData = trainingIds.map(id => ({
+        training_id: id,
+        is_selected: selections[id]
+      }));
+      
+      // Upsert to Supabase
+      const { error } = await supabase
+        .from('training_selections')
+        .upsert(upsertData, {
+          onConflict: 'training_id',
+          ignoreDuplicates: false
+        });
+      
+      if (error) throw error;
       
       setSelectedTrainings(selections);
       
       toast({
         title: "Success",
-        description: "Training selections saved successfully",
+        description: "Training selections saved to database",
       });
       
       return true;
@@ -54,7 +95,7 @@ export function useTrainingRequirements() {
       console.error("Error saving selected trainings:", error);
       toast({
         title: "Error",
-        description: "Failed to save training selections",
+        description: "Failed to save training selections to database",
         variant: "destructive",
       });
       return false;

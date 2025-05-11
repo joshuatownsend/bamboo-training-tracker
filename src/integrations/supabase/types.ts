@@ -105,6 +105,30 @@ export type Database = {
         }
         Relationships: []
       }
+      training_selections: {
+        Row: {
+          created_at: string
+          id: string
+          is_selected: boolean
+          training_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_selected?: boolean
+          training_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_selected?: boolean
+          training_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

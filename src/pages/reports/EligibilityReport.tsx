@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -108,8 +109,25 @@ export default function EligibilityReport() {
           trainingCompletions
         );
         
-        // Employee meets county requirements but not AVFRD requirements
-        return qualification && qualification.isQualifiedCounty && !qualification.isQualifiedAVFRD;
+        if (!qualification) return false;
+        
+        // Based on requirement type filter
+        switch (requirementType) {
+          case "county":
+            // Employee meets county requirements but not AVFRD requirements
+            return qualification.isQualifiedCounty && !qualification.isQualifiedAVFRD;
+          
+          case "avfrd":
+            // Employee meets AVFRD requirements but not released yet (for future use)
+            return qualification.isQualifiedAVFRD;
+          
+          case "both":
+            // For "both", we might want a different condition in the future
+            return qualification.isQualifiedCounty && !qualification.isQualifiedAVFRD;
+          
+          default:
+            return qualification.isQualifiedCounty && !qualification.isQualifiedAVFRD;
+        }
       })
     : [];
 
@@ -145,18 +163,33 @@ export default function EligibilityReport() {
           {isLoadingPositions ? (
             <div className="h-10 w-full sm:w-1/2 bg-muted animate-pulse rounded" />
           ) : (
-            <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-              <SelectTrigger className="w-full sm:w-1/2">
-                <SelectValue placeholder="Select a position" />
-              </SelectTrigger>
-              <SelectContent>
-                {positions.map(position => (
-                  <SelectItem key={position.id} value={position.id}>
-                    {position.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Select value={selectedPosition} onValueChange={setSelectedPosition} className="flex-1">
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map(position => (
+                      <SelectItem key={position.id} value={position.id}>
+                        {position.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={requirementType} onValueChange={(value) => setRequirementType(value as "county" | "avfrd" | "both")}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Requirement type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="county">County Requirements</SelectItem>
+                    <SelectItem value="avfrd">AVFRD Requirements</SelectItem>
+                    <SelectItem value="both">Both Requirements</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
           
           {selectedPosition ? (
@@ -183,7 +216,11 @@ export default function EligibilityReport() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Current Position</TableHead>
-                      <TableHead className="w-[300px]">Missing AVFRD Requirements</TableHead>
+                      <TableHead className="w-[300px]">
+                        {requirementType === "county" ? "Missing AVFRD Requirements" : 
+                         requirementType === "avfrd" ? "Completed Requirements" : 
+                         "Requirements Status"}
+                      </TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -198,6 +235,8 @@ export default function EligibilityReport() {
                           trainingCompletions
                         );
                         
+                        if (!qualification) return null;
+                        
                         return (
                           <TableRow key={employee.id}>
                             <TableCell className="font-medium">
@@ -206,17 +245,44 @@ export default function EligibilityReport() {
                             <TableCell>{employee.jobTitle}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
-                                {qualification?.missingAVFRDTrainings.map((training) => (
-                                  <Badge key={training.id} variant="outline">
-                                    {training.title}
-                                  </Badge>
-                                ))}
+                                {requirementType === "county" && 
+                                  qualification.missingAVFRDTrainings.map((training) => (
+                                    <Badge key={training.id} variant="outline">
+                                      {training.title}
+                                    </Badge>
+                                  ))
+                                }
+                                {requirementType === "avfrd" &&
+                                  qualification.completedTrainings.slice(0, 3).map((training) => (
+                                    <Badge key={training.id} variant="outline">
+                                      {training.title}
+                                    </Badge>
+                                  ))
+                                }
+                                {requirementType === "both" && (
+                                  <span>
+                                    County: {qualification.isQualifiedCounty ? '✓' : '✗'},
+                                    AVFRD: {qualification.isQualifiedAVFRD ? '✓' : '✗'}
+                                  </span>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center text-amber-500">
-                                <AlertCircle className="mr-1 h-4 w-4" />
-                                <span>Eligible</span>
+                              <div className="flex items-center">
+                                {requirementType === "county" ? (
+                                  <div className="flex items-center text-amber-500">
+                                    <AlertCircle className="mr-1 h-4 w-4" />
+                                    <span>Eligible</span>
+                                  </div>
+                                ) : requirementType === "avfrd" ? (
+                                  <div className="flex items-center text-emerald-500">
+                                    <span>Qualified</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center text-muted-foreground">
+                                    <span>Mixed Status</span>
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
