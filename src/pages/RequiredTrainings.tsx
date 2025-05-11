@@ -159,11 +159,11 @@ export default function RequiredTrainings() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[250px]">Training</TableHead>
-                      <TableHead className="w-[100px]">Category</TableHead>
-                      <TableHead className="w-[100px]">Requirement Source</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Link</TableHead>
+                      <TableHead className="w-[200px]">Training</TableHead>
+                      <TableHead className="w-[120px]">Category</TableHead>
+                      <TableHead className="w-[120px]">Requirement Source</TableHead>
+                      <TableHead className="w-[350px]">Description</TableHead>
+                      <TableHead className="w-[100px] text-right">Link</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -182,7 +182,7 @@ export default function RequiredTrainings() {
                             {training.source}
                           </Badge>
                         </TableCell>
-                        <TableCell className="max-w-[300px] break-words">
+                        <TableCell className="max-w-[350px] break-words">
                           {training.description || "No description available"}
                         </TableCell>
                         <TableCell className="text-right">
