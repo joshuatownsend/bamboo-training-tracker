@@ -10,8 +10,8 @@ interface FilterControlsProps {
   setSelectedPosition: (value: string) => void;
   positions: Position[];
   isLoadingPositions: boolean;
-  requirementType: "county" | "avfrd";
-  setRequirementType: (value: "county" | "avfrd") => void;
+  requirementType: "county" | "avfrd" | "both";
+  setRequirementType: (value: "county" | "avfrd" | "both") => void;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
 }
@@ -49,13 +49,14 @@ export function FilterControls({
         </div>
         
         <div className="w-full sm:w-1/2">
-          <Select value={requirementType} onValueChange={(value: "county" | "avfrd") => setRequirementType(value)}>
+          <Select value={requirementType} onValueChange={(value: "county" | "avfrd" | "both") => setRequirementType(value)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select requirement type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="county">Loudoun County Requirements</SelectItem>
               <SelectItem value="avfrd">AVFRD Requirements</SelectItem>
+              <SelectItem value="both">Both AVFRD and LCCFRS Requirements</SelectItem>
             </SelectContent>
           </Select>
         </div>

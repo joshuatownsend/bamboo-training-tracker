@@ -13,7 +13,7 @@ import { QualifiedEmployeesTable } from "@/components/reports/QualifiedEmployees
 export default function QualificationsReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [requirementType, setRequirementType] = useState<"county" | "avfrd">("avfrd");
+  const [requirementType, setRequirementType] = useState<"county" | "avfrd" | "both">("avfrd");
   
   // Fetch positions from database
   const { positions, isLoadingPositions, positionsError } = usePositionData();

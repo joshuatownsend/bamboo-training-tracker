@@ -92,7 +92,7 @@ export function getEmployeesQualifiedForPosition(
   positions: Position[],
   trainings: Training[],
   completions: TrainingCompletion[],
-  requirementType: 'county' | 'avfrd' = 'avfrd'
+  requirementType: 'county' | 'avfrd' | 'both' = 'avfrd'
 ): any[] {
   return employees.filter(employee => {
     const qualification = checkPositionQualification(
@@ -104,6 +104,10 @@ export function getEmployeesQualifiedForPosition(
     );
     
     if (!qualification) return false;
+    
+    if (requirementType === 'both') {
+      return qualification.isQualifiedCounty && qualification.isQualifiedAVFRD;
+    }
     
     return requirementType === 'county' 
       ? qualification.isQualifiedCounty
