@@ -4,6 +4,7 @@ CREATE OR REPLACE FUNCTION public.trigger_bamboohr_sync()
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path = public
 AS $$
 DECLARE
   response JSONB;
@@ -26,15 +27,14 @@ BEGIN
   
   -- Call the edge function to sync employee data
   SELECT content::JSONB INTO response
-  FROM http((
-    'POST',
+  FROM extensions.http_post(
     'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-bamboohr-data',
     ARRAY[
       ('Content-Type', 'application/json'),
       ('Authorization', 'Bearer ' || service_key)
     ],
     '{}'
-  )::http_request);
+  );
   
   RETURN response;
 EXCEPTION WHEN OTHERS THEN

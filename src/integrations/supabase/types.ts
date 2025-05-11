@@ -299,6 +299,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      sync_bamboohr_trainings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      sync_employee_mappings_job: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       trigger_bamboohr_sync: {
         Args: Record<PropertyKey, never>
         Returns: Json

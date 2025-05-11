@@ -1,15 +1,16 @@
 
 -- Enable the required extensions if not already enabled
 CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
 
 -- Create a function to run the sync daily
 CREATE OR REPLACE FUNCTION public.sync_employee_mappings_job()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
-  PERFORM net.http_post(
+  PERFORM extensions.http_post(
     url := 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-employee-mappings',
     headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('supabase_functions.jwt', true) || '"}'::jsonb,
     body := '{}'::jsonb

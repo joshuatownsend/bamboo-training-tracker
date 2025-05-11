@@ -1,7 +1,7 @@
 
 -- Enable the required extensions for cron jobs
 CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
+CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
 
 -- Add a daily cron job to sync BambooHR training types
 SELECT cron.schedule(
@@ -9,7 +9,7 @@ SELECT cron.schedule(
   '0 0 * * *', -- Run at midnight every day
   $$
   SELECT
-    net.http_post(
+    extensions.http_post(
       url:='https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-bamboo-trainings',
       headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cGJra21uemx4YmN4b2t4a2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NTY1NDIsImV4cCI6MjA2MjIzMjU0Mn0.82Za5hPaRoR3kha2hwMF4pdAmPIYA79dCFwGDwnuaKk"}'::jsonb,
       body:='{}'::jsonb
@@ -22,12 +22,13 @@ CREATE OR REPLACE FUNCTION public.sync_bamboohr_trainings()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   result jsonb;
 BEGIN
   SELECT
-    net.http_post(
+    extensions.http_post(
       url:='https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-bamboo-trainings',
       headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2cGJra21uemx4YmN4b2t4a2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NTY1NDIsImV4cCI6MjA2MjIzMjU0Mn0.82Za5hPaRoR3kha2hwMF4pdAmPIYA79dCFwGDwnuaKk"}'::jsonb,
       body:='{}'::jsonb

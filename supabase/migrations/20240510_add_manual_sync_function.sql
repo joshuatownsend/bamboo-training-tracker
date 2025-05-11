@@ -4,6 +4,7 @@
 CREATE OR REPLACE FUNCTION public.sync_employee_mappings_job()
 RETURNS json
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   result json;
@@ -12,7 +13,7 @@ BEGIN
   SELECT 
     content::json INTO result
   FROM
-    net.http_post(
+    extensions.http_post(
       url := 'https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-employee-mappings',
       headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || 
                   current_setting('supabase_functions.jwt', true) || '"}'::jsonb,

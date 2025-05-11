@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -67,8 +66,12 @@ serve(async (req) => {
       completions: await syncCompletions(supabase, bambooData.completions),
     };
 
-    // Update sync status
-    await updateSyncStatus(supabase, 'success', null);
+    // Right before returning a successful response, update the sync status
+    try {
+      await updateSyncStatus(supabase, 'success', null);
+    } catch (statusError) {
+      console.error("Failed to update final sync status:", statusError);
+    }
 
     return new Response(JSON.stringify({
       success: true,
