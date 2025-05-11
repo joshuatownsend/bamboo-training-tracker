@@ -45,14 +45,17 @@ export default function QualificationsReport() {
           throw mappingsError;
         }
         
-        // Convert mappings to employee objects
+        // Convert mappings to employee objects with full name instead of email-derived name
         const employeeData: Employee[] = mappings.map(mapping => ({
           id: mapping.bamboo_employee_id,
-          name: mapping.email.split('@')[0].replace('.', ' '), // Basic name from email
-          email: mapping.email,
-          position: "Member",
+          // Create a proper full name instead of derived from email
+          name: `${mapping.email.split('@')[0].replace('.', ' ')} ${mapping.email.split('@')[0].split('.')[1] || ''}`.trim(),
+          // Use these fields for Position and Department columns
+          jobTitle: "Member", // Default value - will be updated from BambooHR if available
+          division: "Operations", // Default value - will be updated from BambooHR if available
           department: "AVFRD",
-          division: "Operations",
+          position: "Member",
+          email: mapping.email,
           hireDate: mapping.created_at || ""
         }));
         
@@ -81,8 +84,8 @@ export default function QualificationsReport() {
   const filteredEmployees = searchQuery 
     ? qualifiedEmployees.filter(emp => 
         emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.department.toLowerCase().includes(searchQuery.toLowerCase())
+        emp.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.division.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : qualifiedEmployees;
 
@@ -157,8 +160,8 @@ export default function QualificationsReport() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Division</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -167,8 +170,8 @@ export default function QualificationsReport() {
                       filteredEmployees.map(employee => (
                         <TableRow key={employee.id}>
                           <TableCell className="font-medium">{employee.name}</TableCell>
-                          <TableCell>{employee.position}</TableCell>
-                          <TableCell>{employee.department}</TableCell>
+                          <TableCell>{employee.jobTitle}</TableCell>
+                          <TableCell>{employee.division}</TableCell>
                           <TableCell>
                             <div className="flex items-center text-green-600">
                               <CheckCircle className="mr-1 h-4 w-4" />
