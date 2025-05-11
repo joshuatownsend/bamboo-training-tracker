@@ -5,11 +5,9 @@ import { useUser } from "@/contexts/UserContext";
 import { useTrainings } from "@/hooks/training/useTrainings";
 import { useTrainingRequirements } from "@/hooks/training/useTrainingRequirements";
 import { useTrainingTableState } from "@/hooks/training/useTrainingTableState";
-import { useTrainingDialog } from "@/hooks/training/useTrainingDialog";
 import { TrainingRequirementHeader } from "@/components/training-requirements/TrainingRequirementHeader";
 import { SearchBar } from "@/components/training-requirements/SearchBar";
 import { TrainingTable } from "@/components/training-requirements/TrainingTable";
-import { TrainingDialog } from "@/components/training-requirements/TrainingDialog";
 import { ErrorAlert } from "@/components/training-requirements/ErrorAlert";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,16 +40,6 @@ export default function TrainingRequirementManagement() {
     toggleTrainingSelection,
     toggleCategorySelection
   } = useTrainingTableState(trainings);
-
-  const {
-    isDialogOpen,
-    setIsDialogOpen,
-    editingTraining,
-    handleEditTraining,
-    handleCreateTraining,
-    handleSaveTraining,
-    updateTrainingField
-  } = useTrainingDialog();
 
   // Sync selected trainings from hook to local state
   useEffect(() => {
@@ -93,7 +81,6 @@ export default function TrainingRequirementManagement() {
     <div className="space-y-6">
       <TrainingRequirementHeader 
         onSaveSelections={handleSaveSelections}
-        onCreateTraining={handleCreateTraining}
       />
 
       {isError && <ErrorAlert error={error} />}
@@ -118,19 +105,10 @@ export default function TrainingRequirementManagement() {
             selectedCategories={selectedCategories}
             toggleTrainingSelection={toggleTrainingSelection}
             toggleCategorySelection={toggleCategorySelection}
-            handleEditTraining={handleEditTraining}
             isLoadingTrainings={isLoadingTrainings}
           />
         </CardContent>
       </Card>
-
-      <TrainingDialog
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        editingTraining={editingTraining}
-        updateTrainingField={updateTrainingField}
-        onSaveTraining={handleSaveTraining}
-      />
     </div>
   );
 }

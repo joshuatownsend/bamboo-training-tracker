@@ -1,9 +1,7 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Training } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +11,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Collapsible,
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface TrainingTableProps {
   categories: string[];
@@ -21,7 +25,6 @@ interface TrainingTableProps {
   selectedCategories: Record<string, boolean>;
   toggleTrainingSelection: (id: string) => void;
   toggleCategorySelection: (category: string) => void;
-  handleEditTraining: (training: Training) => void;
   isLoadingTrainings: boolean;
 }
 
@@ -32,9 +35,17 @@ export function TrainingTable({
   selectedCategories,
   toggleTrainingSelection,
   toggleCategorySelection,
-  handleEditTraining,
   isLoadingTrainings
 }: TrainingTableProps) {
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
   if (isLoadingTrainings) {
     return (
       <div className="space-y-4">
@@ -50,15 +61,14 @@ export function TrainingTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px]">Select</TableHead>
-            <TableHead className="w-[300px]">Training Name</TableHead>
+            <TableHead className="w-[400px]">Training Name</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {categories.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
                 No trainings found. Try refreshing or adding new trainings.
               </TableCell>
             </TableRow>
@@ -67,48 +77,55 @@ export function TrainingTable({
               const categoryTrainings = filteredTrainings[category] || [];
               if (categoryTrainings.length === 0) return null;
               
+              const isExpanded = expandedCategories[category] || false;
+              
               return (
                 <React.Fragment key={`category-${category}`}>
-                  <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableCell>
                       <Checkbox 
                         checked={selectedCategories[category] || false}
                         onCheckedChange={() => toggleCategorySelection(category)}
                       />
                     </TableCell>
-                    <TableCell colSpan={3} className="font-medium py-2">
-                      {category}
+                    <TableCell colSpan={2} className="font-medium py-2">
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category)}>
+                        <div className="flex items-center justify-between">
+                          <span>{category}</span>
+                          <CollapsibleTrigger asChild>
+                            <button className="p-1 rounded-md hover:bg-muted/60 focus:outline-none">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent>
+                          {categoryTrainings.map((training) => (
+                            <TableRow key={training.id}>
+                              <TableCell>
+                                <Checkbox 
+                                  checked={selectedTrainings[training.id] || false}
+                                  onCheckedChange={() => toggleTrainingSelection(training.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{training.title}</div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {training.description || "No description available"}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>{training.category || "Uncategorized"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
                     </TableCell>
                   </TableRow>
-                  {categoryTrainings.map((training) => (
-                    <TableRow key={training.id}>
-                      <TableCell>
-                        <Checkbox 
-                          checked={selectedTrainings[training.id] || false}
-                          onCheckedChange={() => toggleTrainingSelection(training.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{training.title}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {training.description || "No description available"}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{training.category || "Uncategorized"}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditTraining(training)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </React.Fragment>
               );
             })
