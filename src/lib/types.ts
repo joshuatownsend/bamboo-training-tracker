@@ -1,4 +1,3 @@
-
 export interface Employee {
   id: string;
   name: string;
@@ -29,6 +28,8 @@ export interface Training {
   expirationDate?: string;
   // Add expiryYears property
   expiryYears?: number;
+  // Add external URL property
+  externalUrl?: string;
 }
 
 export interface TrainingCompletion {

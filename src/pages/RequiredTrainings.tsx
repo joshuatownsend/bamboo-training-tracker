@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileText } from "lucide-react";
+import { FileText, ExternalLink } from "lucide-react";
 import { useQualifications } from "@/hooks/useQualifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -159,42 +159,57 @@ export default function RequiredTrainings() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Training</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Requirement Source</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead className="w-[250px]">Training</TableHead>
+                      <TableHead className="w-[100px]">Category</TableHead>
+                      <TableHead className="w-[100px]">Requirement Source</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Link</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {requiredTrainings.map((training) => (
                       <TableRow key={training.id}>
                         <TableCell>
-                          <div>
-                            <div className="font-medium">{training.title}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {training.description}
-                            </div>
-                          </div>
+                          <div className="font-medium">{training.title}</div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{training.category}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={training.source === 'County' ? 'secondary' : 'outline'}>
+                          <Badge variant={training.source === 'County' ? 'destructive' : 'default'} 
+                            className={training.source === 'AVFRD' ? 
+                              'bg-company-yellow text-company-black hover:bg-company-yellow/80' : ''}>
                             {training.source}
                           </Badge>
                         </TableCell>
+                        <TableCell className="max-w-[300px] break-words">
+                          {training.description || "No description available"}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="outline">
-                            <FileText className="mr-1 h-4 w-4" />
-                            Details
-                          </Button>
+                          {training.externalUrl ? (
+                            <Button 
+                              size="sm" 
+                              className="bg-company-yellow text-company-black hover:bg-company-yellow/90"
+                              onClick={() => window.open(training.externalUrl, '_blank')}
+                            >
+                              <ExternalLink className="mr-1 h-4 w-4" />
+                              Link
+                            </Button>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              disabled
+                            >
+                              No Link
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
                     {requiredTrainings.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-4">
+                        <TableCell colSpan={5} className="text-center py-4">
                           No additional trainings required
                         </TableCell>
                       </TableRow>
