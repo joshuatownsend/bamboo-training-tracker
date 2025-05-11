@@ -39,7 +39,6 @@ export function PositionList({
       <TableHeader>
         <TableRow>
           <TableHead className="w-[250px]">Position</TableHead>
-          <TableHead>Department</TableHead>
           <TableHead>County Requirements</TableHead>
           <TableHead>AVFRD Requirements</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -56,7 +55,6 @@ export function PositionList({
                 </div>
               </div>
             </TableCell>
-            <TableCell>{position.department}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
                 {getTrainingNames(position.countyRequirements).map((name, idx) => (
