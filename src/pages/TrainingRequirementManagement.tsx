@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export default function TrainingRequirementManagement() {
   const {
     selectedTrainings: selectedTrainingsFromHook,
     setSelectedTrainings: setSelectedTrainingsFromHook,
-    saveSelections,
+    saveSelections: saveTrainingSelections,
     getSelectedTrainings,
     loading: loadingSelectedTrainings
   } = useTrainingRequirements();
@@ -136,19 +137,23 @@ export default function TrainingRequirementManagement() {
     }
   };
 
-  // Save selections
-  const saveSelections = () => {
-    const selectedIds = Object.entries(selectedTrainings)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([id]) => id);
-
-    toast({
-      title: "Selections saved",
-      description: `${selectedIds.length} trainings have been marked as relevant for qualifications.`
-    });
-    
-    console.log("Selected training IDs:", selectedIds);
-    // Here you would typically save these to your database
+  // Handle saving selections
+  const handleSaveSelections = () => {
+    saveTrainingSelections(selectedTrainings)
+      .then(() => {
+        toast({
+          title: "Selections saved",
+          description: `Your training selections have been saved successfully.`
+        });
+      })
+      .catch((error) => {
+        console.error("Error saving selections:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save training selections.",
+          variant: "destructive"
+        });
+      });
   };
 
   // Handle editing training
@@ -204,7 +209,7 @@ export default function TrainingRequirementManagement() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={saveSelections} className="gap-2">
+          <Button onClick={handleSaveSelections} className="gap-2">
             Save Selections
           </Button>
           <Button onClick={handleCreateTraining} variant="outline" className="gap-2">
