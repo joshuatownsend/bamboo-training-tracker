@@ -12,9 +12,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Search } from "lucide-react";
 import { QualificationsLoadingState } from "@/components/qualifications/LoadingState";
-import { employees, trainings, trainingCompletions } from "@/lib/data";
+import { trainings, trainingCompletions } from "@/lib/data";
 import { getEmployeesQualifiedForPosition } from "@/lib/qualifications";
 import { usePositionData } from "@/hooks/qualification/usePositionData";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Employee } from "@/lib/types";
 
 export default function QualificationsReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
@@ -23,6 +26,44 @@ export default function QualificationsReport() {
   
   // Fetch positions from database
   const { positions, isLoadingPositions, positionsError } = usePositionData();
+  
+  // Fetch real employees from database
+  const { 
+    data: employees = [], 
+    isLoading: isLoadingEmployees 
+  } = useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      try {
+        // First get employee mappings
+        const { data: mappings, error: mappingsError } = await supabase
+          .from('employee_mappings')
+          .select('*');
+          
+        if (mappingsError) {
+          console.error("Error fetching employee mappings:", mappingsError);
+          throw mappingsError;
+        }
+        
+        // Convert mappings to employee objects
+        const employeeData: Employee[] = mappings.map(mapping => ({
+          id: mapping.bamboo_employee_id,
+          name: mapping.email.split('@')[0].replace('.', ' '), // Basic name from email
+          email: mapping.email,
+          position: "Member",
+          department: "AVFRD",
+          division: "Operations",
+          hireDate: mapping.created_at || ""
+        }));
+        
+        console.log(`Fetched ${employeeData.length} employees from database`);
+        return employeeData;
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+        return [];
+      }
+    }
+  });
 
   // Get qualified employees for the selected position
   const qualifiedEmployees = selectedPosition 
@@ -107,39 +148,45 @@ export default function QualificationsReport() {
                 />
               </div>
               
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.length > 0 ? (
-                    filteredEmployees.map(employee => (
-                      <TableRow key={employee.id}>
-                        <TableCell className="font-medium">{employee.name}</TableCell>
-                        <TableCell>{employee.position}</TableCell>
-                        <TableCell>{employee.department}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-green-600">
-                            <CheckCircle className="mr-1 h-4 w-4" />
-                            <span>Qualified</span>
-                          </div>
+              {isLoadingEmployees ? (
+                <div className="py-10">
+                  <QualificationsLoadingState />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEmployees.length > 0 ? (
+                      filteredEmployees.map(employee => (
+                        <TableRow key={employee.id}>
+                          <TableCell className="font-medium">{employee.name}</TableCell>
+                          <TableCell>{employee.position}</TableCell>
+                          <TableCell>{employee.department}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center text-green-600">
+                              <CheckCircle className="mr-1 h-4 w-4" />
+                              <span>Qualified</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                          No qualified volunteers found
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
-                        No qualified volunteers found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
