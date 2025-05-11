@@ -1,13 +1,21 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Info, Loader2 } from "lucide-react";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 
 const WelcomeMessages: React.FC = () => {
-  const { messages, isLoading } = useWelcomeMessages();
+  const { messages, isLoading, refreshMessages } = useWelcomeMessages();
   
   console.log("Dashboard WelcomeMessages rendering with messages:", messages);
+  
+  // Fetch messages on mount to ensure we have the latest data
+  useEffect(() => {
+    console.log("WelcomeMessages component mounted, refreshing messages");
+    refreshMessages().catch(err => {
+      console.error("Error refreshing messages in WelcomeMessages component:", err);
+    });
+  }, [refreshMessages]);
 
   if (isLoading) {
     return (
@@ -27,7 +35,10 @@ const WelcomeMessages: React.FC = () => {
     ? messages.filter(msg => msg && msg.trim() !== '') 
     : [];
   
+  console.log("Valid messages to display:", validMessages);
+  
   if (validMessages.length === 0) {
+    console.log("No valid messages to display");
     return null;
   }
 

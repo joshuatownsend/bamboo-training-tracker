@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import AdminSettings from "@/components/admin/AdminSettings";
 import BambooHRConfig from "@/components/admin/BambooHRConfig";
 import EmployeeMappingManager from "@/components/admin/EmployeeMappingManager";
@@ -12,6 +12,11 @@ import { WelcomeMessagesProvider } from "@/contexts/WelcomeMessagesContext";
 import { BambooHRSyncStatus } from "@/components/admin/BambooHRSyncStatus";
 
 export default function AdminSettingsPage() {
+  // Add useEffect to check for any initialization issues
+  useEffect(() => {
+    console.log("AdminSettingsPage mounted - initializing components");
+  }, []);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Admin Settings</h1>

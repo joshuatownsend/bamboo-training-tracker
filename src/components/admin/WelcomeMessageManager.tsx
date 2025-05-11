@@ -4,33 +4,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
-import { useToast } from "@/hooks/use-toast";
-import { Trash2, Save, Plus, Loader2, RefreshCw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Trash2, Save, Plus, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const WelcomeMessageManager: React.FC = () => {
   const { messages, isLoading, saveMessages, refreshMessages } = useWelcomeMessages();
   const [editedMessages, setEditedMessages] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   console.log("WelcomeMessageManager rendered with messages from context:", messages);
 
   // Update local state when messages are loaded from the database
   useEffect(() => {
-    console.log("Effect triggered with messages:", messages);
+    console.log("WelcomeMessageManager effect triggered with messages:", messages);
     
-    if (messages && Array.isArray(messages)) {
-      // Always ensure we have at least one message slot
-      if (messages.length === 0) {
-        console.log("No messages in context, initializing with empty message");
-        setEditedMessages(['']);
+    try {
+      if (messages && Array.isArray(messages)) {
+        // Always ensure we have at least one message slot
+        if (messages.length === 0) {
+          console.log("No messages in context, initializing with empty message");
+          setEditedMessages(['']);
+        } else {
+          console.log("Setting edited messages from context:", messages);
+          setEditedMessages([...messages]);
+        }
+        setError(null);
       } else {
-        console.log("Setting edited messages from context:", messages);
-        setEditedMessages([...messages]);
+        console.log("Invalid messages format:", messages);
+        setEditedMessages(['']);
+        setError("Invalid messages format received from database");
       }
-    } else {
-      console.log("Invalid messages format, initializing with empty message");
-      setEditedMessages(['']);
+    } catch (err) {
+      console.error("Error in WelcomeMessageManager useEffect:", err);
+      setError(`Error processing messages: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   }, [messages]);
 
@@ -50,6 +59,7 @@ const WelcomeMessageManager: React.FC = () => {
       console.log("Messages saved successfully");
     } catch (error) {
       console.error("Error saving messages:", error);
+      setError(`Error saving messages: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsSaving(false);
     }
@@ -87,9 +97,11 @@ const WelcomeMessageManager: React.FC = () => {
 
   const handleRefresh = async () => {
     try {
+      setError(null);
       await refreshMessages();
     } catch (error) {
       console.error("Error refreshing messages:", error);
+      setError(`Error refreshing messages: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -104,6 +116,15 @@ const WelcomeMessageManager: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error} - Please check console for more details.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Welcome Messages</h3>
         <div className="space-x-2">
@@ -129,6 +150,8 @@ const WelcomeMessageManager: React.FC = () => {
         <p className="text-sm text-muted-foreground mb-4">
           Add up to 3 messages that will be displayed at the top of the Dashboard. 
           These can be welcome messages, announcements, or important reminders.
+          <br />
+          <span className="font-medium">Current messages in context: {JSON.stringify(messages)}</span>
         </p>
         
         {editedMessages.length === 0 ? (
@@ -140,7 +163,7 @@ const WelcomeMessageManager: React.FC = () => {
             {editedMessages.map((message, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={message}
+                  value={message || ""}
                   onChange={(e) => handleChange(index, e.target.value)}
                   placeholder="Enter welcome message or announcement"
                   className="flex-1"

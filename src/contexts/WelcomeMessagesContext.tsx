@@ -32,6 +32,19 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
     setIsLoading(true);
     try {
       console.log("Fetching welcome messages from database");
+      
+      // Direct query to see what's in the table
+      const { data: rawData, error: rawError } = await supabase
+        .from('welcome_messages')
+        .select('*');
+      
+      console.log("Raw welcome_messages table data:", rawData);
+      
+      if (rawError) {
+        console.error("Error in raw welcome messages query:", rawError);
+      }
+      
+      // Actual query for application use
       const { data, error } = await supabase
         .from('welcome_messages')
         .select('*')
@@ -54,13 +67,18 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         console.log("No welcome messages found in the database");
         setMessages([]);
       } else {
-        // Extract just the message texts and include empty messages as well
-        const messageTexts = data.map((item: Message) => item.message);
+        // Extract just the message texts
+        const messageTexts = data.map((item: Message) => item.message || '');
         console.log("Processed message texts:", messageTexts);
         setMessages(messageTexts);
       }
     } catch (error) {
       console.error("Failed to parse welcome messages:", error);
+      toast({
+        title: "Error processing messages",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +135,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       });
       
       // Fetch messages again to ensure we have the latest data
-      fetchMessages();
+      await fetchMessages();
     } catch (error) {
       console.error("Failed to save welcome messages:", error);
       toast({
