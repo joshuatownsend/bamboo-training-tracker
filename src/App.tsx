@@ -20,6 +20,10 @@ import MyQualifications from './pages/MyQualifications';
 import AdminReports from './pages/AdminReports';
 import PositionManagement from './pages/PositionManagement';
 import TrainingImpact from './pages/TrainingImpact';
+import QualificationsReport from './pages/reports/QualificationsReport';
+import EligibilityReport from './pages/reports/EligibilityReport';
+import RequirementsReport from './pages/reports/RequirementsReport';
+import ComplianceReport from './pages/reports/ComplianceReport';
 
 function App() {
   return (
@@ -43,6 +47,12 @@ function App() {
             {/* Reports section - accessible to all authenticated users */}
             <Route path="/admin-reports" element={<AuthGuard><AdminReports /></AuthGuard>} />
             <Route path="/training-impact" element={<AuthGuard><TrainingImpact /></AuthGuard>} />
+            
+            {/* Admin reports routes */}
+            <Route path="/admin/reports/qualifications" element={<AuthGuard><QualificationsReport /></AuthGuard>} />
+            <Route path="/admin/reports/eligibility" element={<AuthGuard><EligibilityReport /></AuthGuard>} />
+            <Route path="/admin/reports/requirements" element={<AuthGuard><RequirementsReport /></AuthGuard>} />
+            <Route path="/admin/reports/compliance" element={<AuthGuard><ComplianceReport /></AuthGuard>} />
             
             {/* Admin-only section */}
             <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
