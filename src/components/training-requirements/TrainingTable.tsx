@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Training } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -38,6 +38,28 @@ export function TrainingTable({
   isLoadingTrainings
 }: TrainingTableProps) {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  
+  // Auto-expand categories with at least one selected training
+  useEffect(() => {
+    if (isLoadingTrainings) return;
+    
+    const newExpandedState = {...expandedCategories};
+    
+    categories.forEach(category => {
+      const categoryTrainings = filteredTrainings[category] || [];
+      const hasSelectedTrainings = categoryTrainings.some(training => 
+        selectedTrainings[training.id]
+      );
+      
+      // Only auto-expand if there are selected trainings and the category
+      // hasn't been explicitly collapsed by the user
+      if (hasSelectedTrainings && expandedCategories[category] !== false) {
+        newExpandedState[category] = true;
+      }
+    });
+    
+    setExpandedCategories(newExpandedState);
+  }, [selectedTrainings, categories, filteredTrainings, isLoadingTrainings, expandedCategories]);
   
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -81,7 +103,7 @@ export function TrainingTable({
               
               return (
                 <React.Fragment key={`category-${category}`}>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableRow className="bg-muted/60 hover:bg-muted/60">
                     <TableCell>
                       <Checkbox 
                         checked={selectedCategories[category] || false}

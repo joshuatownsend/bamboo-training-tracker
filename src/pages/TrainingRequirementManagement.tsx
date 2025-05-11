@@ -23,8 +23,8 @@ export default function TrainingRequirementManagement() {
   } = useTrainings();
 
   const {
-    selectedTrainings: selectedTrainingsFromHook,
-    setSelectedTrainings: setSelectedTrainingsFromHook,
+    selectedTrainings: selectedTrainingsFromDB,
+    setSelectedTrainings: setSelectedTrainingsInDB,
     saveSelections: saveTrainingSelections,
     loading: loadingSelectedTrainings
   } = useTrainingRequirements();
@@ -41,23 +41,23 @@ export default function TrainingRequirementManagement() {
     toggleCategorySelection
   } = useTrainingTableState(trainings);
 
-  // Sync selected trainings from hook to local state when loaded
+  // Sync selected trainings from database to local state when loaded
   useEffect(() => {
     if (!loadingSelectedTrainings) {
-      console.log("Syncing selections from hook to local state:", selectedTrainingsFromHook);
-      setSelectedTrainings(selectedTrainingsFromHook);
+      console.log("Syncing selections from database to local state:", selectedTrainingsFromDB);
+      setSelectedTrainings(selectedTrainingsFromDB);
     }
-  }, [selectedTrainingsFromHook, loadingSelectedTrainings, setSelectedTrainings]);
+  }, [selectedTrainingsFromDB, loadingSelectedTrainings, setSelectedTrainings]);
 
   // Handle saving selections
   const handleSaveSelections = async () => {
-    console.log("Saving selections:", selectedTrainings);
+    console.log("Saving selections to database:", selectedTrainings);
     try {
       const success = await saveTrainingSelections(selectedTrainings);
       
       if (success) {
         // Update the hook's state to ensure consistency
-        setSelectedTrainingsFromHook(selectedTrainings);
+        setSelectedTrainingsInDB(selectedTrainings);
         
         toast({
           title: "Selections saved",

@@ -70,29 +70,19 @@ export function useTrainingRequirements() {
         is_selected: selections[id]
       }));
       
-      // Log the data being sent to verify
       console.log("Saving training selections:", upsertData);
       
-      // First, delete existing selections to avoid conflicts
-      // This ensures a clean state before inserting new selections
-      const { error: deleteError } = await supabase
+      // Use upsert operation instead of delete + insert
+      const { error } = await supabase
         .from('training_selections')
-        .delete()
-        .in('training_id', Object.keys(selections));
-        
-      if (deleteError) {
-        console.error("Error deleting existing selections:", deleteError);
-        throw deleteError;
-      }
+        .upsert(upsertData, { 
+          onConflict: 'training_id',
+          ignoreDuplicates: false
+        });
       
-      // Then insert new selections
-      const { error: insertError } = await supabase
-        .from('training_selections')
-        .insert(upsertData);
-      
-      if (insertError) {
-        console.error("Error inserting selections:", insertError);
-        throw insertError;
+      if (error) {
+        console.error("Error upserting selections:", error);
+        throw error;
       }
       
       setSelectedTrainings(selections);
