@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Search } from "lucide-react";
-import { LoadingState } from "@/components/qualifications/LoadingState";
+import { QualificationsLoadingState } from "@/components/qualifications/LoadingState";
 import { employees, positions, trainings, trainingCompletions } from "@/lib/data";
 import { getEmployeesQualifiedForPosition } from "@/lib/qualifications";
 
