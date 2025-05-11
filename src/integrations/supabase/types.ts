@@ -48,6 +48,126 @@ export type Database = {
         }
         Relationships: []
       }
+      cached_employees: {
+        Row: {
+          avatar: string | null
+          cached_at: string
+          department: string | null
+          display_name: string | null
+          division: string | null
+          email: string | null
+          first_name: string | null
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          last_name: string | null
+          name: string
+          position: string | null
+          work_email: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          cached_at?: string
+          department?: string | null
+          display_name?: string | null
+          division?: string | null
+          email?: string | null
+          first_name?: string | null
+          hire_date?: string | null
+          id: string
+          job_title?: string | null
+          last_name?: string | null
+          name: string
+          position?: string | null
+          work_email?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          cached_at?: string
+          department?: string | null
+          display_name?: string | null
+          division?: string | null
+          email?: string | null
+          first_name?: string | null
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          name?: string
+          position?: string | null
+          work_email?: string | null
+        }
+        Relationships: []
+      }
+      cached_training_completions: {
+        Row: {
+          cached_at: string
+          certificate_url: string | null
+          completion_date: string | null
+          employee_id: string
+          expiration_date: string | null
+          id: string | null
+          score: number | null
+          status: string | null
+          training_id: string
+        }
+        Insert: {
+          cached_at?: string
+          certificate_url?: string | null
+          completion_date?: string | null
+          employee_id: string
+          expiration_date?: string | null
+          id?: string | null
+          score?: number | null
+          status?: string | null
+          training_id: string
+        }
+        Update: {
+          cached_at?: string
+          certificate_url?: string | null
+          completion_date?: string | null
+          employee_id?: string
+          expiration_date?: string | null
+          id?: string | null
+          score?: number | null
+          status?: string | null
+          training_id?: string
+        }
+        Relationships: []
+      }
+      cached_trainings: {
+        Row: {
+          cached_at: string
+          category: string | null
+          description: string | null
+          duration_hours: number | null
+          id: string
+          required_for: string[] | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          cached_at?: string
+          category?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id: string
+          required_for?: string[] | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          cached_at?: string
+          category?: string | null
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          required_for?: string[] | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
       employee_mappings: {
         Row: {
           bamboo_employee_id: string
@@ -105,6 +225,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_status: {
+        Row: {
+          error: string | null
+          id: string
+          last_sync: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          error?: string | null
+          id: string
+          last_sync?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          last_sync?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       training_selections: {
         Row: {
           created_at: string
@@ -155,6 +299,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      trigger_bamboohr_sync: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       update_welcome_messages: {
         Args: { messages: string[] }
         Returns: {
