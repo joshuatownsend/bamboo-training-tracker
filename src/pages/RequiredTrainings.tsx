@@ -51,7 +51,7 @@ export default function RequiredTrainings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Required Trainings</h1>
+        <h1 className="text-3xl font-bold">My Advancement</h1>
         <p className="text-muted-foreground">
           View trainings required to qualify for additional positions
         </p>

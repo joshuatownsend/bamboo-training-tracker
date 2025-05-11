@@ -39,7 +39,7 @@ export const navigationSections: NavSection[] = [
         icon: Shield,
       },
       {
-        name: "Required Trainings",
+        name: "My Advancement",
         href: "/required-trainings",
         icon: FileText,
       },
