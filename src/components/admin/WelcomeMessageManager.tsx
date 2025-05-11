@@ -13,16 +13,17 @@ const WelcomeMessageManager: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
+  console.log("WelcomeMessageManager rendered with messages from context:", messages);
+
   // Update local state when messages are loaded from the database
   useEffect(() => {
-    console.log("Messages received in component:", messages);
+    console.log("Effect triggered with messages:", messages);
     
-    // Always initialize with at least the messages from context,
-    // ensuring we have something to display
-    if (messages.length > 0) {
+    if (messages && messages.length > 0) {
+      console.log("Setting edited messages from context:", messages);
       setEditedMessages([...messages]);
     } else {
-      // If there are no messages yet, initialize with one empty message slot
+      console.log("No messages in context, initializing with empty message");
       setEditedMessages(['']);
     }
   }, [messages]);
@@ -30,7 +31,11 @@ const WelcomeMessageManager: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      console.log("Saving messages:", editedMessages);
       await saveMessages(editedMessages);
+      console.log("Messages saved successfully");
+    } catch (error) {
+      console.error("Error saving messages:", error);
     } finally {
       setIsSaving(false);
     }

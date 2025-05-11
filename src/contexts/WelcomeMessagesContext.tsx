@@ -45,12 +45,15 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
 
         console.log("Retrieved welcome messages:", data);
         
-        // Extract just the message texts
-        // Include empty messages so they can be edited in the UI
-        const messageTexts = data.map((item: Message) => item.message);
-        
-        console.log("Processed message texts:", messageTexts);
-        setMessages(messageTexts);
+        if (!data || data.length === 0) {
+          console.log("No welcome messages found in the database");
+          setMessages([]);
+        } else {
+          // Extract just the message texts
+          const messageTexts = data.map((item: Message) => item.message);
+          console.log("Processed message texts:", messageTexts);
+          setMessages(messageTexts);
+        }
       } catch (error) {
         console.error("Failed to parse welcome messages:", error);
       } finally {
