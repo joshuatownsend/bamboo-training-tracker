@@ -36,12 +36,12 @@ export default function QualificationsReport() {
           throw mappingsError;
         }
         
-        // Convert mappings to employee objects with full name instead of email-derived name
+        // Convert mappings to employee objects with full name
         const employeeData: Employee[] = mappings.map(mapping => ({
           id: mapping.bamboo_employee_id,
-          // Create a proper full name instead of derived from email
-          name: `${mapping.email.split('@')[0].replace('.', ' ')} ${mapping.email.split('@')[0].split('.')[1] || ''}`.trim(),
-          // Use these fields for Position and Department columns
+          name: `${mapping.email.split('@')[0].replace('.', ' ')}`,
+          firstName: mapping.email.split('@')[0].split('.')[0] || '',
+          lastName: mapping.email.split('@')[0].split('.')[1] || '',
           jobTitle: "Member", // Default value - will be updated from BambooHR if available
           division: "Operations", // Default value - will be updated from BambooHR if available
           department: "AVFRD",
@@ -73,11 +73,14 @@ export default function QualificationsReport() {
 
   // Filter by search query if provided
   const filteredEmployees = searchQuery 
-    ? qualifiedEmployees.filter(emp => 
-        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.division.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? qualifiedEmployees.filter(emp => {
+        const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim().toLowerCase();
+        const searchLower = searchQuery.toLowerCase();
+        
+        return fullName.includes(searchLower) ||
+          (emp.jobTitle && emp.jobTitle.toLowerCase().includes(searchLower)) ||
+          (emp.division && emp.division.toLowerCase().includes(searchLower));
+      })
     : qualifiedEmployees;
 
   return (

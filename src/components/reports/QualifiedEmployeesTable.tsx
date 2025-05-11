@@ -19,12 +19,20 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
     );
   }
 
+  // Helper function to format full name
+  const formatFullName = (employee: Employee): string => {
+    if (employee.firstName && employee.lastName) {
+      return `${employee.firstName} ${employee.lastName}`;
+    }
+    return employee.name || "Unknown Name";
+  };
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
-          <TableHead>Title</TableHead>
+          <TableHead>Job Title</TableHead>
           <TableHead>Division</TableHead>
           <TableHead>Status</TableHead>
         </TableRow>
@@ -33,9 +41,9 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
         {employees.length > 0 ? (
           employees.map(employee => (
             <TableRow key={employee.id}>
-              <TableCell className="font-medium">{employee.name}</TableCell>
-              <TableCell>{employee.jobTitle}</TableCell>
-              <TableCell>{employee.division}</TableCell>
+              <TableCell className="font-medium">{formatFullName(employee)}</TableCell>
+              <TableCell>{employee.jobTitle || "Member"}</TableCell>
+              <TableCell>{employee.division || "Operations"}</TableCell>
               <TableCell>
                 <div className="flex items-center text-green-600">
                   <CheckCircle className="mr-1 h-4 w-4" />
