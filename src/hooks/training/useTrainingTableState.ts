@@ -22,6 +22,29 @@ export function useTrainingTableState(trainings: Training[]) {
   // Get all categories
   const categories = Object.keys(groupedTrainings).sort();
 
+  // Update category selection states when selectedTrainings change
+  useEffect(() => {
+    // Skip this effect if there are no trainings or selectedTrainings is empty
+    if (trainings.length === 0 || Object.keys(selectedTrainings).length === 0) return;
+    
+    const newCategoryState: Record<string, boolean> = {};
+    
+    // For each category, check if all trainings in that category are selected
+    categories.forEach(category => {
+      const categoryTrainings = groupedTrainings[category] || [];
+      if (categoryTrainings.length === 0) return;
+      
+      const allSelected = categoryTrainings.every(training => 
+        selectedTrainings[training.id] === true
+      );
+      
+      newCategoryState[category] = allSelected;
+    });
+    
+    console.log("Updating category selections:", newCategoryState);
+    setSelectedCategories(newCategoryState);
+  }, [selectedTrainings, trainings, categories, groupedTrainings]);
+
   // Filter trainings based on search query
   const filteredTrainings = Object.entries(groupedTrainings).reduce((acc, [category, trainings]) => {
     const filtered = trainings.filter(training => 
@@ -41,23 +64,6 @@ export function useTrainingTableState(trainings: Training[]) {
     setSelectedTrainings(prev => ({
       ...prev,
       [id]: !prev[id]
-    }));
-
-    // Update category selection state based on all trainings in that category
-    const trainingCategory = trainings.find(t => t.id === id)?.category || 'Uncategorized';
-    const categoryTrainings = groupedTrainings[trainingCategory];
-    const updatedSelection = {
-      ...selectedTrainings,
-      [id]: !selectedTrainings[id]
-    };
-    
-    const allSelected = categoryTrainings.every(t => 
-      t.id === id ? updatedSelection[t.id] : selectedTrainings[t.id]
-    );
-    
-    setSelectedCategories(prev => ({
-      ...prev,
-      [trainingCategory]: allSelected
     }));
   };
 

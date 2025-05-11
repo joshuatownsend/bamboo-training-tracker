@@ -31,6 +31,7 @@ export function useTrainingRequirements() {
           });
         }
 
+        console.log("Loaded selections from database:", selections);
         setSelectedTrainings(selections);
       } catch (error) {
         console.error("Error loading selected trainings:", error);

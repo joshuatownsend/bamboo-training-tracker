@@ -43,8 +43,8 @@ export default function TrainingRequirementManagement() {
 
   // Sync selected trainings from hook to local state when loaded
   useEffect(() => {
-    if (!loadingSelectedTrainings && Object.keys(selectedTrainingsFromHook).length > 0) {
-      console.log("Syncing selections from hook:", selectedTrainingsFromHook);
+    if (!loadingSelectedTrainings) {
+      console.log("Syncing selections from hook to local state:", selectedTrainingsFromHook);
       setSelectedTrainings(selectedTrainingsFromHook);
     }
   }, [selectedTrainingsFromHook, loadingSelectedTrainings, setSelectedTrainings]);
@@ -112,7 +112,7 @@ export default function TrainingRequirementManagement() {
             selectedCategories={selectedCategories}
             toggleTrainingSelection={toggleTrainingSelection}
             toggleCategorySelection={toggleCategorySelection}
-            isLoadingTrainings={isLoadingTrainings}
+            isLoadingTrainings={isLoadingTrainings || loadingSelectedTrainings}
           />
         </CardContent>
       </Card>
