@@ -1,27 +1,53 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/contexts/UserContext";
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * Hook to fetch the BambooHR sync status
  */
 export function useSyncStatus() {
+  const { currentUser } = useUser();
+  
   return useQuery({
-    queryKey: ['sync-status', 'bamboohr'],
+    queryKey: ['sync-status', 'bamboohr', currentUser?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sync_status')
-        .select('*')
-        .eq('id', 'bamboohr')
-        .single();
-      
-      if (error) {
-        console.error("Error fetching sync status:", error);
+      try {
+        // Check if user is authenticated
+        if (!currentUser) {
+          console.warn("Attempting to fetch sync status without authentication");
+          return null;
+        }
+        
+        const { data, error } = await supabase
+          .from('sync_status')
+          .select('*')
+          .eq('id', 'bamboohr')
+          .single();
+        
+        if (error) {
+          console.error("Error fetching sync status:", error);
+          
+          // If the error is related to permissions, show a toast
+          if (error.code === 'PGRST116') {
+            toast({
+              title: "Permission Denied",
+              description: "You don't have permission to access sync status information.",
+              variant: "destructive",
+            });
+          }
+          
+          return null;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error("Exception fetching sync status:", error);
         return null;
       }
-      
-      return data;
     },
     refetchInterval: 10000, // Refresh every 10 seconds when component is mounted
+    enabled: !!currentUser, // Only run the query if user is authenticated
   });
 }
