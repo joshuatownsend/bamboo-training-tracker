@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+import WelcomeMessages from "@/components/dashboard/WelcomeMessages";
 import useBambooHR from "@/hooks/useBambooHR";
 import { useToast } from "@/hooks/use-toast";
+import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 import { TrainingStatistics } from "@/lib/types";
 import { calculateTrainingStatistics } from "@/utils/calculateStatistics";
 import { prefetchBambooHRData } from "@/services/dataCacheService";
@@ -13,6 +15,7 @@ const Dashboard = () => {
   const { useAllData } = useBambooHR();
   const { data, isLoading, error, refetch } = useAllData();
   const { toast } = useToast();
+  const { messages } = useWelcomeMessages();
   const [stats, setStats] = useState<TrainingStatistics | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
 
@@ -84,6 +87,9 @@ const Dashboard = () => {
           Refresh Data
         </button>
       </div>
+      
+      {/* Welcome Messages */}
+      <WelcomeMessages messages={messages} />
       
       <DashboardStats 
         employeeCount={data?.employees?.length || 0}

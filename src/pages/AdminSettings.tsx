@@ -3,6 +3,7 @@ import React from "react";
 import AdminSettings from "@/components/admin/AdminSettings";
 import BambooHRConfig from "@/components/admin/BambooHRConfig";
 import EmployeeMappingManager from "@/components/admin/EmployeeMappingManager";
+import WelcomeMessageManager from "@/components/admin/WelcomeMessageManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -18,6 +19,7 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="access">Admin Access</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="mappings">Employee Mappings</TabsTrigger>
+          <TabsTrigger value="messages">Welcome Messages</TabsTrigger>
         </TabsList>
         <TabsContent value="access" className="space-y-4">
           <p className="text-muted-foreground">
@@ -47,6 +49,13 @@ export default function AdminSettingsPage() {
           </p>
           
           <EmployeeMappingManager />
+        </TabsContent>
+        <TabsContent value="messages" className="space-y-4">
+          <p className="text-muted-foreground">
+            Set welcome messages and announcements that will appear at the top of the Dashboard.
+          </p>
+          
+          <WelcomeMessageManager />
         </TabsContent>
       </Tabs>
     </div>
