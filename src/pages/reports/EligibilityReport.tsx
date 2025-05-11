@@ -130,7 +130,7 @@ export default function EligibilityReport() {
       <div>
         <h1 className="text-3xl font-bold">Volunteer Eligibility Report</h1>
         <p className="text-muted-foreground">
-          View volunteers eligible by county standards but not yet promoted
+          View volunteers eligible by Loudoun County SWP 801.5 standards but not yet promoted by AVFRD
         </p>
       </div>
       
