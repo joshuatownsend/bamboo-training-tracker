@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,13 +23,16 @@ const WelcomeMessageManager: React.FC = () => {
     
     try {
       if (Array.isArray(messages)) {
-        // Always ensure we have at least one message slot for editing
-        const initialMessages = messages.length > 0 ? [...messages] : [''];
+        // Copy the messages array or initialize with a blank one if no messages
+        const initialMessages = messages.length > 0 
+          ? [...messages] 
+          : [''];
+        
         console.log("[WelcomeMessageManager] Setting edited messages:", initialMessages);
         setEditedMessages(initialMessages);
         setError(null);
       } else {
-        console.log("[WelcomeMessageManager] Invalid messages format:", messages);
+        console.error("[WelcomeMessageManager] Invalid messages format received:", messages);
         setEditedMessages(['']);
         setError("Invalid messages format received");
       }
@@ -41,11 +45,21 @@ const WelcomeMessageManager: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Filter out completely empty messages to avoid saving them
-      const messagesToSave = editedMessages.filter(msg => msg.trim() !== '');
+      // Filter out completely empty messages for display purposes
+      const nonEmptyMessages = editedMessages.filter(msg => msg.trim() !== '');
       
-      console.log("[WelcomeMessageManager] Saving messages:", messagesToSave);
-      await saveMessages(messagesToSave);
+      if (nonEmptyMessages.length === 0) {
+        toast({
+          title: "No content",
+          description: "Please add at least one message with content.",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      console.log("[WelcomeMessageManager] Saving messages:", nonEmptyMessages);
+      await saveMessages(nonEmptyMessages);
       console.log("[WelcomeMessageManager] Messages saved successfully");
     } catch (error) {
       console.error("[WelcomeMessageManager] Error saving messages:", error);
@@ -62,14 +76,14 @@ const WelcomeMessageManager: React.FC = () => {
   };
 
   const handleDelete = (index: number) => {
-    const newMessages = [...editedMessages];
-    newMessages.splice(index, 1);
-    
-    // Always keep at least one message slot for editing
-    if (newMessages.length === 0) {
-      newMessages.push("");
+    if (editedMessages.length <= 1) {
+      // If trying to delete the last message, just clear it instead
+      setEditedMessages(['']);
+      return;
     }
     
+    const newMessages = [...editedMessages];
+    newMessages.splice(index, 1);
     setEditedMessages(newMessages);
   };
 
@@ -109,9 +123,7 @@ const WelcomeMessageManager: React.FC = () => {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error} - Please check console for more details.
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -151,16 +163,16 @@ const WelcomeMessageManager: React.FC = () => {
           </p>
         </div>
         
-        {editedMessages.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            No messages added yet. Click "Add Message" to create one.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {editedMessages.map((message, index) => (
+        <div className="space-y-3">
+          {editedMessages.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              No messages added yet. Click "Add Message" to create one.
+            </div>
+          ) : (
+            editedMessages.map((message, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={message || ""}
+                  value={message}
                   onChange={(e) => handleChange(index, e.target.value)}
                   placeholder="Enter welcome message or announcement"
                   className="flex-1"
@@ -171,14 +183,14 @@ const WelcomeMessageManager: React.FC = () => {
                   size="icon"
                   onClick={() => handleDelete(index)}
                   className="text-destructive"
-                  disabled={isSaving || (editedMessages.length === 1 && !editedMessages[0])}
+                  disabled={isSaving}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </Card>
       
       <Button 

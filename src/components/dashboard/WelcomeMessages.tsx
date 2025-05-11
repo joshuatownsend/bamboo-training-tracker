@@ -31,7 +31,7 @@ const WelcomeMessages: React.FC = () => {
     );
   }
 
-  // Check if we have messages data
+  // Check if messages is defined and is an array
   if (!Array.isArray(messages)) {
     console.error("[Dashboard WelcomeMessages] Invalid messages format:", messages);
     return (
@@ -48,7 +48,7 @@ const WelcomeMessages: React.FC = () => {
     );
   }
 
-  // Only render non-empty messages
+  // Only display non-empty messages
   const validMessages = messages.filter(msg => msg && msg.trim() !== '');
   
   console.log("[Dashboard WelcomeMessages] Valid messages to display:", validMessages);
