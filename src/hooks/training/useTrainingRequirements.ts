@@ -63,25 +63,36 @@ export function useTrainingRequirements() {
       // First, store in localStorage as backup
       localStorage.setItem('training_selections', JSON.stringify(selections));
       
-      // Then save to Supabase
-      // Get array of training IDs
-      const trainingIds = Object.keys(selections);
-      
       // Create array of upsert objects
-      const upsertData = trainingIds.map(id => ({
+      const upsertData = Object.keys(selections).map(id => ({
         training_id: id,
         is_selected: selections[id]
       }));
       
-      // Upsert to Supabase
-      const { error } = await supabase
-        .from('training_selections')
-        .upsert(upsertData, {
-          onConflict: 'training_id',
-          ignoreDuplicates: false
-        });
+      // Log the data being sent to verify
+      console.log("Saving training selections:", upsertData);
       
-      if (error) throw error;
+      // First, delete existing selections to avoid conflicts
+      // This ensures a clean state before inserting new selections
+      const { error: deleteError } = await supabase
+        .from('training_selections')
+        .delete()
+        .in('training_id', Object.keys(selections));
+        
+      if (deleteError) {
+        console.error("Error deleting existing selections:", deleteError);
+        throw deleteError;
+      }
+      
+      // Then insert new selections
+      const { error: insertError } = await supabase
+        .from('training_selections')
+        .insert(upsertData);
+      
+      if (insertError) {
+        console.error("Error inserting selections:", insertError);
+        throw insertError;
+      }
       
       setSelectedTrainings(selections);
       

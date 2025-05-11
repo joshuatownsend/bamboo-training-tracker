@@ -41,30 +41,37 @@ export default function TrainingRequirementManagement() {
     toggleCategorySelection
   } = useTrainingTableState(trainings);
 
-  // Sync selected trainings from hook to local state
+  // Sync selected trainings from hook to local state when loaded
   useEffect(() => {
-    if (!loadingSelectedTrainings) {
+    if (!loadingSelectedTrainings && Object.keys(selectedTrainingsFromHook).length > 0) {
+      console.log("Syncing selections from hook:", selectedTrainingsFromHook);
       setSelectedTrainings(selectedTrainingsFromHook);
     }
   }, [selectedTrainingsFromHook, loadingSelectedTrainings, setSelectedTrainings]);
 
   // Handle saving selections
-  const handleSaveSelections = () => {
-    saveTrainingSelections(selectedTrainings)
-      .then(() => {
+  const handleSaveSelections = async () => {
+    console.log("Saving selections:", selectedTrainings);
+    try {
+      const success = await saveTrainingSelections(selectedTrainings);
+      
+      if (success) {
+        // Update the hook's state to ensure consistency
+        setSelectedTrainingsFromHook(selectedTrainings);
+        
         toast({
           title: "Selections saved",
           description: `Your training selections have been saved successfully.`
         });
-      })
-      .catch((error) => {
-        console.error("Error saving selections:", error);
-        toast({
-          title: "Error",
-          description: "Failed to save training selections.",
-          variant: "destructive"
-        });
+      }
+    } catch (error) {
+      console.error("Error saving selections:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save training selections.",
+        variant: "destructive"
       });
+    }
   };
 
   // Access control
