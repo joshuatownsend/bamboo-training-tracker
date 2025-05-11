@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Position } from "@/lib/types";
+import { PositionSelector } from "./PositionSelector";
 
 interface FilterControlsProps {
   selectedPosition: string;
@@ -30,22 +31,12 @@ export function FilterControls({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div className="w-full sm:w-1/2">
-          {isLoadingPositions ? (
-            <div className="h-10 w-full bg-muted animate-pulse rounded" />
-          ) : (
-            <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a position" />
-              </SelectTrigger>
-              <SelectContent>
-                {positions.map(position => (
-                  <SelectItem key={position.id} value={position.id}>
-                    {position.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <PositionSelector 
+            selectedPosition={selectedPosition}
+            setSelectedPosition={setSelectedPosition}
+            positions={positions}
+            isLoading={isLoadingPositions}
+          />
         </div>
         
         <div className="w-full sm:w-1/2">
@@ -61,18 +52,6 @@ export function FilterControls({
           </Select>
         </div>
       </div>
-      
-      {selectedPosition && (
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search volunteers by name, job title, or division..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      )}
     </div>
   );
 }
