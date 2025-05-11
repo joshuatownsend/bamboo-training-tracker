@@ -1,9 +1,8 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
-import { Plus, Edit, Trash, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash, RefreshCw, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -26,11 +25,11 @@ import { Training } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { TableCategoryHeader } from "@/components/training/TableCategoryHeader";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search } from "lucide-react";
-import { useTrainings } from "@/hooks/training/useTrainings";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTrainings } from "@/hooks/training/useTrainings";
+import { useTrainingRequirements } from "@/hooks/training/useTrainingRequirements";
 
 export default function TrainingRequirementManagement() {
   const { isAdmin } = useUser();
@@ -47,6 +46,14 @@ export default function TrainingRequirementManagement() {
     isError,
     error
   } = useTrainings();
+
+  const {
+    selectedTrainings: selectedTrainingsFromHook,
+    setSelectedTrainings: setSelectedTrainingsFromHook,
+    saveSelections,
+    getSelectedTrainings,
+    loading: loadingSelectedTrainings
+  } = useTrainingRequirements();
 
   // Group trainings by category
   const groupedTrainings = trainings.reduce((acc, training) => {
