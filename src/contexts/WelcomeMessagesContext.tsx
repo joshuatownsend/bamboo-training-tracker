@@ -31,51 +31,38 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
   const fetchMessages = async () => {
     setIsLoading(true);
     try {
-      console.log("Fetching welcome messages from database");
+      console.log("[WelcomeMessagesContext] Fetching welcome messages from database");
       
-      // Direct query to see what's in the table
+      // Direct query to see what's in the table - for debugging
       const { data: rawData, error: rawError } = await supabase
         .from('welcome_messages')
         .select('*');
       
-      console.log("Raw welcome_messages table data:", rawData);
+      console.log("[WelcomeMessagesContext] Raw welcome_messages table data:", rawData);
       
       if (rawError) {
-        console.error("Error in raw welcome messages query:", rawError);
+        console.error("[WelcomeMessagesContext] Error in raw welcome messages query:", rawError);
+        throw rawError;
       }
       
-      // Actual query for application use
-      const { data, error } = await supabase
-        .from('welcome_messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error("Error fetching welcome messages:", error);
-        toast({
-          title: "Error loading welcome messages",
-          description: error.message,
-          variant: "destructive",
-        });
+      if (!rawData || rawData.length === 0) {
+        console.log("[WelcomeMessagesContext] No welcome messages found in the database");
+        setMessages([]);
         setIsLoading(false);
         return;
       }
 
-      console.log("Retrieved welcome messages:", data);
+      // Extract just the non-empty message texts
+      const messageTexts = rawData
+        .map((item: Message) => item.message || '')
+        .filter((msg: string) => msg.trim() !== '');
       
-      if (!data || data.length === 0) {
-        console.log("No welcome messages found in the database");
-        setMessages([]);
-      } else {
-        // Extract just the message texts
-        const messageTexts = data.map((item: Message) => item.message || '');
-        console.log("Processed message texts:", messageTexts);
-        setMessages(messageTexts);
-      }
+      console.log("[WelcomeMessagesContext] Processed message texts:", messageTexts);
+      setMessages(messageTexts);
     } catch (error) {
-      console.error("Failed to parse welcome messages:", error);
+      console.error("[WelcomeMessagesContext] Failed to fetch welcome messages:", error);
       toast({
-        title: "Error processing messages",
+        title: "Error loading messages",
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
@@ -85,7 +72,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   const refreshMessages = async () => {
-    console.log("Manually refreshing welcome messages");
+    console.log("[WelcomeMessagesContext] Manually refreshing welcome messages");
     await fetchMessages();
     toast({
       title: "Messages refreshed",
@@ -96,26 +83,18 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
   const saveMessages = async (newMessages: string[]) => {
     setIsLoading(true);
     try {
-      console.log("Saving welcome messages:", newMessages);
-      
-      // First, ensure we have exactly 3 messages to save (pad with empty strings if needed)
-      const messagesToSave = [...newMessages];
-      while (messagesToSave.length < 3) {
-        messagesToSave.push('');
-      }
-      
-      // Limit to 3 messages if more were provided
-      const finalMessages = messagesToSave.slice(0, 3);
-      console.log("Final messages to save:", finalMessages);
+      // Filter out empty messages
+      const filteredMessages = newMessages.filter(msg => msg.trim() !== '');
+      console.log("[WelcomeMessagesContext] Saving filtered welcome messages:", filteredMessages);
       
       // Use the RPC function to update messages
       const { data, error } = await supabase.rpc(
         'update_welcome_messages',
-        { messages: finalMessages }
+        { messages: filteredMessages }
       );
 
       if (error) {
-        console.error("Error saving welcome messages:", error);
+        console.error("[WelcomeMessagesContext] Error saving welcome messages:", error);
         toast({
           title: "Error saving messages",
           description: error.message,
@@ -124,10 +103,10 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         return;
       }
       
-      console.log("Save response:", data);
+      console.log("[WelcomeMessagesContext] Save response:", data);
       
       // Update the local state with the messages
-      setMessages(finalMessages);
+      setMessages(filteredMessages);
       
       toast({
         title: "Messages saved",
@@ -137,7 +116,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       // Fetch messages again to ensure we have the latest data
       await fetchMessages();
     } catch (error) {
-      console.error("Failed to save welcome messages:", error);
+      console.error("[WelcomeMessagesContext] Failed to save welcome messages:", error);
       toast({
         title: "Error saving messages",
         description: error instanceof Error ? error.message : "An unknown error occurred",

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,30 +14,26 @@ const WelcomeMessageManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  console.log("WelcomeMessageManager rendered with messages from context:", messages);
+  console.log("[WelcomeMessageManager] Rendered with messages from context:", messages);
 
   // Update local state when messages are loaded from the database
   useEffect(() => {
-    console.log("WelcomeMessageManager effect triggered with messages:", messages);
+    console.log("[WelcomeMessageManager] Effect triggered with messages:", messages);
     
     try {
-      if (messages && Array.isArray(messages)) {
-        // Always ensure we have at least one message slot
-        if (messages.length === 0) {
-          console.log("No messages in context, initializing with empty message");
-          setEditedMessages(['']);
-        } else {
-          console.log("Setting edited messages from context:", messages);
-          setEditedMessages([...messages]);
-        }
+      if (Array.isArray(messages)) {
+        // Always ensure we have at least one message slot for editing
+        const initialMessages = messages.length > 0 ? [...messages] : [''];
+        console.log("[WelcomeMessageManager] Setting edited messages:", initialMessages);
+        setEditedMessages(initialMessages);
         setError(null);
       } else {
-        console.log("Invalid messages format:", messages);
+        console.log("[WelcomeMessageManager] Invalid messages format:", messages);
         setEditedMessages(['']);
-        setError("Invalid messages format received from database");
+        setError("Invalid messages format received");
       }
     } catch (err) {
-      console.error("Error in WelcomeMessageManager useEffect:", err);
+      console.error("[WelcomeMessageManager] Error in useEffect:", err);
       setError(`Error processing messages: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   }, [messages]);
@@ -46,19 +41,14 @@ const WelcomeMessageManager: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Filter out completely empty messages at the end
-      let messagesToSave = [...editedMessages];
+      // Filter out completely empty messages to avoid saving them
+      const messagesToSave = editedMessages.filter(msg => msg.trim() !== '');
       
-      // Ensure we always have at least one message slot
-      if (messagesToSave.length === 0) {
-        messagesToSave = [''];
-      }
-      
-      console.log("Saving messages:", messagesToSave);
+      console.log("[WelcomeMessageManager] Saving messages:", messagesToSave);
       await saveMessages(messagesToSave);
-      console.log("Messages saved successfully");
+      console.log("[WelcomeMessageManager] Messages saved successfully");
     } catch (error) {
-      console.error("Error saving messages:", error);
+      console.error("[WelcomeMessageManager] Error saving messages:", error);
       setError(`Error saving messages: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsSaving(false);
@@ -75,7 +65,7 @@ const WelcomeMessageManager: React.FC = () => {
     const newMessages = [...editedMessages];
     newMessages.splice(index, 1);
     
-    // Always keep at least one message slot
+    // Always keep at least one message slot for editing
     if (newMessages.length === 0) {
       newMessages.push("");
     }
@@ -100,7 +90,7 @@ const WelcomeMessageManager: React.FC = () => {
       setError(null);
       await refreshMessages();
     } catch (error) {
-      console.error("Error refreshing messages:", error);
+      console.error("[WelcomeMessageManager] Error refreshing messages:", error);
       setError(`Error refreshing messages: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
@@ -150,9 +140,16 @@ const WelcomeMessageManager: React.FC = () => {
         <p className="text-sm text-muted-foreground mb-4">
           Add up to 3 messages that will be displayed at the top of the Dashboard. 
           These can be welcome messages, announcements, or important reminders.
-          <br />
-          <span className="font-medium">Current messages in context: {JSON.stringify(messages)}</span>
         </p>
+        
+        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-4">
+          <h3 className="text-sm font-medium text-yellow-800">Debug Information</h3>
+          <p className="text-xs text-yellow-700">
+            Current messages in context: {JSON.stringify(messages)}
+            <br />
+            Edited messages: {JSON.stringify(editedMessages)}
+          </p>
+        </div>
         
         {editedMessages.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
@@ -174,7 +171,7 @@ const WelcomeMessageManager: React.FC = () => {
                   size="icon"
                   onClick={() => handleDelete(index)}
                   className="text-destructive"
-                  disabled={isSaving || editedMessages.length === 1}
+                  disabled={isSaving || (editedMessages.length === 1 && !editedMessages[0])}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

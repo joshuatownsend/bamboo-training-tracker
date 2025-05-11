@@ -14,7 +14,7 @@ import { BambooHRSyncStatus } from "@/components/admin/BambooHRSyncStatus";
 export default function AdminSettingsPage() {
   // Add useEffect to check for any initialization issues
   useEffect(() => {
-    console.log("AdminSettingsPage mounted - initializing components");
+    console.log("[AdminSettingsPage] Component mounted - initializing components");
   }, []);
 
   return (

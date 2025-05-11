@@ -1,19 +1,20 @@
 
 import React, { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Info, Loader2 } from "lucide-react";
+import { Info, Loader2, AlertCircle } from "lucide-react";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const WelcomeMessages: React.FC = () => {
   const { messages, isLoading, refreshMessages } = useWelcomeMessages();
   
-  console.log("Dashboard WelcomeMessages rendering with messages:", messages);
+  console.log("[Dashboard WelcomeMessages] Rendering with messages:", messages);
   
   // Fetch messages on mount to ensure we have the latest data
   useEffect(() => {
-    console.log("WelcomeMessages component mounted, refreshing messages");
+    console.log("[Dashboard WelcomeMessages] Component mounted, refreshing messages");
     refreshMessages().catch(err => {
-      console.error("Error refreshing messages in WelcomeMessages component:", err);
+      console.error("[Dashboard WelcomeMessages] Error refreshing messages:", err);
     });
   }, [refreshMessages]);
 
@@ -30,15 +31,30 @@ const WelcomeMessages: React.FC = () => {
     );
   }
 
+  // Check if we have messages data
+  if (!Array.isArray(messages)) {
+    console.error("[Dashboard WelcomeMessages] Invalid messages format:", messages);
+    return (
+      <Card className="border-red-300 bg-red-50/50 mb-6">
+        <CardContent className="pt-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error loading welcome messages. Invalid data format.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Only render non-empty messages
-  const validMessages = Array.isArray(messages) 
-    ? messages.filter(msg => msg && msg.trim() !== '') 
-    : [];
+  const validMessages = messages.filter(msg => msg && msg.trim() !== '');
   
-  console.log("Valid messages to display:", validMessages);
+  console.log("[Dashboard WelcomeMessages] Valid messages to display:", validMessages);
   
   if (validMessages.length === 0) {
-    console.log("No valid messages to display");
+    console.log("[Dashboard WelcomeMessages] No valid messages to display");
     return null;
   }
 
