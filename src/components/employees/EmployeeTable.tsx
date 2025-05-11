@@ -4,10 +4,8 @@ import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, UserPlus } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
-import useEmployeeMapping from "@/hooks/useEmployeeMapping";
-import { useToast } from "@/components/ui/use-toast";
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -20,56 +18,11 @@ export function EmployeeTable({
   trainings = [],
   completions = [],
 }: EmployeeTableProps) {
-  const [savingMappings, setSavingMappings] = useState(false);
-  const { saveBulkEmployeeMappings } = useEmployeeMapping();
-  const { toast } = useToast();
-
   // For debugging
   useEffect(() => {
     console.log("EmployeeTable received employees:", employees.length);
     console.log("First few employees:", employees.slice(0, 3));
   }, [employees]);
-
-  // Function to save email to employee ID mappings
-  const saveEmailMappings = async () => {
-    // Filter employees who have emails
-    const mappings = employees
-      .filter(emp => emp && emp.email && emp.id)
-      .map(emp => ({
-        email: emp.email?.toLowerCase(),
-        employeeId: emp.id
-      }));
-    
-    if (mappings.length === 0) {
-      toast({
-        title: "No Mappings Available",
-        description: "No employees with email addresses found to map.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setSavingMappings(true);
-    try {
-      const success = await saveBulkEmployeeMappings(mappings);
-      
-      if (success) {
-        toast({
-          title: "Mappings Saved",
-          description: `Successfully mapped ${mappings.length} email addresses to employee IDs.`,
-        });
-      }
-    } catch (error) {
-      console.error("Error saving mappings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save email mappings",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingMappings(false);
-    }
-  };
 
   // Early return with message if no employees available
   if (!employees || employees.length === 0) {
@@ -98,16 +51,6 @@ export function EmployeeTable({
         <div className="text-sm text-muted-foreground">
           Showing {validEmployees.length} employees
         </div>
-        <Button 
-          onClick={saveEmailMappings}
-          disabled={savingMappings}
-          variant="outline"
-          size="sm"
-          className="gap-2"
-        >
-          <UserPlus className="h-4 w-4" />
-          {savingMappings ? "Saving..." : "Map All Emails to IDs"}
-        </Button>
       </div>
       <Table>
         <TableHeader>
