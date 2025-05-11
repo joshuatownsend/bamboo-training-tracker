@@ -72,12 +72,11 @@ export function useTrainingRequirements() {
       
       console.log("Saving training selections:", upsertData);
       
-      // Use upsert operation instead of delete + insert
+      // Use upsert operation with our unique constraint
       const { error } = await supabase
         .from('training_selections')
         .upsert(upsertData, { 
-          onConflict: 'training_id',
-          ignoreDuplicates: false
+          onConflict: 'training_id' 
         });
       
       if (error) {
