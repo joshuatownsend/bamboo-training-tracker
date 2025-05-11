@@ -35,23 +35,56 @@ export default function QualificationsReport() {
           console.error("Error fetching employee mappings:", mappingsError);
           throw mappingsError;
         }
+
+        // Attempt to fetch more detailed employee data from BambooHR
+        // This step follows what the Employees page does to get proper employee data
+        const { data: employeeData, error: employeeError } = await supabase
+          .functions.invoke('bamboohr', {
+            body: { action: 'getEmployees' }
+          });
+          
+        if (employeeError) {
+          console.error("Error fetching employee data from BambooHR:", employeeError);
+          // Fall back to basic data from mappings if BambooHR fetch fails
+          return mappings.map(mapping => ({
+            id: mapping.bamboo_employee_id,
+            name: mapping.email.split('@')[0].replace('.', ' '),
+            firstName: mapping.email.split('@')[0].split('.')[0] || '',
+            lastName: mapping.email.split('@')[0].split('.')[1] || '',
+            jobTitle: "Member",
+            division: "Operations",
+            department: "AVFRD",
+            position: "Member",
+            email: mapping.email,
+            hireDate: mapping.created_at || ""
+          }));
+        }
         
-        // Convert mappings to employee objects with full name
-        const employeeData: Employee[] = mappings.map(mapping => ({
-          id: mapping.bamboo_employee_id,
-          name: `${mapping.email.split('@')[0].replace('.', ' ')}`,
-          firstName: mapping.email.split('@')[0].split('.')[0] || '',
-          lastName: mapping.email.split('@')[0].split('.')[1] || '',
-          jobTitle: "Member", // Default value - will be updated from BambooHR if available
-          division: "Operations", // Default value - will be updated from BambooHR if available
-          department: "AVFRD",
-          position: "Member",
-          email: mapping.email,
-          hireDate: mapping.created_at || ""
-        }));
+        // Create a map of employee data from BambooHR for quick lookup
+        const employeeMap = new Map();
+        if (employeeData && Array.isArray(employeeData.employees)) {
+          employeeData.employees.forEach((emp: any) => {
+            employeeMap.set(emp.id, emp);
+          });
+        }
         
-        console.log(`Fetched ${employeeData.length} employees from database`);
-        return employeeData;
+        // Combine mapping data with BambooHR data
+        return mappings.map(mapping => {
+          const bambooData = employeeMap.get(mapping.bamboo_employee_id);
+          
+          return {
+            id: mapping.bamboo_employee_id,
+            name: bambooData ? `${bambooData.firstName} ${bambooData.lastName}` : mapping.email.split('@')[0].replace('.', ' '),
+            firstName: bambooData?.firstName || mapping.email.split('@')[0].split('.')[0] || '',
+            lastName: bambooData?.lastName || mapping.email.split('@')[0].split('.')[1] || '',
+            jobTitle: bambooData?.jobTitle || "Member",
+            division: bambooData?.division || "Operations",
+            department: bambooData?.department || "AVFRD",
+            position: bambooData?.jobTitle || "Member",
+            email: mapping.email,
+            hireDate: bambooData?.hireDate || mapping.created_at || ""
+          };
+        });
       } catch (error) {
         console.error("Error fetching employees:", error);
         return [];

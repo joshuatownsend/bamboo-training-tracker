@@ -19,7 +19,7 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
     );
   }
 
-  // Helper function to format full name
+  // Helper function to format full name consistently
   const formatFullName = (employee: Employee): string => {
     if (employee.firstName && employee.lastName) {
       return `${employee.firstName} ${employee.lastName}`;
