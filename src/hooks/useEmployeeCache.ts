@@ -28,7 +28,8 @@ export function useEmployeeCache() {
       }
       
       return data;
-    }
+    },
+    refetchInterval: 10000, // Refresh every 10 seconds when component is mounted
   });
   
   // Query to fetch cached employees
@@ -141,42 +142,44 @@ export function useEmployeeCache() {
   // Function to manually trigger a sync
   const triggerSync = async () => {
     try {
-      toast({
-        title: "Sync Started",
-        description: "Starting employee data synchronization...",
-      });
+      console.log("Triggering BambooHR sync...");
       
+      // First update the sync status to indicate it's in progress
+      const { error: updateError } = await supabase
+        .from('sync_status')
+        .update({ 
+          status: 'running',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 'bamboohr');
+      
+      if (updateError) {
+        console.error("Error updating sync status:", updateError);
+        throw new Error(`Failed to update sync status: ${updateError.message}`);
+      }
+      
+      // Then call the database function that triggers the sync
       const { data, error } = await supabase.rpc('trigger_bamboohr_sync');
       
       if (error) {
         console.error("Error triggering sync:", error);
-        toast({
-          title: "Sync Error",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
+        throw new Error(`Sync error: ${error.message}`);
       }
       
-      toast({
-        title: "Sync Requested",
-        description: "Employee data synchronization has been requested.",
-      });
+      console.log("Sync triggered successfully:", data);
       
       // Refetch the status after a short delay
       setTimeout(() => {
         syncStatus.refetch();
-      }, 3000);
+        employees.refetch();
+        trainings.refetch();
+        completions.refetch();
+      }, 2000);
       
       return true;
     } catch (error) {
       console.error("Error in triggerSync:", error);
-      toast({
-        title: "Sync Error",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive"
-      });
-      return false;
+      throw error;
     }
   };
 
@@ -202,11 +205,13 @@ export function useEmployeeCache() {
     triggerSync,
     
     // Helper functions
-    refetchAll: () => {
-      syncStatus.refetch();
-      employees.refetch();
-      trainings.refetch();
-      completions.refetch();
+    refetchAll: async () => {
+      await Promise.all([
+        syncStatus.refetch(),
+        employees.refetch(),
+        trainings.refetch(),
+        completions.refetch()
+      ]);
     }
   };
 }

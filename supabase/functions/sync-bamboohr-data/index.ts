@@ -16,9 +16,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Starting BambooHR data sync process...");
+    
     // Get the authorization header from the request
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error("No authorization header provided");
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -32,6 +35,8 @@ serve(async (req) => {
     const subdomain = Deno.env.get('BAMBOOHR_SUBDOMAIN');
     const apiKey = Deno.env.get('BAMBOOHR_API_KEY');
 
+    console.log(`BambooHR configuration: subdomain=${subdomain ? 'set' : 'missing'}, apiKey=${apiKey ? 'set' : 'missing'}`);
+    
     if (!subdomain || !apiKey) {
       await updateSyncStatus(supabase, 'error', 'Missing BambooHR credentials');
       return new Response(JSON.stringify({ error: 'Missing BambooHR credentials' }), {
@@ -40,7 +45,6 @@ serve(async (req) => {
       });
     }
 
-    console.log("Starting BambooHR sync process...");
     await updateSyncStatus(supabase, 'running', null);
 
     // Fetch employees, trainings, and completions from BambooHR
@@ -115,12 +119,16 @@ async function updateSyncStatus(supabase: any, status: string, error: string | n
   }
   
   try {
-    await supabase
+    const { error: updateError } = await supabase
       .from('sync_status')
       .update(updateData)
       .eq('id', 'bamboohr');
       
-    console.log(`Updated sync status: ${status}`);
+    if (updateError) {
+      console.error('Failed to update sync status:', updateError);
+    } else {
+      console.log(`Updated sync status: ${status}`);
+    }
   } catch (error) {
     console.error('Failed to update sync status:', error);
   }
@@ -143,6 +151,7 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     });
     
     if (!employeesResponse.ok) {
+      console.error(`Failed to fetch employees: ${employeesResponse.status} ${await employeesResponse.text()}`);
       throw new Error(`Failed to fetch employees: ${employeesResponse.status}`);
     }
     
@@ -150,6 +159,11 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     const employees = employeesData.employees || [];
     
     console.log(`Fetched ${employees.length} employees`);
+    
+    // Sample first employee for debugging
+    if (employees.length > 0) {
+      console.log("Sample employee:", JSON.stringify(employees[0]));
+    }
     
     // Fetch training types
     console.log("Fetching training types...");
@@ -161,15 +175,31 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     });
     
     if (!trainingsResponse.ok) {
+      console.error(`Failed to fetch trainings: ${trainingsResponse.status} ${await trainingsResponse.text()}`);
       throw new Error(`Failed to fetch trainings: ${trainingsResponse.status}`);
     }
     
-    const trainings = await trainingsResponse.json();
+    let trainings = await trainingsResponse.json();
+    
+    // Handle different response formats
+    if (!Array.isArray(trainings)) {
+      console.log("Training response is not an array, converting to array");
+      if (typeof trainings === 'object') {
+        trainings = Object.values(trainings);
+      } else {
+        trainings = [];
+      }
+    }
+    
     console.log(`Fetched ${trainings.length} trainings`);
     
-    // Process a sample of employees to get completions
-    console.log("Fetching training completions for sample employees...");
-    const sampleSize = 20; // Adjust based on API load concerns
+    if (trainings.length > 0) {
+      console.log("Sample training:", JSON.stringify(trainings[0]));
+    }
+    
+    // Process employees to get completions
+    console.log("Fetching training completions for employees...");
+    const sampleSize = 10; // Adjust based on API load concerns
     const sampleEmployees = employees.slice(0, Math.min(sampleSize, employees.length));
     
     let allCompletions: any[] = [];
@@ -178,7 +208,7 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     const batchSize = 5;
     for (let i = 0; i < sampleEmployees.length; i += batchSize) {
       const batch = sampleEmployees.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}`);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(sampleEmployees.length/batchSize)}`);
       
       const batchPromises = batch.map(async (employee: any) => {
         try {
@@ -198,6 +228,8 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
           
           // Convert object to array if needed
           let completionsArray = Array.isArray(completionsData) ? completionsData : Object.values(completionsData);
+          
+          console.log(`Employee ${employee.id} has ${completionsArray.length} training completions`);
           
           // Map to standardized format
           return completionsArray.map((c: any) => ({
@@ -250,13 +282,13 @@ async function syncEmployees(supabase: any, employees: any[]) {
   // Transform employees to match our cached_employees schema
   const mappedEmployees = employees.map(emp => ({
     id: emp.id,
-    name: emp.displayName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+    name: emp.displayName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
     position: emp.jobTitle?.name || emp.jobTitle || null,
     department: emp.department?.name || emp.department || null,
     division: emp.division || emp.department?.name || emp.department || null,
     email: emp.email || emp.workEmail || null,
     work_email: emp.workEmail || emp.email || null,
-    display_name: emp.displayName || null,
+    display_name: emp.displayName || emp.name || null,
     first_name: emp.firstName || null,
     last_name: emp.lastName || null,
     job_title: emp.jobTitle?.name || emp.jobTitle || null,
@@ -264,6 +296,8 @@ async function syncEmployees(supabase: any, employees: any[]) {
     hire_date: emp.hireDate || null,
     cached_at: new Date().toISOString()
   }));
+  
+  console.log(`First employee mapped: ${JSON.stringify(mappedEmployees[0])}`);
   
   // Upsert all employees
   const { error, count } = await supabase
@@ -274,6 +308,8 @@ async function syncEmployees(supabase: any, employees: any[]) {
     console.error('Error upserting employees:', error);
     throw error;
   }
+  
+  console.log(`Successfully upserted ${count || mappedEmployees.length} employees`);
   
   return { upserted: count || mappedEmployees.length };
 }
@@ -288,8 +324,8 @@ async function syncTrainings(supabase: any, trainings: any[]) {
   
   // Transform trainings to match our cached_trainings schema
   const mappedTrainings = trainings.map(training => ({
-    id: training.id?.toString(),
-    title: training.name || `Training ${training.id}`,
+    id: training.id?.toString() || training.type?.toString(),
+    title: training.name || `Training ${training.id || training.type}`,
     type: training.type || training.id?.toString() || null,
     category: training.category || 'General',
     description: training.description || null,
@@ -297,6 +333,10 @@ async function syncTrainings(supabase: any, trainings: any[]) {
     required_for: training.required ? ['Required'] : [],
     cached_at: new Date().toISOString()
   }));
+  
+  if (mappedTrainings.length > 0) {
+    console.log(`First training mapped: ${JSON.stringify(mappedTrainings[0])}`);
+  }
   
   // Upsert all trainings
   const { error, count } = await supabase
@@ -307,6 +347,8 @@ async function syncTrainings(supabase: any, trainings: any[]) {
     console.error('Error upserting trainings:', error);
     throw error;
   }
+  
+  console.log(`Successfully upserted ${count || mappedTrainings.length} trainings`);
   
   return { upserted: count || mappedTrainings.length };
 }
@@ -332,6 +374,10 @@ async function syncCompletions(supabase: any, completions: any[]) {
     cached_at: new Date().toISOString()
   }));
   
+  if (mappedCompletions.length > 0) {
+    console.log(`First completion mapped: ${JSON.stringify(mappedCompletions[0])}`);
+  }
+  
   // Upsert all completions
   const { error, count } = await supabase
     .from('cached_training_completions')
@@ -341,6 +387,8 @@ async function syncCompletions(supabase: any, completions: any[]) {
     console.error('Error upserting completions:', error);
     throw error;
   }
+  
+  console.log(`Successfully upserted ${count || mappedCompletions.length} completions`);
   
   return { upserted: count || mappedCompletions.length };
 }

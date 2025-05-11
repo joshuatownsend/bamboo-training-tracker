@@ -7,6 +7,7 @@ import { RefreshCw, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 interface StatusBadgeProps {
   status: string;
@@ -28,6 +29,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 };
 
 export function BambooHRSyncStatus() {
+  const { toast } = useToast();
   const { 
     syncStatus, 
     isSyncStatusLoading, 
@@ -37,15 +39,73 @@ export function BambooHRSyncStatus() {
     completions,
     isEmployeesLoading,
     isTrainingsLoading,
-    isCompletionsLoading
+    isCompletionsLoading,
+    refetchAll
   } = useEmployeeCache();
   
   const [isSyncing, setIsSyncing] = React.useState(false);
   
   const handleSync = async () => {
     setIsSyncing(true);
-    await triggerSync();
-    setTimeout(() => setIsSyncing(false), 3000);
+    
+    toast({
+      title: "Sync Started",
+      description: "BambooHR data synchronization initiated...",
+    });
+    
+    try {
+      await triggerSync();
+      
+      toast({
+        title: "Sync Request Successful",
+        description: "Sync process has started. Data will be available shortly.",
+      });
+      
+      // Poll for status updates every few seconds
+      const pollInterval = setInterval(async () => {
+        await refetchAll();
+        const currentStatus = syncStatus?.status;
+        
+        if (currentStatus === 'success' || currentStatus === 'error') {
+          clearInterval(pollInterval);
+          setIsSyncing(false);
+          
+          if (currentStatus === 'success') {
+            toast({
+              title: "Sync Complete",
+              description: "BambooHR data has been successfully synchronized.",
+              variant: "success"
+            });
+          } else if (currentStatus === 'error') {
+            toast({
+              title: "Sync Error",
+              description: syncStatus?.error || "An error occurred during synchronization.",
+              variant: "destructive"
+            });
+          }
+        }
+      }, 3000); // Check every 3 seconds
+      
+      // Set a timeout to stop polling after 2 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (isSyncing) {
+          setIsSyncing(false);
+          toast({
+            title: "Sync Timeout",
+            description: "The sync process is taking longer than expected. You can check back later.",
+            variant: "warning"
+          });
+        }
+      }, 120000); // 2 minutes
+    } catch (error) {
+      setIsSyncing(false);
+      toast({
+        title: "Sync Error",
+        description: error instanceof Error ? error.message : "Failed to start synchronization",
+        variant: "destructive"
+      });
+    }
   };
   
   return (

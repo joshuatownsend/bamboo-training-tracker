@@ -66,12 +66,20 @@ const AdminSettings: React.FC = () => {
                   This is useful after making changes in BambooHR.
                 </p>
               </div>
+              
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded-md">
+                <h3 className="text-sm font-medium text-gray-800">Troubleshooting</h3>
+                <p className="text-sm mt-1 text-gray-700">
+                  If sync fails, check your BambooHR API credentials in the Integrations tab. 
+                  For persistent issues, review the error message and edge function logs.
+                </p>
+              </div>
             </div>
           </div>
         </TabsContent>
       </Tabs>
     </div>
   );
-};
+}
 
 export default AdminSettings;
