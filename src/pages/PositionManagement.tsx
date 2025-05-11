@@ -68,7 +68,7 @@ export default function PositionManagement() {
       )}
 
       {!isLoading && trainings.length === 0 && (
-        <Alert variant="warning" className="bg-amber-50 border-amber-200">
+        <Alert variant="default" className="bg-amber-50 border-amber-200">
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800">No trainings selected</AlertTitle>
           <AlertDescription className="text-amber-700">
