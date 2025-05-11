@@ -15,8 +15,16 @@ const WelcomeMessageManager: React.FC = () => {
 
   // Update local state when messages are loaded from the database
   useEffect(() => {
-    console.log("Messages updated in context:", messages);
-    setEditedMessages([...messages]);
+    console.log("Messages received in component:", messages);
+    
+    // Always initialize with at least the messages from context,
+    // ensuring we have something to display
+    if (messages.length > 0) {
+      setEditedMessages([...messages]);
+    } else {
+      // If there are no messages yet, initialize with one empty message slot
+      setEditedMessages(['']);
+    }
   }, [messages]);
 
   const handleSave = async () => {

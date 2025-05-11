@@ -44,13 +44,12 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         }
 
         console.log("Retrieved welcome messages:", data);
-
-        // Extract just the message texts and filter out empty ones
-        const messageTexts = data
-          .map((item: Message) => item.message)
-          .filter(msg => msg.trim() !== '');
         
-        console.log("Filtered message texts:", messageTexts);
+        // Extract just the message texts
+        // Include empty messages so they can be edited in the UI
+        const messageTexts = data.map((item: Message) => item.message);
+        
+        console.log("Processed message texts:", messageTexts);
         setMessages(messageTexts);
       } catch (error) {
         console.error("Failed to parse welcome messages:", error);
@@ -66,14 +65,11 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
     setIsLoading(true);
     try {
       console.log("Saving welcome messages:", newMessages);
-      // Filter out empty messages
-      const filteredMessages = newMessages.filter(msg => msg.trim() !== '');
-      console.log("Filtered messages for saving:", filteredMessages);
       
       // Use the RPC function to update messages
       const { data, error } = await supabase.rpc(
         'update_welcome_messages',
-        { messages: filteredMessages }
+        { messages: newMessages }
       );
 
       if (error) {
@@ -88,8 +84,8 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       
       console.log("Save response:", data);
       
-      // Update the local state with the filtered messages
-      setMessages(filteredMessages);
+      // Update the local state with the messages
+      setMessages(newMessages);
       
       toast({
         title: "Messages saved",
