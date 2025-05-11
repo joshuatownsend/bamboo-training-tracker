@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Save, Plus, Loader2 } from "lucide-react";
+import { Trash2, Save, Plus, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 const WelcomeMessageManager: React.FC = () => {
   const { messages, isLoading, saveMessages } = useWelcomeMessages();
@@ -31,8 +30,17 @@ const WelcomeMessageManager: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      console.log("Saving messages:", editedMessages);
-      await saveMessages(editedMessages);
+      // Filter out empty messages before saving
+      const messagesToSave = editedMessages.filter(msg => msg.trim() !== '');
+      console.log("Saving filtered messages:", messagesToSave);
+      
+      if (messagesToSave.length === 0) {
+        // If all messages are empty, save at least one empty message
+        await saveMessages(['']);
+      } else {
+        await saveMessages(messagesToSave);
+      }
+      
       console.log("Messages saved successfully");
     } catch (error) {
       console.error("Error saving messages:", error);
@@ -50,6 +58,12 @@ const WelcomeMessageManager: React.FC = () => {
   const handleDelete = (index: number) => {
     const newMessages = [...editedMessages];
     newMessages.splice(index, 1);
+    
+    // Always keep at least one message slot
+    if (newMessages.length === 0) {
+      newMessages.push("");
+    }
+    
     setEditedMessages(newMessages);
   };
 
@@ -78,10 +92,23 @@ const WelcomeMessageManager: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Welcome Messages</h3>
-        <Button onClick={handleAdd} disabled={editedMessages.length >= 3 || isSaving}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Message
-        </Button>
+        <div className="space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.location.reload()}
+            title="Refresh messages from the database"
+            className="mr-2"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          
+          <Button onClick={handleAdd} disabled={editedMessages.length >= 3 || isSaving}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Message
+          </Button>
+        </div>
       </div>
       
       <Card className="p-4 bg-muted/50">
@@ -110,7 +137,7 @@ const WelcomeMessageManager: React.FC = () => {
                   size="icon"
                   onClick={() => handleDelete(index)}
                   className="text-destructive"
-                  disabled={isSaving}
+                  disabled={isSaving || editedMessages.length === 1}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

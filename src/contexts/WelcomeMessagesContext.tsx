@@ -24,45 +24,49 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   // Load messages from the database on mount
   useEffect(() => {
-    async function fetchMessages() {
-      try {
-        console.log("Fetching welcome messages from database");
-        const { data, error } = await supabase
-          .from('welcome_messages')
-          .select('*')
-          .order('created_at', { ascending: true });
-
-        if (error) {
-          console.error("Error fetching welcome messages:", error);
-          toast({
-            title: "Error loading welcome messages",
-            description: error.message,
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        console.log("Retrieved welcome messages:", data);
-        
-        if (!data || data.length === 0) {
-          console.log("No welcome messages found in the database");
-          setMessages([]);
-        } else {
-          // Extract just the message texts
-          const messageTexts = data.map((item: Message) => item.message);
-          console.log("Processed message texts:", messageTexts);
-          setMessages(messageTexts);
-        }
-      } catch (error) {
-        console.error("Failed to parse welcome messages:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchMessages();
   }, []);
+
+  const fetchMessages = async () => {
+    setIsLoading(true);
+    try {
+      console.log("Fetching welcome messages from database");
+      const { data, error } = await supabase
+        .from('welcome_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching welcome messages:", error);
+        toast({
+          title: "Error loading welcome messages",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("Retrieved welcome messages:", data);
+      
+      if (!data || data.length === 0) {
+        console.log("No welcome messages found in the database");
+        setMessages([]);
+      } else {
+        // Extract just the message texts and filter out any null messages
+        const messageTexts = data
+          .map((item: Message) => item.message)
+          .filter((message: string) => message !== null);
+          
+        console.log("Processed message texts:", messageTexts);
+        setMessages(messageTexts);
+      }
+    } catch (error) {
+      console.error("Failed to parse welcome messages:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const saveMessages = async (newMessages: string[]) => {
     setIsLoading(true);
@@ -94,6 +98,9 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         title: "Messages saved",
         description: "Welcome messages have been updated successfully."
       });
+      
+      // Fetch messages again to ensure we have the latest data
+      fetchMessages();
     } catch (error) {
       console.error("Failed to save welcome messages:", error);
       toast({

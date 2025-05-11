@@ -6,6 +6,8 @@ import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 
 const WelcomeMessages: React.FC = () => {
   const { messages, isLoading } = useWelcomeMessages();
+  
+  console.log("Dashboard WelcomeMessages rendering with messages:", messages);
 
   if (isLoading) {
     return (
@@ -20,7 +22,10 @@ const WelcomeMessages: React.FC = () => {
     );
   }
 
-  if (!messages || messages.length === 0) {
+  // Only render non-empty messages
+  const validMessages = Array.isArray(messages) ? messages.filter(msg => msg && msg.trim() !== '') : [];
+  
+  if (validMessages.length === 0) {
     return null;
   }
 
@@ -28,7 +33,7 @@ const WelcomeMessages: React.FC = () => {
     <Card className="border-company-yellow/30 bg-yellow-50/50 mb-6">
       <CardContent className="pt-6">
         <div className="space-y-3">
-          {messages.map((message, index) => (
+          {validMessages.map((message, index) => (
             <div key={index} className="flex items-start gap-3">
               <Info className="h-5 w-5 text-company-yellow mt-0.5 flex-shrink-0" />
               <p className="text-gray-700">{message}</p>
