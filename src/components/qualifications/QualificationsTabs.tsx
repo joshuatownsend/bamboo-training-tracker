@@ -27,7 +27,7 @@ export function QualificationsTabs({
           qualifications={qualifications} 
           type="county"
           title="Loudoun County Position Qualifications"
-          description="Positions you qualify for based on Loudoun County requirements"
+          description="Positions you qualify for based on Loudoun County SWP 801.5 requirements"
         />
       </TabsContent>
       
