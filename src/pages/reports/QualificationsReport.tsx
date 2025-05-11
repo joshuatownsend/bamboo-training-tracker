@@ -12,13 +12,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Search } from "lucide-react";
 import { QualificationsLoadingState } from "@/components/qualifications/LoadingState";
-import { employees, positions, trainings, trainingCompletions } from "@/lib/data";
+import { employees, trainings, trainingCompletions } from "@/lib/data";
 import { getEmployeesQualifiedForPosition } from "@/lib/qualifications";
+import { usePositionData } from "@/hooks/qualification/usePositionData";
 
 export default function QualificationsReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [requirementType, setRequirementType] = useState<"county" | "avfrd">("avfrd");
+  
+  // Fetch positions from database
+  const { positions, isLoadingPositions, positionsError } = usePositionData();
 
   // Get qualified employees for the selected position
   const qualifiedEmployees = selectedPosition 
@@ -60,18 +64,22 @@ export default function QualificationsReport() {
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="w-full sm:w-1/2">
-              <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a position" />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions.map(position => (
-                    <SelectItem key={position.id} value={position.id}>
-                      {position.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isLoadingPositions ? (
+                <div className="h-10 w-full bg-muted animate-pulse rounded" />
+              ) : (
+                <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map(position => (
+                      <SelectItem key={position.id} value={position.id}>
+                        {position.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             
             <div className="w-full sm:w-1/2">
