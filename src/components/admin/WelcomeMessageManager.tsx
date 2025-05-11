@@ -15,6 +15,7 @@ const WelcomeMessageManager: React.FC = () => {
 
   // Update local state when messages are loaded from the database
   useEffect(() => {
+    console.log("Messages updated in context:", messages);
     setEditedMessages([...messages]);
   }, [messages]);
 
