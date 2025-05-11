@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
+import { WelcomeMessagesProvider } from "@/contexts/WelcomeMessagesContext";
 
 export default function AdminSettingsPage() {
   return (
@@ -55,7 +56,9 @@ export default function AdminSettingsPage() {
             Set welcome messages and announcements that will appear at the top of the Dashboard.
           </p>
           
-          <WelcomeMessageManager />
+          <WelcomeMessagesProvider>
+            <WelcomeMessageManager />
+          </WelcomeMessagesProvider>
         </TabsContent>
       </Tabs>
     </div>
