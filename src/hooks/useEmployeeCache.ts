@@ -149,6 +149,7 @@ export function useEmployeeCache() {
         .from('sync_status')
         .update({ 
           status: 'running',
+          error: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', 'bamboohr');

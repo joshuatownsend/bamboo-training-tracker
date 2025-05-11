@@ -116,6 +116,8 @@ async function updateSyncStatus(supabase: any, status: string, error: string | n
   
   if (error) {
     updateData.error = error;
+  } else {
+    updateData.error = null;  // Clear any previous error
   }
   
   try {
@@ -199,7 +201,7 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     
     // Process employees to get completions
     console.log("Fetching training completions for employees...");
-    const sampleSize = 10; // Adjust based on API load concerns
+    const sampleSize = 20; // Increased from 10 to get more data
     const sampleEmployees = employees.slice(0, Math.min(sampleSize, employees.length));
     
     let allCompletions: any[] = [];
@@ -227,7 +229,10 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
           const completionsData = await completionsResponse.json();
           
           // Convert object to array if needed
-          let completionsArray = Array.isArray(completionsData) ? completionsData : Object.values(completionsData);
+          let completionsArray = completionsData;
+          if (!Array.isArray(completionsData)) {
+            completionsArray = Object.values(completionsData);
+          }
           
           console.log(`Employee ${employee.id} has ${completionsArray.length} training completions`);
           
@@ -279,6 +284,14 @@ async function syncEmployees(supabase: any, employees: any[]) {
 
   console.log(`Syncing ${employees.length} employees to database...`);
   
+  // First clear the existing cached_employees table
+  try {
+    await supabase.from('cached_employees').delete().neq('id', '0');
+    console.log("Cleared existing cached_employees data");
+  } catch (error) {
+    console.error("Error clearing cached_employees table:", error);
+  }
+  
   // Transform employees to match our cached_employees schema
   const mappedEmployees = employees.map(emp => ({
     id: emp.id,
@@ -299,19 +312,27 @@ async function syncEmployees(supabase: any, employees: any[]) {
   
   console.log(`First employee mapped: ${JSON.stringify(mappedEmployees[0])}`);
   
-  // Upsert all employees
-  const { error, count } = await supabase
-    .from('cached_employees')
-    .upsert(mappedEmployees, { onConflict: 'id' });
+  // Insert all employees in batches of 100
+  const batchSize = 100;
+  let totalUpserted = 0;
   
-  if (error) {
-    console.error('Error upserting employees:', error);
-    throw error;
+  for (let i = 0; i < mappedEmployees.length; i += batchSize) {
+    const batch = mappedEmployees.slice(i, i + batchSize);
+    const { error, count } = await supabase
+      .from('cached_employees')
+      .upsert(batch, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error upserting employees batch:', error);
+    } else {
+      totalUpserted += count || batch.length;
+      console.log(`Successfully upserted batch of ${batch.length} employees`);
+    }
   }
   
-  console.log(`Successfully upserted ${count || mappedEmployees.length} employees`);
+  console.log(`Successfully upserted ${totalUpserted} employees total`);
   
-  return { upserted: count || mappedEmployees.length };
+  return { upserted: totalUpserted };
 }
 
 // Sync trainings to Supabase
@@ -321,6 +342,14 @@ async function syncTrainings(supabase: any, trainings: any[]) {
   }
 
   console.log(`Syncing ${trainings.length} trainings to database...`);
+  
+  // First clear the existing cached_trainings table
+  try {
+    await supabase.from('cached_trainings').delete().neq('id', '0');
+    console.log("Cleared existing cached_trainings data");
+  } catch (error) {
+    console.error("Error clearing cached_trainings table:", error);
+  }
   
   // Transform trainings to match our cached_trainings schema
   const mappedTrainings = trainings.map(training => ({
@@ -361,6 +390,14 @@ async function syncCompletions(supabase: any, completions: any[]) {
 
   console.log(`Syncing ${completions.length} completions to database...`);
   
+  // First clear the existing cached_training_completions table
+  try {
+    await supabase.from('cached_training_completions').delete().neq('id', '0');
+    console.log("Cleared existing cached_training_completions data");
+  } catch (error) {
+    console.error("Error clearing cached_training_completions table:", error);
+  }
+  
   // Transform completions to match our cached_training_completions schema
   const mappedCompletions = completions.map(completion => ({
     id: completion.id || `${completion.employee_id}-${completion.training_id}`,
@@ -378,17 +415,25 @@ async function syncCompletions(supabase: any, completions: any[]) {
     console.log(`First completion mapped: ${JSON.stringify(mappedCompletions[0])}`);
   }
   
-  // Upsert all completions
-  const { error, count } = await supabase
-    .from('cached_training_completions')
-    .upsert(mappedCompletions, { onConflict: ['employee_id', 'training_id'] });
+  // Insert completions in batches to avoid payload size limits
+  const batchSize = 100;
+  let totalUpserted = 0;
   
-  if (error) {
-    console.error('Error upserting completions:', error);
-    throw error;
+  for (let i = 0; i < mappedCompletions.length; i += batchSize) {
+    const batch = mappedCompletions.slice(i, i + batchSize);
+    const { error, count } = await supabase
+      .from('cached_training_completions')
+      .upsert(batch, { onConflict: ['employee_id', 'training_id'] });
+    
+    if (error) {
+      console.error('Error upserting completions batch:', error, batch[0]);
+    } else {
+      totalUpserted += count || batch.length;
+      console.log(`Successfully upserted batch of ${batch.length} completions`);
+    }
   }
   
-  console.log(`Successfully upserted ${count || mappedCompletions.length} completions`);
+  console.log(`Successfully upserted ${totalUpserted} completions total`);
   
-  return { upserted: count || mappedCompletions.length };
+  return { upserted: totalUpserted };
 }
