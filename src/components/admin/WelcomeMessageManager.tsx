@@ -1,23 +1,30 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Save, Plus } from "lucide-react";
+import { Trash2, Save, Plus, Loader2 } from "lucide-react";
 
 const WelcomeMessageManager: React.FC = () => {
-  const { messages, saveMessages } = useWelcomeMessages();
-  const [editedMessages, setEditedMessages] = useState<string[]>([...messages]);
+  const { messages, isLoading, saveMessages } = useWelcomeMessages();
+  const [editedMessages, setEditedMessages] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  const handleSave = () => {
-    saveMessages(editedMessages);
-    toast({
-      title: "Messages saved",
-      description: "Welcome messages have been updated successfully."
-    });
+  // Update local state when messages are loaded from the database
+  useEffect(() => {
+    setEditedMessages([...messages]);
+  }, [messages]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await saveMessages(editedMessages);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChange = (index: number, value: string) => {
@@ -44,11 +51,20 @@ const WelcomeMessageManager: React.FC = () => {
     setEditedMessages([...editedMessages, ""]);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <span className="ml-3 text-gray-500">Loading messages...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Welcome Messages</h3>
-        <Button onClick={handleAdd} disabled={editedMessages.length >= 3}>
+        <Button onClick={handleAdd} disabled={editedMessages.length >= 3 || isSaving}>
           <Plus className="h-4 w-4 mr-2" />
           Add Message
         </Button>
@@ -73,12 +89,14 @@ const WelcomeMessageManager: React.FC = () => {
                   onChange={(e) => handleChange(index, e.target.value)}
                   placeholder="Enter welcome message or announcement"
                   className="flex-1"
+                  disabled={isSaving}
                 />
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleDelete(index)}
                   className="text-destructive"
+                  disabled={isSaving}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -88,9 +106,22 @@ const WelcomeMessageManager: React.FC = () => {
         )}
       </Card>
       
-      <Button onClick={handleSave} className="ml-auto">
-        <Save className="h-4 w-4 mr-2" />
-        Save Changes
+      <Button 
+        onClick={handleSave} 
+        className="ml-auto"
+        disabled={isSaving}
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4 mr-2" />
+            Save Changes
+          </>
+        )}
       </Button>
     </div>
   );

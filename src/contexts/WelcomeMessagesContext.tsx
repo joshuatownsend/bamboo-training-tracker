@@ -1,50 +1,106 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
-// Storage key
-const STORAGE_KEY = "avfrd_welcome_messages";
-
-// Default messages
-const DEFAULT_MESSAGES: string[] = [];
+interface Message {
+  id: string;
+  message: string;
+  created_at: string;
+  updated_at: string;
+}
 
 interface WelcomeMessagesContextType {
   messages: string[];
-  setMessages: (messages: string[]) => void;
-  saveMessages: (messages: string[]) => void;
+  isLoading: boolean;
+  saveMessages: (messages: string[]) => Promise<void>;
 }
 
 const WelcomeMessagesContext = createContext<WelcomeMessagesContextType | undefined>(undefined);
 
 export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [messages, setMessages] = useState<string[]>(DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load messages from localStorage on mount
+  // Load messages from the database on mount
   useEffect(() => {
-    const savedMessages = localStorage.getItem(STORAGE_KEY);
-    if (savedMessages) {
+    async function fetchMessages() {
       try {
-        const parsedMessages = JSON.parse(savedMessages);
-        if (Array.isArray(parsedMessages)) {
-          setMessages(parsedMessages);
+        const { data, error } = await supabase
+          .from('welcome_messages')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error("Error fetching welcome messages:", error);
+          toast({
+            title: "Error loading welcome messages",
+            description: error.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
         }
+
+        // Extract just the message texts and filter out empty ones
+        const messageTexts = data
+          .map((item: Message) => item.message)
+          .filter(msg => msg.trim() !== '');
+        
+        setMessages(messageTexts);
       } catch (error) {
         console.error("Failed to parse welcome messages:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
+
+    fetchMessages();
   }, []);
 
-  const saveMessages = (newMessages: string[]) => {
-    // Filter out empty messages and limit to 3
-    const filteredMessages = newMessages
-      .filter(msg => msg.trim() !== '')
-      .slice(0, 3);
+  const saveMessages = async (newMessages: string[]) => {
+    setIsLoading(true);
+    try {
+      // Filter out empty messages
+      const filteredMessages = newMessages.filter(msg => msg.trim() !== '');
       
-    setMessages(filteredMessages);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredMessages));
+      // Use the RPC function to update messages
+      const { data, error } = await supabase.rpc(
+        'update_welcome_messages',
+        { messages: filteredMessages }
+      );
+
+      if (error) {
+        console.error("Error saving welcome messages:", error);
+        toast({
+          title: "Error saving messages",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update the local state with the filtered messages
+      setMessages(filteredMessages);
+      
+      toast({
+        title: "Messages saved",
+        description: "Welcome messages have been updated successfully."
+      });
+    } catch (error) {
+      console.error("Failed to save welcome messages:", error);
+      toast({
+        title: "Error saving messages",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <WelcomeMessagesContext.Provider value={{ messages, setMessages, saveMessages }}>
+    <WelcomeMessagesContext.Provider value={{ messages, isLoading, saveMessages }}>
       {children}
     </WelcomeMessagesContext.Provider>
   );

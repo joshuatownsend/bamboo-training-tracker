@@ -1,13 +1,25 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Info } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
+import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 
-interface WelcomeMessagesProps {
-  messages: string[];
-}
+const WelcomeMessages: React.FC = () => {
+  const { messages, isLoading } = useWelcomeMessages();
 
-const WelcomeMessages: React.FC<WelcomeMessagesProps> = ({ messages }) => {
+  if (isLoading) {
+    return (
+      <Card className="border-company-yellow/30 bg-yellow-50/50 mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-gray-500 mr-2" />
+            <span className="text-gray-500">Loading messages...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!messages || messages.length === 0) {
     return null;
   }

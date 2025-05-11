@@ -129,12 +129,41 @@ export type Database = {
         }
         Relationships: []
       }
+      welcome_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_welcome_messages: {
+        Args: { messages: string[] }
+        Returns: {
+          created_at: string
+          id: string
+          message: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
