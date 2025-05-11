@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
+import { Training } from "@/lib/types";
 
 export default function RequiredTrainings() {
   const { currentUser } = useUser();
@@ -44,8 +45,25 @@ export default function RequiredTrainings() {
     ? qualifications.find(q => q.positionId === selectedPosition)
     : null;
   
-  // Get missing trainings for the selected position
-  const missingTrainings = selectedQualification?.missingAVFRDTrainings || [];
+  // Combine missing trainings from both county and AVFRD with source information
+  const requiredTrainings = selectedQualification 
+    ? [
+        ...selectedQualification.missingCountyTrainings.map(training => ({
+          ...training,
+          source: 'County' as const
+        })),
+        ...selectedQualification.missingAVFRDTrainings
+          .filter(avfrdTraining => 
+            !selectedQualification.missingCountyTrainings.some(
+              countyTraining => countyTraining.id === avfrdTraining.id
+            )
+          )
+          .map(training => ({
+            ...training,
+            source: 'AVFRD' as const
+          }))
+      ]
+    : [];
 
   // Handle missing employee ID
   if (!currentUser?.employeeId) {
@@ -143,12 +161,12 @@ export default function RequiredTrainings() {
                     <TableRow>
                       <TableHead>Training</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Duration</TableHead>
+                      <TableHead>Requirement Source</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {missingTrainings.map((training) => (
+                    {requiredTrainings.map((training) => (
                       <TableRow key={training.id}>
                         <TableCell>
                           <div>
@@ -161,7 +179,11 @@ export default function RequiredTrainings() {
                         <TableCell>
                           <Badge variant="outline">{training.category}</Badge>
                         </TableCell>
-                        <TableCell>{training.durationHours || "N/A"} hours</TableCell>
+                        <TableCell>
+                          <Badge variant={training.source === 'County' ? 'secondary' : 'outline'}>
+                            {training.source}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline">
                             <FileText className="mr-1 h-4 w-4" />
@@ -170,7 +192,7 @@ export default function RequiredTrainings() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {missingTrainings.length === 0 && (
+                    {requiredTrainings.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-4">
                           No additional trainings required
