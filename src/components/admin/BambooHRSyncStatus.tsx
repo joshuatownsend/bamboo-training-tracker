@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +73,8 @@ export function BambooHRSyncStatus() {
             toast({
               title: "Sync Complete",
               description: "BambooHR data has been successfully synchronized.",
-              variant: "success"
+              variant: "default",
+              className: "bg-green-50 border-green-200 text-green-800"
             });
           } else if (currentStatus === 'error') {
             toast({
@@ -94,7 +94,8 @@ export function BambooHRSyncStatus() {
           toast({
             title: "Sync Timeout",
             description: "The sync process is taking longer than expected. You can check back later.",
-            variant: "warning"
+            variant: "default",
+            className: "bg-yellow-50 border-yellow-200 text-yellow-800"
           });
         }
       }, 120000); // 2 minutes
