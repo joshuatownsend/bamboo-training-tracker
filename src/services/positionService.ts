@@ -13,9 +13,14 @@ export async function fetchPositions(): Promise<Position[]> {
   }
   
   return data.map(position => ({
-    ...position,
+    id: position.id,
+    title: position.title,
+    description: position.description || "",
+    department: position.department || "",
     countyRequirements: position.county_requirements || [],
-    avfrdRequirements: position.avfrd_requirements || []
+    avfrdRequirements: position.avfrd_requirements || [],
+    created_at: position.created_at,
+    updated_at: position.updated_at
   })) as Position[];
 }
 
@@ -33,7 +38,17 @@ export async function createPosition(position: Position): Promise<Position> {
     .single();
   
   if (error) throw error;
-  return data as Position;
+  
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description || "",
+    department: data.department || "",
+    countyRequirements: data.county_requirements || [],
+    avfrdRequirements: data.avfrd_requirements || [],
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  } as Position;
 }
 
 export async function updatePosition(position: Position): Promise<Position> {
@@ -51,7 +66,17 @@ export async function updatePosition(position: Position): Promise<Position> {
     .single();
   
   if (error) throw error;
-  return data as Position;
+  
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description || "",
+    department: data.department || "",
+    countyRequirements: data.county_requirements || [],
+    avfrdRequirements: data.avfrd_requirements || [],
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  } as Position;
 }
 
 export async function deletePosition(id: string): Promise<string> {
