@@ -11,6 +11,7 @@ import {
   Users,
   AlertCircle,
   FileChartLine,
+  Briefcase
 } from "lucide-react";
 import { NavSection } from './types';
 
@@ -82,6 +83,12 @@ export const navigationSections: NavSection[] = [
         name: "Position Management",
         href: "/position-management",
         icon: Users,
+        admin: true,
+      },
+      {
+        name: "Training Requirements",
+        href: "/training-requirement-management",
+        icon: Briefcase,
         admin: true,
       },
       {

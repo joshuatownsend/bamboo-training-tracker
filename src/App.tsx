@@ -24,6 +24,7 @@ import QualificationsReport from './pages/reports/QualificationsReport';
 import EligibilityReport from './pages/reports/EligibilityReport';
 import RequirementsReport from './pages/reports/RequirementsReport';
 import ComplianceReport from './pages/reports/ComplianceReport';
+import TrainingRequirementManagement from './pages/TrainingRequirementManagement';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
             
             {/* Admin-only section */}
             <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
+            <Route path="/training-requirement-management" element={<AuthGuard><TrainingRequirementManagement /></AuthGuard>} />
           </Route>
         </Routes>
         <Toaster />
