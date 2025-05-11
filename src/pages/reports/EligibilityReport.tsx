@@ -165,29 +165,33 @@ export default function EligibilityReport() {
           ) : (
             <>
               <div className="flex flex-col gap-4 sm:flex-row">
-                <Select value={selectedPosition} onValueChange={setSelectedPosition} className="flex-1">
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positions.map(position => (
-                      <SelectItem key={position.id} value={position.id}>
-                        {position.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <Select value={selectedPosition} onValueChange={setSelectedPosition}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {positions.map(position => (
+                        <SelectItem key={position.id} value={position.id}>
+                          {position.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 
-                <Select value={requirementType} onValueChange={(value) => setRequirementType(value as "county" | "avfrd" | "both")}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Requirement type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="county">County Requirements</SelectItem>
-                    <SelectItem value="avfrd">AVFRD Requirements</SelectItem>
-                    <SelectItem value="both">Both Requirements</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="w-full sm:w-[200px]">
+                  <Select value={requirementType} onValueChange={(value) => setRequirementType(value as "county" | "avfrd" | "both")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Requirement type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="county">County Requirements</SelectItem>
+                      <SelectItem value="avfrd">AVFRD Requirements</SelectItem>
+                      <SelectItem value="both">Both Requirements</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </>
           )}
