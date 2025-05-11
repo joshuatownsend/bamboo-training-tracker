@@ -23,7 +23,9 @@ const WelcomeMessages: React.FC = () => {
   }
 
   // Only render non-empty messages
-  const validMessages = Array.isArray(messages) ? messages.filter(msg => msg && msg.trim() !== '') : [];
+  const validMessages = Array.isArray(messages) 
+    ? messages.filter(msg => msg && msg.trim() !== '') 
+    : [];
   
   if (validMessages.length === 0) {
     return null;

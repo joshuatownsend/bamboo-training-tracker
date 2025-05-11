@@ -14,6 +14,7 @@ interface WelcomeMessagesContextType {
   messages: string[];
   isLoading: boolean;
   saveMessages: (messages: string[]) => Promise<void>;
+  refreshMessages: () => Promise<void>;
 }
 
 const WelcomeMessagesContext = createContext<WelcomeMessagesContextType | undefined>(undefined);
@@ -53,11 +54,8 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         console.log("No welcome messages found in the database");
         setMessages([]);
       } else {
-        // Extract just the message texts and filter out any null messages
-        const messageTexts = data
-          .map((item: Message) => item.message)
-          .filter((message: string) => message !== null);
-          
+        // Extract just the message texts and include empty messages as well
+        const messageTexts = data.map((item: Message) => item.message);
         console.log("Processed message texts:", messageTexts);
         setMessages(messageTexts);
       }
@@ -68,15 +66,34 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
     }
   };
 
+  const refreshMessages = async () => {
+    console.log("Manually refreshing welcome messages");
+    await fetchMessages();
+    toast({
+      title: "Messages refreshed",
+      description: "Welcome messages have been refreshed from the database."
+    });
+  };
+
   const saveMessages = async (newMessages: string[]) => {
     setIsLoading(true);
     try {
       console.log("Saving welcome messages:", newMessages);
       
+      // First, ensure we have exactly 3 messages to save (pad with empty strings if needed)
+      const messagesToSave = [...newMessages];
+      while (messagesToSave.length < 3) {
+        messagesToSave.push('');
+      }
+      
+      // Limit to 3 messages if more were provided
+      const finalMessages = messagesToSave.slice(0, 3);
+      console.log("Final messages to save:", finalMessages);
+      
       // Use the RPC function to update messages
       const { data, error } = await supabase.rpc(
         'update_welcome_messages',
-        { messages: newMessages }
+        { messages: finalMessages }
       );
 
       if (error) {
@@ -92,7 +109,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       console.log("Save response:", data);
       
       // Update the local state with the messages
-      setMessages(newMessages);
+      setMessages(finalMessages);
       
       toast({
         title: "Messages saved",
@@ -114,7 +131,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   return (
-    <WelcomeMessagesContext.Provider value={{ messages, isLoading, saveMessages }}>
+    <WelcomeMessagesContext.Provider value={{ messages, isLoading, saveMessages, refreshMessages }}>
       {children}
     </WelcomeMessagesContext.Provider>
   );

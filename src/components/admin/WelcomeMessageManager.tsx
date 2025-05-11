@@ -1,13 +1,14 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useWelcomeMessages } from "@/contexts/WelcomeMessagesContext";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Save, Plus, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Trash2, Save, Plus, Loader2, RefreshCw } from "lucide-react";
 
 const WelcomeMessageManager: React.FC = () => {
-  const { messages, isLoading, saveMessages } = useWelcomeMessages();
+  const { messages, isLoading, saveMessages, refreshMessages } = useWelcomeMessages();
   const [editedMessages, setEditedMessages] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -18,11 +19,17 @@ const WelcomeMessageManager: React.FC = () => {
   useEffect(() => {
     console.log("Effect triggered with messages:", messages);
     
-    if (messages && messages.length > 0) {
-      console.log("Setting edited messages from context:", messages);
-      setEditedMessages([...messages]);
+    if (messages && Array.isArray(messages)) {
+      // Always ensure we have at least one message slot
+      if (messages.length === 0) {
+        console.log("No messages in context, initializing with empty message");
+        setEditedMessages(['']);
+      } else {
+        console.log("Setting edited messages from context:", messages);
+        setEditedMessages([...messages]);
+      }
     } else {
-      console.log("No messages in context, initializing with empty message");
+      console.log("Invalid messages format, initializing with empty message");
       setEditedMessages(['']);
     }
   }, [messages]);
@@ -30,17 +37,16 @@ const WelcomeMessageManager: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Filter out empty messages before saving
-      const messagesToSave = editedMessages.filter(msg => msg.trim() !== '');
-      console.log("Saving filtered messages:", messagesToSave);
+      // Filter out completely empty messages at the end
+      let messagesToSave = [...editedMessages];
       
+      // Ensure we always have at least one message slot
       if (messagesToSave.length === 0) {
-        // If all messages are empty, save at least one empty message
-        await saveMessages(['']);
-      } else {
-        await saveMessages(messagesToSave);
+        messagesToSave = [''];
       }
       
+      console.log("Saving messages:", messagesToSave);
+      await saveMessages(messagesToSave);
       console.log("Messages saved successfully");
     } catch (error) {
       console.error("Error saving messages:", error);
@@ -79,11 +85,19 @@ const WelcomeMessageManager: React.FC = () => {
     setEditedMessages([...editedMessages, ""]);
   };
 
+  const handleRefresh = async () => {
+    try {
+      await refreshMessages();
+    } catch (error) {
+      console.error("Error refreshing messages:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        <span className="ml-3 text-gray-500">Loading messages...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500 mr-2" />
+        <span className="text-gray-500">Loading messages...</span>
       </div>
     );
   }
@@ -96,7 +110,7 @@ const WelcomeMessageManager: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => window.location.reload()}
+            onClick={handleRefresh}
             title="Refresh messages from the database"
             className="mr-2"
           >
