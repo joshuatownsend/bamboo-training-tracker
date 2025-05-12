@@ -338,6 +338,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_admin_access: {
+        Args: { admin_email: string }
+        Returns: boolean
+      }
       sync_bamboohr_trainings: {
         Args: Record<PropertyKey, never>
         Returns: Json

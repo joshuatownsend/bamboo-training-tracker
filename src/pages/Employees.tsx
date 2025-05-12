@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -7,7 +8,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Search, RefreshCw, AlertTriangle, Wrench, Stethoscope } from "lucide-react";
+import { Search, RefreshCw, AlertTriangle, Wrench, Stethoscope, Database } from "lucide-react";
 import EmployeeTable from "@/components/employees/EmployeeTable";
 import { useState, useEffect } from "react";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -16,9 +17,7 @@ import { Link } from "react-router-dom";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
-
-// Import our new enhanced employee data hook
-import useEnhancedEmployeeData from "@/hooks/useEnhancedEmployeeData";
+import { useEmployeesCache } from "@/hooks/cache/useEmployeesCache";
 
 // Import mock data for fallback only when absolutely necessary
 import { employees as mockEmployees, trainings as mockTrainings, trainingCompletions as mockCompletions } from "@/lib/data";
@@ -32,77 +31,77 @@ const Employees = () => {
   // Check if BambooHR is configured
   const { isConfigured } = useBambooHR();
   
-  // Get trainings and completions from cache (still use this for now)
+  // Get trainings and completions from cache
   const { 
     trainings: cachedTrainings,
     completions: cachedCompletions,
     isTrainingsLoading,
     isCompletionsLoading,
     syncStatus,
+    refetchAll,
   } = useEmployeeCache();
   
-  // Use our new enhanced employee data hook
+  // Get employees directly from the employee_mappings table
   const {
-    employees,
-    isLoading: isEmployeesLoading,
-    error: employeeError,
-    refetch: refetchEmployees,
-    triggerSync,
-    lastSync
-  } = useEnhancedEmployeeData();
+    data: mappedEmployees,
+    isLoading: isMappedEmployeesLoading,
+    error: mappedEmployeesError,
+    refetch: refetchMappedEmployees,
+  } = useEmployeesCache();
   
-  // Use direct BambooHR API as a fallback
+  // Use direct BambooHR API as a fallback only
   const { useAllData } = useBambooHR();
-  const { data: directApiData, isLoading: isDirectApiLoading, error: directApiError, refetch: refetchDirectApi } = useAllData();
+  const { 
+    data: directApiData, 
+    isLoading: isDirectApiLoading, 
+    error: directApiError 
+  } = useAllData();
   
   // Debug logging
   useEffect(() => {
     console.log('Employees page - BambooHR configured:', isConfigured);
-    console.log('Employees page - Enhanced employees loaded:', employees?.length > 0 ? 'Yes' : 'No');
+    console.log('Employees page - Mapped employees loaded:', mappedEmployees?.length > 0 ? 'Yes' : 'No');
     console.log('Employees page - Trainings cache available:', cachedTrainings?.length > 0 ? 'Yes' : 'No');
-    console.log('Direct BambooHR API data loaded:', directApiData ? 'Yes' : 'No');
     
-    if (directApiData) {
-      console.log(`Direct API: Employees: ${directApiData.employees?.length || 0}, Trainings: ${directApiData.trainings?.length || 0}, Completions: ${directApiData.completions?.length || 0}`);
-    }
-    
-    if (employees) {
-      console.log(`Enhanced employees: ${employees.length}`);
+    if (mappedEmployees?.length > 0) {
+      console.log(`Found ${mappedEmployees.length} employees in employee_mappings table`);
     }
     
     // Set loading message based on state
-    if (isEmployeesLoading || isTrainingsLoading || isCompletionsLoading || isDirectApiLoading) {
+    if (isMappedEmployeesLoading || isTrainingsLoading || isCompletionsLoading) {
       setLoadingMessage("Loading employee data...");
     } else {
       setLoadingMessage(null);
     }
     
   }, [
-    employees, 
+    mappedEmployees, 
     isConfigured, 
-    isEmployeesLoading, 
+    isMappedEmployeesLoading, 
     isTrainingsLoading, 
     isCompletionsLoading, 
-    isDirectApiLoading, 
-    directApiData,
     cachedTrainings
   ]);
   
-  // Determine which employees to use (prioritize enhanced data over others)
-  const employeesData: Employee[] = (employees && employees.length > 0) 
-    ? employees
-    : (cachedTrainings && cachedTrainings.length > 0) 
-      ? [] // If we have cached trainings but no enhanced employees, use empty array as we're waiting for enhanced data
-      : (!isConfigured || directApiError) ? mockEmployees : (directApiData?.employees || []);
+  // Determine which employees to use (prioritize mapped data)
+  const employeesData: Employee[] = (mappedEmployees && mappedEmployees.length > 0) 
+    ? mappedEmployees
+    : (!isConfigured || directApiError) 
+      ? mockEmployees 
+      : (directApiData?.employees || []);
     
-  // For trainings and completions, continue using cache or direct API for now
+  // For trainings and completions, use cache or direct API
   const trainingsData: Training[] = (cachedTrainings && cachedTrainings.length > 0) 
     ? cachedTrainings
-    : (!isConfigured || directApiError) ? mockTrainings : (directApiData?.trainings || []);
+    : (!isConfigured || directApiError) 
+      ? mockTrainings 
+      : (directApiData?.trainings || []);
     
   const completionsData: TrainingCompletion[] = (cachedCompletions && cachedCompletions.length > 0) 
     ? cachedCompletions
-    : (!isConfigured || directApiError) ? mockCompletions : (directApiData?.completions || []);
+    : (!isConfigured || directApiError) 
+      ? mockCompletions 
+      : (directApiData?.completions || []);
   
   // Get unique divisions for filter
   const divisions = [...new Set(employeesData?.filter(Boolean).map(e => e.division).filter(Boolean))];
@@ -130,16 +129,16 @@ const Employees = () => {
     console.log('Manually refreshing employee data');
     setLoadingMessage("Refreshing data...");
     
-    // Trigger the enhanced employee sync
-    triggerSync().then(() => {
-      setTimeout(() => {
-        refetchEmployees();
-        setLoadingMessage(null);
-        toast({
-          title: "Refresh complete",
-          description: "Employee data has been refreshed"
-        });
-      }, 1000);
+    // Refresh both employees and training data
+    Promise.all([
+      refetchMappedEmployees(),
+      refetchAll()
+    ]).then(() => {
+      setLoadingMessage(null);
+      toast({
+        title: "Refresh complete",
+        description: "Employee data has been refreshed"
+      });
     }).catch((error) => {
       console.error("Error refreshing data:", error);
       toast({
@@ -151,21 +150,23 @@ const Employees = () => {
     });
   };
 
-  // Check if we're using enhanced employee data
-  const usingEnhancedData = employees && employees.length > 0;
+  // Check if we're using data from employee_mappings table
+  const usingMappedData = mappedEmployees && mappedEmployees.length > 0;
   
   // Check if we're actually using mock data despite having BambooHR configured
   const usingMockDataDespiteConfig = isConfigured && 
-    !usingEnhancedData && 
+    !usingMappedData && 
     (!directApiData?.employees || directApiData.employees.length === 0);
   
-  // Check if we received partial data due to errors from direct API
-  const hasPartialData = directApiData && 'partialData' in directApiData ? directApiData.partialData === true : false;
+  const isLoading = isMappedEmployeesLoading || isTrainingsLoading || isCompletionsLoading;
   
-  const isLoading = isEmployeesLoading || isTrainingsLoading || isCompletionsLoading || isDirectApiLoading;
+  // Get the appropriate error
+  const error = mappedEmployeesError || directApiError;
   
-  // Get the error to display (prioritize enhanced data error)
-  const error = employeeError || directApiError;
+  // Get the last sync time
+  const lastSyncTime = usingMappedData && mappedEmployees && mappedEmployees.length > 0 
+    ? mappedEmployees[0].lastSync 
+    : null;
   
   console.log('Rendering Employees page with filtered employees count:', filteredEmployees.length);
   
@@ -190,17 +191,19 @@ const Employees = () => {
         </div>
       )}
       
-      {usingEnhancedData && lastSync && (
+      {usingMappedData && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md mb-4 flex items-center justify-between">
           <div className="flex items-center">
-            <Stethoscope className="h-5 w-5 mr-2" />
+            <Database className="h-5 w-5 mr-2" />
             <div>
               <p className="text-sm font-medium">
-                Using enhanced employee data from BambooHR
+                Using employee data from database
               </p>
-              <p className="text-sm">
-                {`Last synced ${new Date(lastSync).toLocaleString()}`}
-              </p>
+              {lastSyncTime && (
+                <p className="text-sm">
+                  Last synced {new Date(lastSyncTime).toLocaleString()}
+                </p>
+              )}
             </div>
           </div>
           <Button asChild variant="outline" size="sm" className="bg-blue-100">
@@ -227,44 +230,16 @@ const Employees = () => {
             <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium">
-                BambooHR is configured, but no employee data was returned.
+                BambooHR is configured, but no employee data was found in the database.
               </p>
               <p className="text-sm mt-1">
-                Try clicking the Refresh button to sync employee data from BambooHR.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button variant="outline" size="sm" className="bg-amber-100" onClick={handleRefresh}>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Sync Now
-                </Button>
-                <Button asChild variant="outline" size="sm" className="bg-amber-100">
-                  <Link to="/bamboo-diagnostics" className="text-amber-800">
-                    <Stethoscope className="h-4 w-4 mr-1" />
-                    API Diagnostics
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {hasPartialData && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md mb-4">
-          <div className="flex items-start">
-            <AlertTriangle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium">
-                Some BambooHR data could not be retrieved
-              </p>
-              <p className="text-sm mt-1">
-                {directApiData && 'error' in directApiData ? directApiData.error : "Some API endpoints may be unavailable or timed out."}
+                Visit the Admin Settings page to sync employee data from BambooHR.
               </p>
               <div className="mt-3 flex gap-2">
                 <Button asChild variant="outline" size="sm" className="bg-amber-100">
-                  <Link to="/bamboo-diagnostics" className="text-amber-800">
+                  <Link to="/admin-settings" className="text-amber-800">
                     <Stethoscope className="h-4 w-4 mr-1" />
-                    Diagnose API Issues
+                    Admin Settings
                   </Link>
                 </Button>
               </div>
@@ -285,15 +260,10 @@ const Employees = () => {
                 {error instanceof Error ? error.message : String(error)}
               </p>
               <div className="mt-3 flex gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/bamboo-troubleshooting" className="text-red-800">
-                    Troubleshoot Connection
-                  </Link>
-                </Button>
                 <Button asChild variant="outline" size="sm" className="bg-red-100">
                   <Link to="/bamboo-diagnostics" className="text-red-800">
                     <Wrench className="h-4 w-4 mr-1" />
-                    Advanced Diagnostics
+                    API Diagnostics
                   </Link>
                 </Button>
               </div>

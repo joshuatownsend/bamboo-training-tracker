@@ -13,15 +13,15 @@ export function useEmployeesCache() {
   return useQuery({
     queryKey: ['cached', 'employees'],
     queryFn: async () => {
-      console.log("Fetching cached employees from Supabase");
+      console.log("Fetching employees from employee_mappings table");
       
       const { data, error } = await supabase
-        .from('cached_employees')
+        .from('employee_mappings')
         .select('*')
         .order('name');
       
       if (error) {
-        console.error("Error fetching cached employees:", error);
+        console.error("Error fetching employee mappings:", error);
         toast({
           title: "Error fetching employees",
           description: error.message,
@@ -30,12 +30,12 @@ export function useEmployeesCache() {
         return [];
       }
       
-      console.log(`Fetched ${data.length} cached employees`);
+      console.log(`Fetched ${data.length} employees from mappings table`);
       
       // Map Supabase data to our Employee type
       return data.map((emp): Employee => ({
-        id: emp.id,
-        name: emp.name,
+        id: emp.bamboo_employee_id,
+        name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || 'Unknown',
         displayName: emp.display_name,
         firstName: emp.first_name,
         lastName: emp.last_name,

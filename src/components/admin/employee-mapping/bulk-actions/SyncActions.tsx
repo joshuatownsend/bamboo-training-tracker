@@ -31,6 +31,10 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
       }
 
       console.log("Admin user authenticated, triggering sync");
+      toast({
+        title: "Sync started",
+        description: "Employee sync has been initiated. This may take a minute...",
+      });
       
       // Call the enhanced sync edge function with admin header
       const response = await supabase.functions.invoke('sync-employee-mappings', {
