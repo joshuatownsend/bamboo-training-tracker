@@ -69,8 +69,10 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
     setManualSyncLoading(true);
     
     try {
-      // Get the result as a boolean value and check it directly
+      // Call the triggerSync function from useBambooSync hook
+      console.log("Initiating manual BambooHR sync...");
       const result = await triggerSync();
+      console.log("Manual sync result:", result);
       
       if (result) {
         toast({
