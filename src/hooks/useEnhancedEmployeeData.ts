@@ -70,13 +70,13 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
         department: mapping.department || null,
         division: mapping.division || null,
         email: mapping.email,
-        work_email: mapping.work_email || mapping.email,
-        display_name: mapping.display_name || mapping.name || null,
-        first_name: mapping.first_name || null,
-        last_name: mapping.last_name || null,
-        job_title: mapping.job_title || mapping.position || null,
+        workEmail: mapping.work_email || mapping.email,
+        displayName: mapping.display_name || mapping.name || null,
+        firstName: mapping.first_name || null,
+        lastName: mapping.last_name || null,
+        jobTitle: mapping.job_title || mapping.position || null,
         avatar: mapping.avatar || null,
-        hire_date: mapping.hire_date || null
+        hireDate: mapping.hire_date || null
       }));
 
       setEmployees(mappedEmployees);

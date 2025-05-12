@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -114,8 +113,8 @@ const Employees = () => {
     
     // Normalize data and search query for case-insensitive search
     const searchQueryLower = searchQuery.toLowerCase();
-    const employeeName = employee.name || employee.display_name || ''; 
-    const employeePosition = employee.position || employee.job_title || ''; 
+    const employeeName = employee.name || employee.displayName || ''; 
+    const employeePosition = employee.position || employee.jobTitle || ''; 
     
     const matchesSearch = searchQuery === '' || 
       employeeName.toLowerCase().includes(searchQueryLower) ||
