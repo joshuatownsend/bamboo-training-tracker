@@ -21,7 +21,7 @@ export const ConnectionStatus = ({ connectionStatus, setConnectionStatus }: Conn
     
     try {
       // Check if the BambooHR service is properly instantiated
-      const isConfigured = bambooHR.isConfigured();
+      const isConfigured = bambooHR.isConfigured;
       
       if (!isConfigured) {
         setConnectionStatus({
