@@ -226,12 +226,24 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
             },
           });
           
+          // Handle 404 errors gracefully - this is expected for employees with no training records
+          if (completionsResponse.status === 404) {
+            console.log(`No training records found for employee ${employee.id} (404 response)`);
+            return [];
+          }
+          
           if (!completionsResponse.ok) {
             console.warn(`Failed to fetch completions for employee ${employee.id}: ${completionsResponse.status}`);
             return [];
           }
           
           const completionsData = await completionsResponse.json();
+          
+          // Handle empty responses or API specific error responses
+          if (!completionsData || (typeof completionsData === 'object' && 'error' in completionsData)) {
+            console.warn(`Invalid or error response for employee ${employee.id}:`, completionsData);
+            return [];
+          }
           
           // Convert object to array if needed
           let completionsArray = completionsData;
