@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useBambooSync } from "@/hooks/cache/useBambooSync";
 import { supabase } from "@/integrations/supabase/client";
+import { Employee, Training, TrainingCompletion } from "@/lib/types";
+import { CachedEmployee, CachedTraining, CachedCompletion } from "@/types/bamboo";
 
 // Import refactored components
 import { 
@@ -62,6 +64,51 @@ export function BambooHRSyncStatus() {
   React.useEffect(() => {
     refetchAll();
   }, []);
+  
+  // Convert data types for the components
+  const mappedEmployees: CachedEmployee[] = React.useMemo(() => {
+    return employees.map(emp => ({
+      id: emp.id,
+      name: emp.name,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      department: emp.department,
+      email: emp.email,
+      position: emp.position,
+      jobTitle: emp.jobTitle,
+      division: emp.division,
+      workEmail: emp.workEmail,
+      displayName: emp.displayName,
+      avatar: emp.avatar,
+      hireDate: emp.hireDate
+    }));
+  }, [employees]);
+
+  const mappedTrainings: CachedTraining[] = React.useMemo(() => {
+    return trainings.map(train => ({
+      id: train.id,
+      title: train.title,
+      name: train.title,
+      type: train.type,
+      category: train.category,
+      description: train.description,
+      duration_hours: train.durationHours,
+      required_for: train.requiredFor
+    }));
+  }, [trainings]);
+
+  const mappedCompletions: CachedCompletion[] = React.useMemo(() => {
+    return completions.map(comp => ({
+      id: comp.id,
+      employee_id: comp.employeeId,
+      training_id: comp.trainingId,
+      completionDate: comp.completionDate,
+      expirationDate: comp.expirationDate,
+      status: comp.status as string,
+      score: comp.score,
+      certificateUrl: comp.certificateUrl
+    }));
+  }, [completions]);
   
   const handleRefresh = async () => {
     setLastRefreshTime(Date.now());
@@ -197,9 +244,9 @@ export function BambooHRSyncStatus() {
             />
             
             <CachedDataSummary 
-              employees={employees}
-              trainings={trainings}
-              completions={completions}
+              employees={mappedEmployees}
+              trainings={mappedTrainings}
+              completions={mappedCompletions}
               isEmployeesLoading={isEmployeesLoading}
               isTrainingsLoading={isTrainingsLoading}
               isCompletionsLoading={isCompletionsLoading}
