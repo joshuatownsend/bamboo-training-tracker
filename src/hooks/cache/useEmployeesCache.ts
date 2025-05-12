@@ -46,7 +46,8 @@ export function useEmployeesCache() {
         email: emp.email,
         workEmail: emp.work_email,
         avatar: emp.avatar,
-        hireDate: emp.hire_date
+        hireDate: emp.hire_date,
+        lastSync: emp.last_sync
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

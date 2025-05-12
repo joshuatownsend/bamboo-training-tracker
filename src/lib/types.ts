@@ -14,6 +14,9 @@ export interface Employee {
   lastName?: string;
   jobTitle?: string;
   workEmail?: string;
+  
+  // Add the lastSync property to fix the TypeScript error
+  lastSync?: string | null;
 }
 
 export interface Training {
