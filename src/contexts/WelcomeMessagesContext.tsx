@@ -50,6 +50,13 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       console.log("[WelcomeMessagesContext] Raw database response:", messagesData);
       
       if (error) {
+        // Don't display error toast for permission issues
+        if (error.code === 'PGRST116') {
+          console.log("[WelcomeMessagesContext] User doesn't have permission to access welcome messages");
+          setMessages([]);
+          return;
+        }
+        
         console.error("[WelcomeMessagesContext] Error fetching messages:", error);
         setError(error.message);
         return;
@@ -115,6 +122,17 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       );
 
       if (error) {
+        // Handle permission issues gracefully
+        if (error.code === 'PGRST116') {
+          console.log("[WelcomeMessagesContext] User doesn't have permission to save welcome messages");
+          toast({
+            title: "Permission denied",
+            description: "You don't have permission to update welcome messages.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         console.error("[WelcomeMessagesContext] Error saving messages:", error);
         setError(error.message);
         toast({

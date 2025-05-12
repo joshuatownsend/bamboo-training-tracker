@@ -27,17 +27,14 @@ export function useSyncStatus() {
           .single();
         
         if (error) {
-          console.error("Error fetching sync status:", error);
-          
-          // If the error is related to permissions, show a toast
+          // If the error is related to permissions, we'll handle it silently
+          // This prevents showing error toasts to regular users who don't have permissions
           if (error.code === 'PGRST116') {
-            toast({
-              title: "Permission Denied",
-              description: "You don't have permission to access sync status information.",
-              variant: "destructive",
-            });
+            console.log("User doesn't have permission to access sync status - this is normal for non-admin users");
+            return null;
           }
           
+          console.error("Error fetching sync status:", error);
           return null;
         }
         
