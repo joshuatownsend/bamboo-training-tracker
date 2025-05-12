@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { ConnectionStatus } from './ConnectionStatus';
-import { ActionButtons } from './ActionButtons';
+import { BulkActionButtons } from './ActionButtons';
 import { SyncActions } from './SyncActions';
 
 interface BulkActionsProps {
@@ -21,7 +21,7 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
       />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <ActionButtons onRefresh={onRefresh} />
+        <BulkActionButtons onRefresh={onRefresh} />
       </div>
       
       <SyncActions onRefresh={onRefresh} />
