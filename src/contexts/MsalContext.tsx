@@ -9,8 +9,7 @@ import {
 } from '@azure/msal-browser';
 import { msalConfig } from '../lib/authConfig';
 
-// Create the MSAL instance outside the component
-// This ensures it's only created once and properly initialized
+// Create the MSAL instance
 const msalInstance = new PublicClientApplication(msalConfig);
 
 // Initialize MSAL immediately
@@ -82,9 +81,10 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Ensure MSAL is initialized
-        if (!msalInstance.getAllAccounts) {
+        // Check if MSAL is initialized
+        if (!msalInstance.getActiveAccount) {
           console.log("MSAL not fully initialized yet, waiting...");
+          setTimeout(initializeAuth, 100); // Retry after a short delay
           return;
         }
 
@@ -147,4 +147,4 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export default MsalContext;
+export default MsalProvider;

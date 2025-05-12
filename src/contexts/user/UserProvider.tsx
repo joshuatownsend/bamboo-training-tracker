@@ -11,7 +11,7 @@ import { mapAccountToUser } from "../helpers/userMappingHelper";
 import { UserContext } from "./UserContext";
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { instance, activeAccount } = useMsal();
+  const { instance, currentAccount, isAuthenticated } = useMsal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authAttempted, setAuthAttempted] = useState(false);
@@ -31,11 +31,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           setAdminSettings(JSON.parse(event.newValue));
           // If user is already logged in, update their role based on new settings
-          if (activeAccount) {
+          if (currentAccount) {
             // Use async/await with an immediate function execution
             (async () => {
               const updatedUser = await mapAccountToUser(
-                activeAccount, 
+                currentAccount, 
                 JSON.parse(event.newValue), 
                 getEmployeeIdByEmail
               );
@@ -52,7 +52,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [activeAccount, getEmployeeIdByEmail]);
+  }, [currentAccount, getEmployeeIdByEmail]);
 
   // Refresh the employee ID mapping for the current user
   const refreshEmployeeId = async (): Promise<string | null> => {
@@ -78,9 +78,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        if (activeAccount) {
+        if (currentAccount) {
           // We already have an account, convert it to our User type
-          const user = await mapAccountToUser(activeAccount, adminSettings, getEmployeeIdByEmail);
+          const user = await mapAccountToUser(currentAccount, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
           
           // Notify the user of their role (just for demonstration)
@@ -124,7 +124,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchUserData();
-  }, [instance, activeAccount, adminSettings, getEmployeeIdByEmail]);
+  }, [instance, currentAccount, adminSettings, getEmployeeIdByEmail]);
 
   // Interactive login - use popup for better iframe compatibility
   const login = async () => {
