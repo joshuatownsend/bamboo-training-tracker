@@ -7,20 +7,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingState, MessagesList, ErrorDisplay } from "./welcome-messages";
 
 const WelcomeMessages: React.FC = () => {
-  const { messages, isLoading, refreshMessages } = useWelcomeMessages();
+  const { messages, isLoading, error } = useWelcomeMessages();
   
   console.log("[Dashboard WelcomeMessages] Rendering with messages:", messages);
   
-  // Fetch messages on mount to ensure we have the latest data
-  useEffect(() => {
-    console.log("[Dashboard WelcomeMessages] Component mounted, refreshing messages");
-    refreshMessages().catch(err => {
-      console.error("[Dashboard WelcomeMessages] Error refreshing messages:", err);
-    });
-  }, [refreshMessages]);
+  // Removed the automatic refreshMessages call on mount that was causing the infinite loop
 
   if (isLoading) {
     return <LoadingState />;
+  }
+  
+  if (error) {
+    return (
+      <Card className="border-red-300 bg-red-50/50 mb-6">
+        <CardContent className="pt-6">
+          <ErrorDisplay error={error} />
+        </CardContent>
+      </Card>
+    );
   }
 
   // Check if messages is defined and is an array

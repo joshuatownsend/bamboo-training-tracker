@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -13,6 +13,7 @@ interface Message {
 interface WelcomeMessagesContextType {
   messages: string[];
   isLoading: boolean;
+  error: string | null;
   saveMessages: (messages: string[]) => Promise<void>;
   refreshMessages: () => Promise<void>;
 }
@@ -22,14 +23,22 @@ const WelcomeMessagesContext = createContext<WelcomeMessagesContextType | undefi
 export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [messages, setMessages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<number>(0);
 
-  // Load messages from the database on mount
-  useEffect(() => {
-    fetchMessages();
-  }, []);
-
-  const fetchMessages = async () => {
+  // Define fetchMessages as a useCallback to prevent recreating it on every render
+  const fetchMessages = useCallback(async () => {
+    // Prevent multiple rapid fetches
+    const now = Date.now();
+    if (now - lastRefreshed < 5000) { // 5 second cooldown
+      console.log("[WelcomeMessagesContext] Skipping refresh, last refresh was too recent");
+      return;
+    }
+    
+    setLastRefreshed(now);
     setIsLoading(true);
+    setError(null);
+    
     try {
       console.log("[WelcomeMessagesContext] Fetching welcome messages from database");
       
@@ -42,7 +51,8 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       
       if (error) {
         console.error("[WelcomeMessagesContext] Error fetching messages:", error);
-        throw error;
+        setError(error.message);
+        return;
       }
       
       if (!messagesData || messagesData.length === 0) {
@@ -60,15 +70,16 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
       setMessages(validMessages);
     } catch (error) {
       console.error("[WelcomeMessagesContext] Failed to fetch welcome messages:", error);
-      toast({
-        title: "Error loading messages",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive"
-      });
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [lastRefreshed]);
+
+  // Load messages from the database on mount, only once
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
 
   const refreshMessages = async () => {
     console.log("[WelcomeMessagesContext] Manually refreshing welcome messages");
@@ -81,6 +92,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
 
   const saveMessages = async (newMessages: string[]) => {
     setIsLoading(true);
+    setError(null);
     try {
       // Filter out empty messages
       const filteredMessages = newMessages.filter(msg => msg && msg.trim() !== '');
@@ -104,6 +116,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
 
       if (error) {
         console.error("[WelcomeMessagesContext] Error saving messages:", error);
+        setError(error.message);
         toast({
           title: "Error saving messages",
           description: error.message,
@@ -121,11 +134,9 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
         title: "Messages saved",
         description: "Welcome messages have been updated successfully."
       });
-      
-      // Fetch messages again to ensure we have the latest data
-      await fetchMessages();
     } catch (error) {
       console.error("[WelcomeMessagesContext] Failed to save welcome messages:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
       toast({
         title: "Error saving messages",
         description: error instanceof Error ? error.message : "An unknown error occurred",
@@ -137,7 +148,7 @@ export const WelcomeMessagesProvider: React.FC<{ children: ReactNode }> = ({ chi
   };
 
   return (
-    <WelcomeMessagesContext.Provider value={{ messages, isLoading, saveMessages, refreshMessages }}>
+    <WelcomeMessagesContext.Provider value={{ messages, isLoading, error, saveMessages, refreshMessages }}>
       {children}
     </WelcomeMessagesContext.Provider>
   );
