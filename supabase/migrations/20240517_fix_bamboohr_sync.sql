@@ -8,9 +8,13 @@ $$
 This function triggers the BambooHR data sync process by calling the sync-bamboohr-data edge function.
 
 Updates from May 17, 2025:
-- Fixed the trigger_bamboohr_sync function to use extensions.http_post with named parameters
-- Fixed the "input of anonymous composite types is not implemented" error
+- Fixed the sync-bamboohr-data edge function to use proper snake_case column names
+- Changed displayName to display_name
+- Changed firstName to first_name
+- Changed lastName to last_name
+- Changed workEmail to work_email
+- Changed jobTitle to job_title
+- Changed hireDate to hire_date
 - Improved error handling and sync status updates
-- Added proper parameter handling and URL construction for BambooHR API requests
 $$;
 

@@ -124,15 +124,15 @@ serve(async (req) => {
       for (const emp of directoryData.employees) {
         employees.push({
           id: emp.id,
-          firstName: emp.firstName,
-          lastName: emp.lastName,
+          first_name: emp.firstName,
+          last_name: emp.lastName,
           name: `${emp.firstName} ${emp.lastName}`,
           email: emp.workEmail || '',
-          workEmail: emp.workEmail || '',
-          jobTitle: emp.jobTitle || '',
+          work_email: emp.workEmail || '',
+          job_title: emp.jobTitle || '',
           department: emp.department || '',
           division: emp.division || '',
-          displayName: `${emp.firstName} ${emp.lastName}`,
+          display_name: `${emp.firstName} ${emp.lastName}`,
           position: emp.jobTitle || '',
           avatar: emp.photoUrl || ''
         });
@@ -148,23 +148,23 @@ serve(async (req) => {
         const existingEmp = employees.find(e => e.id === reportEmp.id);
         if (existingEmp) {
           // Update with custom report data
-          existingEmp.hireDate = reportEmp.hireDate || existingEmp.hireDate;
+          existingEmp.hire_date = reportEmp.hireDate || existingEmp.hire_date;
           // Add other fields as needed
         } else {
           // Add employee if not in directory
           employees.push({
             id: reportEmp.id,
-            firstName: reportEmp.firstName,
-            lastName: reportEmp.lastName,
+            first_name: reportEmp.firstName,
+            last_name: reportEmp.lastName,
             name: `${reportEmp.firstName} ${reportEmp.lastName}`,
             email: reportEmp.workEmail || '',
-            workEmail: reportEmp.workEmail || '',
-            jobTitle: reportEmp.jobTitle || '',
+            work_email: reportEmp.workEmail || '',
+            job_title: reportEmp.jobTitle || '',
             department: reportEmp.department || '',
             division: reportEmp.division || '',
-            displayName: `${reportEmp.firstName} ${reportEmp.lastName}`,
+            display_name: `${reportEmp.firstName} ${reportEmp.lastName}`,
             position: reportEmp.jobTitle || '',
-            hireDate: reportEmp.hireDate || '',
+            hire_date: reportEmp.hireDate || '',
             avatar: reportEmp.photoUrl || ''
           });
         }
