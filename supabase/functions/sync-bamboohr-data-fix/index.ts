@@ -11,7 +11,18 @@ function logWithTimestamp(message: string) {
   console.log(`[${now.toISOString()}] ${message}`);
 }
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
+  // Handle OPTIONS request for CORS
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
     logWithTimestamp("BambooHR data sync function started");
     
@@ -122,19 +133,19 @@ serve(async (req) => {
     } else {
       logWithTimestamp(`Found ${directoryData.employees.length} employees in directory`);
       
-      // Map directory data
+      // Map directory data - FIXED: Using snake_case field names to match database schema
       for (const emp of directoryData.employees) {
         employees.push({
           id: emp.id,
-          firstName: emp.firstName,
-          lastName: emp.lastName,
+          first_name: emp.firstName,
+          last_name: emp.lastName,
           name: `${emp.firstName} ${emp.lastName}`,
           email: emp.workEmail || '',
-          workEmail: emp.workEmail || '',
-          jobTitle: emp.jobTitle || '',
+          work_email: emp.workEmail || '',
+          job_title: emp.jobTitle || '',
           department: emp.department || '',
           division: emp.division || '',
-          displayName: `${emp.firstName} ${emp.lastName}`,
+          display_name: `${emp.firstName} ${emp.lastName}`,
           position: emp.jobTitle || '',
           avatar: emp.photoUrl || ''
         });
@@ -149,24 +160,24 @@ serve(async (req) => {
       for (const reportEmp of customReportData.employees) {
         const existingEmp = employees.find(e => e.id === reportEmp.id);
         if (existingEmp) {
-          // Update with custom report data
-          existingEmp.hireDate = reportEmp.hireDate || existingEmp.hireDate;
+          // Update with custom report data - FIXED: Using snake_case field names
+          existingEmp.hire_date = reportEmp.hireDate || existingEmp.hire_date;
           // Add other fields as needed
         } else {
-          // Add employee if not in directory
+          // Add employee if not in directory - FIXED: Using snake_case field names
           employees.push({
             id: reportEmp.id,
-            firstName: reportEmp.firstName,
-            lastName: reportEmp.lastName,
+            first_name: reportEmp.firstName,
+            last_name: reportEmp.lastName,
             name: `${reportEmp.firstName} ${reportEmp.lastName}`,
             email: reportEmp.workEmail || '',
-            workEmail: reportEmp.workEmail || '',
-            jobTitle: reportEmp.jobTitle || '',
+            work_email: reportEmp.workEmail || '',
+            job_title: reportEmp.jobTitle || '',
             department: reportEmp.department || '',
             division: reportEmp.division || '',
-            displayName: `${reportEmp.firstName} ${reportEmp.lastName}`,
+            display_name: `${reportEmp.firstName} ${reportEmp.lastName}`,
             position: reportEmp.jobTitle || '',
-            hireDate: reportEmp.hireDate || '',
+            hire_date: reportEmp.hireDate || '',
             avatar: reportEmp.photoUrl || ''
           });
         }
@@ -224,7 +235,7 @@ serve(async (req) => {
         employeesCount: employees.length
       }),
       { 
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200
       }
     );
@@ -260,7 +271,7 @@ serve(async (req) => {
         error: error.message
       }),
       { 
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500
       }
     );

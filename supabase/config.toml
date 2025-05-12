@@ -53,3 +53,6 @@ port = 9000
 
 [functions.sync-bamboohr-data]
 verify_jwt = true
+
+[functions.sync-bamboohr-data-fix]
+verify_jwt = true
