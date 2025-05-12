@@ -211,7 +211,50 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     
     let allCompletions: any[] = [];
     
-    // Process employees in batches to avoid overwhelming the API
+    // Try to get completions from a custom report first (more efficient)
+    try {
+      console.log("Attempting to fetch completions from custom report...");
+      // Fix: URL format for custom reports
+      const customReportUrl = `${baseUrl}/custom_reports/report?id=41`;
+      console.log(`Fetching custom report from: ${customReportUrl}`);
+      
+      const customReportResponse = await fetch(customReportUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Basic ${auth}`
+        }
+      });
+      
+      if (customReportResponse.ok) {
+        const reportData = await customReportResponse.json();
+        if (Array.isArray(reportData) && reportData.length > 0) {
+          console.log(`Found ${reportData.length} training completions in custom report`);
+          allCompletions = reportData.map(record => ({
+            id: `${record.employeeId}-${record.trainingId}`,
+            employee_id: record.employeeId,
+            training_id: record.trainingId,
+            completion_date: record.completedDate,
+            status: 'completed',
+          }));
+          
+          console.log(`Processed ${allCompletions.length} completions from custom report`);
+          return {
+            employees,
+            trainings,
+            completions: allCompletions
+          };
+        } else {
+          console.log("Custom report returned no data or invalid format, falling back to individual requests");
+        }
+      } else {
+        console.log(`Custom report request failed with status ${customReportResponse.status}, falling back to individual requests`);
+      }
+    } catch (reportError) {
+      console.warn("Error fetching custom report:", reportError);
+      console.log("Falling back to individual employee training records...");
+    }
+    
+    // Fallback: Process employees in batches to avoid overwhelming the API
     const batchSize = 5;
     for (let i = 0; i < sampleEmployees.length; i += batchSize) {
       const batch = sampleEmployees.slice(i, i + batchSize);

@@ -1,127 +1,120 @@
 
 import { corsHeaders, logWithTimestamp } from "./utils.ts";
 
-// Define the API request handler function
-export async function handleBambooHRRequest(req: Request, path: string, searchParams: URLSearchParams) {
-  // Check if we have the necessary credentials in the environment
-  const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || searchParams.get("subdomain") || "";
-  const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
+// Function to check if required secrets are properly set
+export async function handleSecretsCheck(req: Request) {
+  const subdomain = Deno.env.get('BAMBOOHR_SUBDOMAIN');
+  const apiKey = Deno.env.get('BAMBOOHR_API_KEY');
   
-  if (!subdomain || !apiKey) {
-    logWithTimestamp(`Missing API credentials: subdomain=${subdomain ? "✓" : "✗"}, apiKey=${apiKey ? "✓" : "✗"}`);
-    return new Response(
-      JSON.stringify({ 
-        error: "Missing BambooHR credentials in environment variables",
-        details: "Please set BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY environment variables",
-        timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: 500 
-      }
-    );
-  }
+  return new Response(
+    JSON.stringify({
+      status: 'available',
+      secrets: {
+        BAMBOOHR_SUBDOMAIN: !!subdomain,
+        BAMBOOHR_API_KEY: !!apiKey,
+      },
+      timestamp: new Date().toISOString()
+    }),
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 200 
+    }
+  );
+}
 
+// Main handler for BambooHR API requests
+export async function handleBambooHRRequest(req: Request, path: string, params: URLSearchParams) {
   try {
-    // Set up the request to BambooHR API
-    const bambooUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}`;
-    const authHeader = `Basic ${btoa(`${apiKey}:x`)}`;
+    // Get credentials from environment
+    const subdomain = params.get('subdomain') || Deno.env.get('BAMBOOHR_SUBDOMAIN');
+    const apiKey = Deno.env.get('BAMBOOHR_API_KEY');
+    
+    // Check if credentials are available
+    if (!subdomain || !apiKey) {
+      logWithTimestamp("Missing BambooHR credentials");
+      return new Response(
+        JSON.stringify({
+          error: "Configuration error",
+          message: "BambooHR credentials not properly configured",
+          missingConfig: {
+            subdomain: !subdomain,
+            apiKey: !apiKey
+          }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 500 
+        }
+      );
+    }
+    
+    // Fix: Fix the URL parameter handling to avoid double-encoding issues
+    // Remove subdomain from params as we'll use it directly in the URL
+    params.delete('subdomain');
+    
+    // Construct the BambooHR API URL
+    // Important: Build query string manually instead of appending params to avoid encoding issues
+    let bambooUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}`;
+    
+    // Add any remaining query parameters
+    const queryParams: string[] = [];
+    params.forEach((value, key) => {
+      queryParams.push(`${key}=${value}`);
+    });
+    
+    if (queryParams.length > 0) {
+      // If the path already contains a query parameter, append with &, otherwise use ?
+      const separator = path.includes('?') ? '&' : '?';
+      bambooUrl += separator + queryParams.join('&');
+    }
     
     logWithTimestamp(`Forwarding request to BambooHR: ${req.method} ${bambooUrl}`);
     
-    // Forward the request to BambooHR
-    const response = await fetch(bambooUrl, {
+    // Forward the request to BambooHR API with proper auth
+    const bambooResponse = await fetch(bambooUrl, {
       method: req.method,
       headers: {
-        "Accept": "application/json",
-        "Authorization": authHeader,
-        // Optionally forward content-type if present
-        ...(req.headers.get("Content-Type") 
-          ? { "Content-Type": req.headers.get("Content-Type")! } 
-          : {})
-      },
-      ...(req.method !== "GET" && req.method !== "HEAD" 
-        ? { body: await req.text() } 
-        : {})
+        'Accept': 'application/json',
+        'Authorization': `Basic ${btoa(apiKey + ':x')}`
+      }
     });
     
-    // Forward the response back to the client
-    const responseBody = await response.text();
-    logWithTimestamp(`BambooHR responded with status: ${response.status}`);
+    // Get the response content
+    let responseBody;
+    const contentType = bambooResponse.headers.get('content-type');
     
-    // For successful responses, just forward the response
-    if (response.ok) {
-      return new Response(responseBody, {
-        status: response.status,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": response.headers.get("Content-Type") || "application/json"
-        }
-      });
+    if (contentType && contentType.includes('application/json')) {
+      responseBody = await bambooResponse.json();
     } else {
-      // For error responses, log the error and forward it
-      logWithTimestamp(`BambooHR API error (${response.status}): ${responseBody}`);
-      return new Response(responseBody, {
-        status: response.status,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": response.headers.get("Content-Type") || "application/json"
-        }
-      });
+      responseBody = await bambooResponse.text();
     }
+    
+    logWithTimestamp(`BambooHR responded with status: ${bambooResponse.status}`);
+    
+    // Return the response from BambooHR
+    return new Response(
+      typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': contentType || 'application/json'
+        }, 
+        status: bambooResponse.status 
+      }
+    );
   } catch (error) {
-    // Handle any network or other errors
-    logWithTimestamp(`Error in handleBambooHRRequest: ${error.message}`);
+    logWithTimestamp(`Error in BambooHR request: ${error.message}`);
+    
     return new Response(
       JSON.stringify({
-        error: "Error forwarding request to BambooHR",
-        message: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString()
+        error: "Failed to process BambooHR request",
+        message: error.message,
+        path: path
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
         status: 500 
       }
-    );
-  }
-}
-
-// Handler for checking if required secrets are set in the edge function
-export async function handleSecretsCheck(req: Request) {
-  try {
-    const subdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN");
-    const apiKey = Deno.env.get("BAMBOOHR_API_KEY");
-    const subdomainLower = Deno.env.get("bamboohr_subdomain");
-    const subdomainUpper = Deno.env.get("BAMBOOHR_SUBDOMAIN_UPPER");
-    
-    // Get all environment keys for debugging
-    const envKeys = Object.keys(Deno.env.toObject());
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        secrets: {
-          BAMBOOHR_SUBDOMAIN: !!subdomain,
-          BAMBOOHR_API_KEY: !!apiKey,
-          // Include alternate casing for debugging
-          bamboohr_subdomain: !!subdomainLower,
-          BAMBOOHR_SUBDOMAIN_UPPER: !!subdomainUpper
-        },
-        allSecretsConfigured: !!subdomain && !!apiKey,
-        environmentKeys: envKeys,
-        timestamp: new Date().toISOString()
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-  } catch (error) {
-    logWithTimestamp(`Error in handleSecretsCheck: ${error.message}`);
-    return new Response(
-      JSON.stringify({
-        error: "Error checking secrets",
-        message: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString()
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 }

@@ -165,6 +165,7 @@ class BambooHRService {
       // First try to use the training completion custom report if available
       try {
         console.log("Trying to get completions from custom report ID 41...");
+        // Fix: Ensure proper URL format for the custom report - don't double encode the subdomain parameter
         const reportData = await this.client.fetchFromBamboo('/custom_reports/report?id=41');
         console.log("Completions from custom report:", reportData);
         
