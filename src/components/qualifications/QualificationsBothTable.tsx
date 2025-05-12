@@ -14,7 +14,7 @@ interface QualificationsBothTableProps {
 export function QualificationsBothTable({ qualifications }: QualificationsBothTableProps) {
   // Filter positions that qualify for both County and AVFRD requirements
   const qualifiedForBoth = qualifications.filter(
-    qualification => qualification.isQualifiedCounty && qualification.isQualifiedAVFRD
+    qualification => qualification.is_qualified_county && qualification.is_qualified_avfrd
   );
   
   return (
@@ -28,9 +28,9 @@ export function QualificationsBothTable({ qualifications }: QualificationsBothTa
       <TableBody>
         {qualifiedForBoth.length > 0 ? (
           qualifiedForBoth.map((qualification) => (
-            <TableRow key={qualification.positionId}>
+            <TableRow key={qualification.position_id}>
               <TableCell className="font-medium">
-                {qualification.positionTitle}
+                {qualification.position_title}
               </TableCell>
               <TableCell>
                 <div className="flex items-center text-green-600">

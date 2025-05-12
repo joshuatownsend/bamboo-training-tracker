@@ -8,9 +8,9 @@ interface QualificationsSummaryCardsProps {
 }
 
 export function QualificationsSummaryCards({ qualifications }: QualificationsSummaryCardsProps) {
-  const countyQualifiedCount = qualifications.filter(q => q.isQualifiedCounty).length;
-  const avfrdQualifiedCount = qualifications.filter(q => q.isQualifiedAVFRD).length;
-  const bothQualifiedCount = qualifications.filter(q => q.isQualifiedCounty && q.isQualifiedAVFRD).length;
+  const countyQualifiedCount = qualifications.filter(q => q.is_qualified_county).length;
+  const avfrdQualifiedCount = qualifications.filter(q => q.is_qualified_avfrd).length;
+  const bothQualifiedCount = qualifications.filter(q => q.is_qualified_county && q.is_qualified_avfrd).length;
   
   return (
     <div className="grid gap-4 md:grid-cols-3">

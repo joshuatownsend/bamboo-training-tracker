@@ -50,12 +50,12 @@ export function EmployeeTable({
           {validEmployees.map((employee) => {
             // Find trainings required for this employee's division
             const requiredTrainings = (trainings || []).filter(t => 
-              t && t.requiredFor?.includes(employee.division || '')
+              t && t.required_for?.includes(employee.division || '')
             );
             
             // Find completions for this employee
             const employeeCompletions = (completions || []).filter(c => 
-              c && c.employeeId === employee.id
+              c && c.employee_id === employee.id
             );
             
             return (

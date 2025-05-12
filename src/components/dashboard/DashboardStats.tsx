@@ -18,18 +18,18 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
       />
       <StatCard
         title="Completed Trainings"
-        value={stats?.completedTrainings || 0}
-        description={`${stats?.completionRate.toFixed(1) || 0}% completion rate`}
+        value={stats?.completed_trainings || 0}
+        description={`${stats?.completion_rate.toFixed(1) || 0}% completion rate`}
         icon={<CheckCircle2 className="h-5 w-5" />}
       />
       <StatCard
         title="Expired Trainings"
-        value={stats?.expiredTrainings || 0}
+        value={stats?.expired_trainings || 0}
         icon={<AlertCircle className="h-5 w-5" />}
       />
       <StatCard
         title="Total Courses"
-        value={stats?.totalTrainings || 0}
+        value={stats?.total_trainings || 0}
         icon={<BookOpen className="h-5 w-5" />}
       />
     </div>

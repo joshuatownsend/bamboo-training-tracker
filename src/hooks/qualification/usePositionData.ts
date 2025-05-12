@@ -27,38 +27,38 @@ export function usePositionData() {
       return data.map(position => {
         // Process county requirements data
         const countyReqs = position.county_requirements;
-        let countyRequirements;
+        let county_requirements;
         
         // Try to parse as JSON if it's not an array but might be a stringified object
         if (typeof countyReqs === 'string') {
           try {
-            countyRequirements = JSON.parse(countyReqs);
+            county_requirements = JSON.parse(countyReqs);
           } catch {
-            countyRequirements = [];
+            county_requirements = [];
           }
         } else {
-          countyRequirements = countyReqs || [];
+          county_requirements = countyReqs || [];
         }
         
         // Process AVFRD requirements data
         const avfrdReqs = position.avfrd_requirements;
-        let avfrdRequirements;
+        let avfrd_requirements;
         
         // Try to parse as JSON if it's not an array but might be a stringified object
         if (typeof avfrdReqs === 'string') {
           try {
-            avfrdRequirements = JSON.parse(avfrdReqs);
+            avfrd_requirements = JSON.parse(avfrdReqs);
           } catch {
-            avfrdRequirements = [];
+            avfrd_requirements = [];
           }
         } else {
-          avfrdRequirements = avfrdReqs || [];
+          avfrd_requirements = avfrdReqs || [];
         }
         
         return {
           ...position,
-          countyRequirements,
-          avfrdRequirements
+          county_requirements,
+          avfrd_requirements
         };
       }) as Position[];
     },

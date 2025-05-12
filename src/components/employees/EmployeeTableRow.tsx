@@ -35,13 +35,13 @@ export function EmployeeTableRow({
   
   // Get name from various possible fields in the employee record
   const employeeName = employee.name || 
-                  employee.displayName || 
-                  `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 
+                  employee.display_name || 
+                  `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 
                   'Unknown';
   
   // Get employee position/title from various possible fields
   const employeePosition = employee.position || 
-                     employee.jobTitle || 
+                     employee.job_title || 
                      'No Position';
 
   // Get initials for avatar
@@ -65,7 +65,7 @@ export function EmployeeTableRow({
           </Avatar>
           <div>
             <div className="font-medium">{employeeName}</div>
-            <div className="text-xs text-muted-foreground">{employee.email || employee.workEmail || 'No Email'}</div>
+            <div className="text-xs text-muted-foreground">{employee.email || employee.work_email || 'No Email'}</div>
           </div>
         </div>
       </TableCell>

@@ -43,20 +43,20 @@ export function EligibleEmployeesTable({
             return (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">
-                  {employee.firstName} {employee.lastName}
+                  {employee.first_name} {employee.last_name}
                 </TableCell>
-                <TableCell>{employee.jobTitle}</TableCell>
+                <TableCell>{employee.job_title}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {requirementType === "county" && 
-                      qualification.missingAVFRDTrainings.map((training) => (
+                      qualification.missing_avfrd_trainings.map((training) => (
                         <Badge key={training.id} variant="outline">
                           {training.title}
                         </Badge>
                       ))
                     }
                     {requirementType === "avfrd" &&
-                      qualification.completedTrainings.slice(0, 3).map((training) => (
+                      qualification.completed_trainings.slice(0, 3).map((training) => (
                         <Badge key={training.id} variant="outline">
                           {training.title}
                         </Badge>
@@ -64,8 +64,8 @@ export function EligibleEmployeesTable({
                     }
                     {requirementType === "both" && (
                       <span>
-                        County: {qualification.isQualifiedCounty ? '✓' : '✗'},
-                        AVFRD: {qualification.isQualifiedAVFRD ? '✓' : '✗'}
+                        County: {qualification.is_qualified_county ? '✓' : '✗'},
+                        AVFRD: {qualification.is_qualified_avfrd ? '✓' : '✗'}
                       </span>
                     )}
                   </div>

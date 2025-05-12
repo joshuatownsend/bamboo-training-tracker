@@ -21,8 +21,8 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
 
   // Helper function to format full name consistently
   const formatFullName = (employee: Employee): string => {
-    if (employee.firstName && employee.lastName) {
-      return `${employee.firstName} ${employee.lastName}`;
+    if (employee.first_name && employee.last_name) {
+      return `${employee.first_name} ${employee.last_name}`;
     }
     return employee.name || "Unknown Name";
   };
@@ -42,7 +42,7 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
           employees.map(employee => (
             <TableRow key={employee.id}>
               <TableCell className="font-medium">{formatFullName(employee)}</TableCell>
-              <TableCell>{employee.jobTitle || "Member"}</TableCell>
+              <TableCell>{employee.job_title || "Member"}</TableCell>
               <TableCell>{employee.division || "Operations"}</TableCell>
               <TableCell>
                 <div className="flex items-center text-green-600">
