@@ -18,6 +18,7 @@ export default function PositionManagement() {
     positionsList,
     dialogOpen,
     selectedTrainings,
+    requirementsStructure,
     trainings,
     isLoading,
     isError,
@@ -28,6 +29,11 @@ export default function PositionManagement() {
     handleDeletePosition,
     handlePositionChange,
     toggleTraining,
+    toggleComplexMode,
+    addRequirementGroup,
+    addTrainingToGroup,
+    removeRequirement,
+    updateXofYCount,
     setDialogOpen
   } = usePositionManagement();
 
@@ -106,10 +112,16 @@ export default function PositionManagement() {
         <PositionForm
           editingPosition={editingPosition}
           selectedTrainings={selectedTrainings}
+          requirementsStructure={requirementsStructure}
           trainings={trainings}
           isLoading={isLoading}
           onPositionChange={handlePositionChange}
           onToggleTraining={toggleTraining}
+          toggleComplexMode={toggleComplexMode}
+          addRequirementGroup={addRequirementGroup}
+          addTrainingToGroup={addTrainingToGroup}
+          removeRequirement={removeRequirement}
+          updateXofYCount={updateXofYCount}
           onSave={handleSavePosition}
           onCancel={() => setDialogOpen(false)}
         />

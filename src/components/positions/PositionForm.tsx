@@ -9,11 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save } from "lucide-react";
-import { Position, Training } from "@/lib/types";
+import { Save, ListPlus, ToggleLeft, ToggleRight } from "lucide-react";
+import { Position, Training, RequirementGroup } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RequirementGroup as RequirementGroupComponent } from "./RequirementGroup";
 
 interface PositionFormProps {
   editingPosition: Position | null;
@@ -21,10 +23,25 @@ interface PositionFormProps {
     county: string[];
     avfrd: string[];
   };
+  requirementsStructure: {
+    county: {
+      isComplex: boolean;
+      structure: RequirementGroup | null;
+    },
+    avfrd: {
+      isComplex: boolean;
+      structure: RequirementGroup | null;
+    }
+  };
   trainings: Training[];
   isLoading: boolean;
   onPositionChange: (field: string, value: string) => void;
   onToggleTraining: (id: string, type: "county" | "avfrd") => void;
+  toggleComplexMode: (type: "county" | "avfrd") => void;
+  addRequirementGroup: (type: "county" | "avfrd", parentPath: number[], logic: "AND" | "OR" | "X_OF_Y", count?: number) => void;
+  addTrainingToGroup: (type: "county" | "avfrd", trainingId: string, groupPath: number[]) => void;
+  removeRequirement: (type: "county" | "avfrd", path: number[]) => void;
+  updateXofYCount: (type: "county" | "avfrd", path: number[], count: number) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -32,19 +49,97 @@ interface PositionFormProps {
 export function PositionForm({
   editingPosition,
   selectedTrainings,
+  requirementsStructure,
   trainings,
   isLoading,
   onPositionChange,
   onToggleTraining,
+  toggleComplexMode,
+  addRequirementGroup,
+  addTrainingToGroup,
+  removeRequirement,
+  updateXofYCount,
   onSave,
   onCancel
 }: PositionFormProps) {
   
   const isCreating = editingPosition?.id.startsWith("new-");
   const hasTrainings = trainings.length > 0;
+  
+  // Simple mode training selection component
+  const SimpleTrainingSelector = ({ type }: { type: "county" | "avfrd" }) => (
+    <div className="border rounded-md p-2 h-60 overflow-y-auto">
+      {isLoading ? (
+        <div className="space-y-2 p-2">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+        </div>
+      ) : !hasTrainings ? (
+        <div className="text-center p-4 text-muted-foreground">
+          No trainings available - please select trainings in Training Requirements
+        </div>
+      ) : (
+        trainings.map((training) => (
+          <div
+            key={training.id}
+            className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
+          >
+            <input
+              type="checkbox"
+              id={`${type}-${training.id}`}
+              checked={selectedTrainings[type].includes(training.id)}
+              onChange={() => onToggleTraining(training.id, type)}
+            />
+            <label
+              htmlFor={`${type}-${training.id}`}
+              className="flex-1 text-sm cursor-pointer"
+            >
+              {training.title}
+            </label>
+          </div>
+        ))
+      )}
+    </div>
+  );
+  
+  // Complex mode requirement builder component
+  const ComplexRequirementBuilder = ({ type }: { type: "county" | "avfrd" }) => {
+    const structure = requirementsStructure[type];
+    
+    if (!structure.isComplex || !structure.structure) {
+      return (
+        <div className="flex flex-col items-center justify-center p-4 border rounded-md">
+          <p className="text-muted-foreground mb-2">No complex requirements defined</p>
+          <Button 
+            onClick={() => addRequirementGroup(type, [], 'AND')} 
+            variant="outline"
+          >
+            <ListPlus className="mr-1 h-4 w-4" />
+            Add Requirement Group
+          </Button>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="border rounded-md p-2 overflow-y-auto" style={{ maxHeight: '400px' }}>
+        <RequirementGroupComponent
+          group={structure.structure}
+          trainings={trainings}
+          groupPath={[]}
+          type={type}
+          addRequirementGroup={addRequirementGroup}
+          addTrainingToGroup={addTrainingToGroup}
+          removeRequirement={removeRequirement}
+          updateXofYCount={updateXofYCount}
+        />
+      </div>
+    );
+  };
 
   return (
-    <DialogContent className="sm:max-w-[700px]">
+    <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>
           {isCreating ? "Create" : "Edit"} Position
@@ -102,81 +197,74 @@ export function PositionForm({
           />
         </div>
         
-        <div className="grid grid-cols-2 gap-6 mt-4">
-          <div>
-            <h4 className="text-sm font-medium mb-2">County Requirements</h4>
-            <div className="border rounded-md p-2 h-60 overflow-y-auto">
-              {isLoading ? (
-                <div className="space-y-2 p-2">
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-6 w-full" />
-                </div>
-              ) : !hasTrainings ? (
-                <div className="text-center p-4 text-muted-foreground">
-                  No trainings available - please select trainings in Training Requirements
-                </div>
-              ) : (
-                trainings.map((training) => (
-                  <div
-                    key={training.id}
-                    className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
-                  >
-                    <input
-                      type="checkbox"
-                      id={`county-${training.id}`}
-                      checked={selectedTrainings.county.includes(training.id)}
-                      onChange={() => onToggleTraining(training.id, "county")}
-                    />
-                    <label
-                      htmlFor={`county-${training.id}`}
-                      className="flex-1 text-sm cursor-pointer"
-                    >
-                      {training.title}
-                    </label>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <Tabs defaultValue="county" className="mt-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="county">County Requirements</TabsTrigger>
+            <TabsTrigger value="avfrd">AVFRD Requirements</TabsTrigger>
+          </TabsList>
           
-          <div>
-            <h4 className="text-sm font-medium mb-2">AVFRD Requirements</h4>
-            <div className="border rounded-md p-2 h-60 overflow-y-auto">
-              {isLoading ? (
-                <div className="space-y-2 p-2">
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-6 w-full" />
-                </div>
-              ) : !hasTrainings ? (
-                <div className="text-center p-4 text-muted-foreground">
-                  No trainings available - please select trainings in Training Requirements
-                </div>
+          <TabsContent value="county">
+            <div className="mt-2 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium">County Requirements</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleComplexMode("county")}
+                >
+                  {requirementsStructure.county.isComplex ? (
+                    <>
+                      <ToggleLeft className="mr-1 h-4 w-4" />
+                      Simple Mode
+                    </>
+                  ) : (
+                    <>
+                      <ToggleRight className="mr-1 h-4 w-4" />
+                      Advanced Mode
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {requirementsStructure.county.isComplex ? (
+                <ComplexRequirementBuilder type="county" />
               ) : (
-                trainings.map((training) => (
-                  <div
-                    key={training.id}
-                    className="flex items-center space-x-2 p-2 hover:bg-muted rounded"
-                  >
-                    <input
-                      type="checkbox"
-                      id={`avfrd-${training.id}`}
-                      checked={selectedTrainings.avfrd.includes(training.id)}
-                      onChange={() => onToggleTraining(training.id, "avfrd")}
-                    />
-                    <label
-                      htmlFor={`avfrd-${training.id}`}
-                      className="flex-1 text-sm cursor-pointer"
-                    >
-                      {training.title}
-                    </label>
-                  </div>
-                ))
+                <SimpleTrainingSelector type="county" />
               )}
             </div>
-          </div>
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="avfrd">
+            <div className="mt-2 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium">AVFRD Requirements</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleComplexMode("avfrd")}
+                >
+                  {requirementsStructure.avfrd.isComplex ? (
+                    <>
+                      <ToggleLeft className="mr-1 h-4 w-4" />
+                      Simple Mode
+                    </>
+                  ) : (
+                    <>
+                      <ToggleRight className="mr-1 h-4 w-4" />
+                      Advanced Mode
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {requirementsStructure.avfrd.isComplex ? (
+                <ComplexRequirementBuilder type="avfrd" />
+              ) : (
+                <SimpleTrainingSelector type="avfrd" />
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
       
       <DialogFooter>

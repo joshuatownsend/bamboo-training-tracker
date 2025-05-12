@@ -59,16 +59,25 @@ export interface TrainingStatistics {
   departmentStats: DepartmentStats[];
 }
 
-// Updated Position interface to match Supabase table structure
+// Updated Position interface to include complex requirement structures
 export interface Position {
   id: string;
   title: string;
   description: string;
   department: string;
-  countyRequirements: string[]; // Training IDs required by Loudoun County
-  avfrdRequirements: string[]; // Training IDs required by AVFRD
+  countyRequirements: string[] | RequirementGroup; // Support both legacy array and new structure
+  avfrdRequirements: string[] | RequirementGroup; // Support both legacy array and new structure
   created_at?: string;
   updated_at?: string;
+}
+
+// New types for complex requirement logic
+export type RequirementLogic = 'AND' | 'OR' | 'X_OF_Y';
+
+export interface RequirementGroup {
+  logic: RequirementLogic;
+  requirements: (string | RequirementGroup)[]; // Can be training IDs or nested groups
+  count?: number; // Used for X_OF_Y logic to specify X
 }
 
 export interface QualificationStatus {

@@ -1,6 +1,19 @@
 
-import { Position } from "@/lib/types";
+import { Position, RequirementGroup } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Helper function to prepare requirements for database storage
+ * If it's an array, keep it as is. If it's a RequirementGroup, stringify as JSON
+ */
+function prepareRequirementsForStorage(requirements: string[] | RequirementGroup) {
+  if (Array.isArray(requirements)) {
+    return requirements;
+  } else {
+    // For complex requirements, store as JSON
+    return requirements;
+  }
+}
 
 export async function fetchPositions(): Promise<Position[]> {
   const { data, error } = await supabase
@@ -12,16 +25,38 @@ export async function fetchPositions(): Promise<Position[]> {
     throw error;
   }
   
-  return data.map(position => ({
-    id: position.id,
-    title: position.title,
-    description: position.description || "",
-    department: position.department || "",
-    countyRequirements: position.county_requirements || [],
-    avfrdRequirements: position.avfrd_requirements || [],
-    created_at: position.created_at,
-    updated_at: position.updated_at
-  })) as Position[];
+  return data.map(position => {
+    // Process county requirements
+    let countyRequirements = position.county_requirements || [];
+    if (typeof countyRequirements === 'string') {
+      try {
+        countyRequirements = JSON.parse(countyRequirements);
+      } catch {
+        countyRequirements = [];
+      }
+    }
+    
+    // Process AVFRD requirements
+    let avfrdRequirements = position.avfrd_requirements || [];
+    if (typeof avfrdRequirements === 'string') {
+      try {
+        avfrdRequirements = JSON.parse(avfrdRequirements);
+      } catch {
+        avfrdRequirements = [];
+      }
+    }
+    
+    return {
+      id: position.id,
+      title: position.title,
+      description: position.description || "",
+      department: position.department || "",
+      countyRequirements,
+      avfrdRequirements,
+      created_at: position.created_at,
+      updated_at: position.updated_at
+    };
+  }) as Position[];
 }
 
 export async function createPosition(position: Position): Promise<Position> {
@@ -31,21 +66,40 @@ export async function createPosition(position: Position): Promise<Position> {
       title: position.title,
       description: position.description || null,
       department: position.department || null,
-      county_requirements: position.countyRequirements,
-      avfrd_requirements: position.avfrdRequirements
+      county_requirements: prepareRequirementsForStorage(position.countyRequirements),
+      avfrd_requirements: prepareRequirementsForStorage(position.avfrdRequirements)
     })
     .select()
     .single();
   
   if (error) throw error;
   
+  // Process the returned data to match our Position type
+  let countyRequirements = data.county_requirements || [];
+  if (typeof countyRequirements === 'string') {
+    try {
+      countyRequirements = JSON.parse(countyRequirements);
+    } catch {
+      countyRequirements = [];
+    }
+  }
+  
+  let avfrdRequirements = data.avfrd_requirements || [];
+  if (typeof avfrdRequirements === 'string') {
+    try {
+      avfrdRequirements = JSON.parse(avfrdRequirements);
+    } catch {
+      avfrdRequirements = [];
+    }
+  }
+  
   return {
     id: data.id,
     title: data.title,
     description: data.description || "",
     department: data.department || "",
-    countyRequirements: data.county_requirements || [],
-    avfrdRequirements: data.avfrd_requirements || [],
+    countyRequirements,
+    avfrdRequirements,
     created_at: data.created_at,
     updated_at: data.updated_at
   } as Position;
@@ -58,8 +112,8 @@ export async function updatePosition(position: Position): Promise<Position> {
       title: position.title,
       description: position.description || null,
       department: position.department || null,
-      county_requirements: position.countyRequirements,
-      avfrd_requirements: position.avfrdRequirements
+      county_requirements: prepareRequirementsForStorage(position.countyRequirements),
+      avfrd_requirements: prepareRequirementsForStorage(position.avfrdRequirements)
     })
     .eq('id', position.id)
     .select()
@@ -67,13 +121,32 @@ export async function updatePosition(position: Position): Promise<Position> {
   
   if (error) throw error;
   
+  // Process the returned data to match our Position type
+  let countyRequirements = data.county_requirements || [];
+  if (typeof countyRequirements === 'string') {
+    try {
+      countyRequirements = JSON.parse(countyRequirements);
+    } catch {
+      countyRequirements = [];
+    }
+  }
+  
+  let avfrdRequirements = data.avfrd_requirements || [];
+  if (typeof avfrdRequirements === 'string') {
+    try {
+      avfrdRequirements = JSON.parse(avfrdRequirements);
+    } catch {
+      avfrdRequirements = [];
+    }
+  }
+  
   return {
     id: data.id,
     title: data.title,
     description: data.description || "",
     department: data.department || "",
-    countyRequirements: data.county_requirements || [],
-    avfrdRequirements: data.avfrd_requirements || [],
+    countyRequirements,
+    avfrdRequirements,
     created_at: data.created_at,
     updated_at: data.updated_at
   } as Position;

@@ -1,6 +1,7 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/contexts/user";
-import { Position } from "@/lib/types";
+import { Position, RequirementGroup } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 
 export function usePositionData() {
@@ -23,11 +24,43 @@ export function usePositionData() {
         throw error;
       }
       
-      return data.map(position => ({
-        ...position,
-        countyRequirements: position.county_requirements || [],
-        avfrdRequirements: position.avfrd_requirements || []
-      })) as Position[];
+      return data.map(position => {
+        // Process county requirements data
+        const countyReqs = position.county_requirements;
+        let countyRequirements;
+        
+        // Try to parse as JSON if it's not an array but might be a stringified object
+        if (typeof countyReqs === 'string') {
+          try {
+            countyRequirements = JSON.parse(countyReqs);
+          } catch {
+            countyRequirements = [];
+          }
+        } else {
+          countyRequirements = countyReqs || [];
+        }
+        
+        // Process AVFRD requirements data
+        const avfrdReqs = position.avfrd_requirements;
+        let avfrdRequirements;
+        
+        // Try to parse as JSON if it's not an array but might be a stringified object
+        if (typeof avfrdReqs === 'string') {
+          try {
+            avfrdRequirements = JSON.parse(avfrdReqs);
+          } catch {
+            avfrdRequirements = [];
+          }
+        } else {
+          avfrdRequirements = avfrdReqs || [];
+        }
+        
+        return {
+          ...position,
+          countyRequirements,
+          avfrdRequirements
+        };
+      }) as Position[];
     },
     enabled: !!currentUser
   });
