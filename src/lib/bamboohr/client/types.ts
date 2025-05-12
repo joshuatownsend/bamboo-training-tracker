@@ -34,4 +34,3 @@ export interface BambooHRClientInterface {
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
 }
-

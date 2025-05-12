@@ -81,17 +81,17 @@ export class DataFetcher extends ConnectionTester {
       return {
         id: emp.id,
         name: emp.displayName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || 'Unknown',
-        displayName: emp.displayName,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
+        display_name: emp.displayName,
+        first_name: emp.firstName,
+        last_name: emp.lastName,
         position: emp.jobTitle?.name || emp.jobTitle || emp.position || 'No Position',
-        jobTitle: emp.jobTitle?.name || emp.jobTitle || emp.position, 
+        job_title: emp.jobTitle?.name || emp.jobTitle || emp.position, 
         department: emp.department?.name || emp.department || 'Unassigned',
         division: emp.division || emp.department?.name || emp.department || 'Unassigned',
         email: emp.email || emp.workEmail || '',
-        workEmail: emp.workEmail || emp.email || '',
+        work_email: emp.workEmail || emp.email || '',
         avatar: emp.photoUrl,
-        hireDate: emp.hireDate || ''
+        hire_date: emp.hireDate || ''
       };
     });
   }
@@ -133,8 +133,8 @@ export class DataFetcher extends ConnectionTester {
       type: training.type || training.id?.toString() || '',
       category: training.category || 'General',
       description: training.description || '',
-      durationHours: parseFloat(training.hours) || 0,
-      requiredFor: training.required ? ['Required'] : [],
+      duration_hours: parseFloat(training.hours) || 0,
+      required_for: training.required ? ['Required'] : [],
     }));
   }
   
@@ -174,9 +174,9 @@ export class DataFetcher extends ConnectionTester {
             
             return {
               ...training,
-              trainingDetails: trainingDetails,
-              completionDate: training.completed || '',
-              trainingId: trainingId
+              training_details: trainingDetails,
+              completion_date: training.completed || '',
+              training_id: trainingId
             };
           });
         } else {
@@ -201,7 +201,7 @@ export class DataFetcher extends ConnectionTester {
           const trainingArray = Object.values(completedTrainings);
           return trainingArray.map((training: any) => ({
             ...training,
-            trainingDetails: this.getTrainingDetailsById(training?.type)
+            training_details: this.getTrainingDetailsById(training?.type)
           }));
         } else {
           console.log("Training completed table returned empty data, trying next alternative");
@@ -225,7 +225,7 @@ export class DataFetcher extends ConnectionTester {
           const certArray = Object.values(certifications);
           return certArray.map((cert: any) => ({
             ...cert,
-            trainingDetails: this.getTrainingDetailsById(cert?.type)
+            training_details: this.getTrainingDetailsById(cert?.type)
           }));
         } else {
           console.log("Certifications table returned empty data");

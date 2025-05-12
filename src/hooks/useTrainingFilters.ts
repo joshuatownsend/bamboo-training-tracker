@@ -6,21 +6,21 @@ import { safeString } from '@/components/training/utils/StringUtils';
 export function useTrainingFilters(userTrainings: UserTraining[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<string>("completionDate");
+  const [sortField, setSortField] = useState<string>("completion_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Get unique categories for filter
   const categories = useMemo(() => [
     ...new Set(
       userTrainings
-        .map((t) => safeString(t.trainingDetails?.category))
+        .map((t) => safeString(t.training_details?.category))
         .filter(Boolean)
     ),
   ], [userTrainings]);
 
   // Calculate statistics
   const categoryCounts = useMemo(() => userTrainings.reduce((acc, training) => {
-    const category = safeString(training.trainingDetails?.category || 'Uncategorized');
+    const category = safeString(training.training_details?.category || 'Uncategorized');
     acc[category] = (acc[category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>), [userTrainings]);
@@ -34,8 +34,8 @@ export function useTrainingFilters(userTrainings: UserTraining[]) {
   // Apply filters
   const filteredTrainings = useMemo(() => userTrainings
     .filter((training) => {
-      const title = safeString(training.trainingDetails?.title).toLowerCase();
-      const description = safeString(training.trainingDetails?.description).toLowerCase();
+      const title = safeString(training.training_details?.title).toLowerCase();
+      const description = safeString(training.training_details?.description).toLowerCase();
       const notes = safeString(training.notes).toLowerCase();
       
       const matchesSearch = 
@@ -44,7 +44,7 @@ export function useTrainingFilters(userTrainings: UserTraining[]) {
         notes.includes(searchQuery.toLowerCase());
       
       // Fix the type issue by ensuring both sides are strings
-      const trainingCategory = safeString(training.trainingDetails?.category);
+      const trainingCategory = safeString(training.training_details?.category);
       const matchesCategory = categoryFilter === "all" || trainingCategory === categoryFilter;
       
       return matchesSearch && matchesCategory;
@@ -59,16 +59,16 @@ export function useTrainingFilters(userTrainings: UserTraining[]) {
       // Extract values to compare based on the sort field
       switch(sortField) {
         case 'title':
-          valueA = safeString(a.trainingDetails?.title);
-          valueB = safeString(b.trainingDetails?.title);
+          valueA = safeString(a.training_details?.title);
+          valueB = safeString(b.training_details?.title);
           break;
         case 'category':
-          valueA = safeString(a.trainingDetails?.category);
-          valueB = safeString(b.trainingDetails?.category);
+          valueA = safeString(a.training_details?.category);
+          valueB = safeString(b.training_details?.category);
           break;
-        case 'completionDate':
-          valueA = a.completionDate || '';
-          valueB = b.completionDate || '';
+        case 'completion_date':
+          valueA = a.completion_date || '';
+          valueB = b.completion_date || '';
           break;
         default:
           valueA = a[sortField as keyof UserTraining] || '';

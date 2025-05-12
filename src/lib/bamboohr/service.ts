@@ -41,12 +41,18 @@ class BambooHRService {
   private mapEmployeeData(data: any[]): Employee[] {
     return data.map(emp => ({
       id: emp.id?.toString() || '',
-      name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
-      position: emp.jobTitle?.name || emp.jobTitle || '',
-      department: emp.department?.name || emp.department || '',
-      division: emp.division?.name || emp.division || '',
-      email: emp.workEmail || '',
-      hireDate: emp.hireDate || '',
+      name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+      position: emp.position || '',
+      department: emp.department || '',
+      division: emp.division || '',
+      email: emp.email || '',
+      hire_date: emp.hire_date || '',
+      first_name: emp.first_name || '',
+      last_name: emp.last_name || '',
+      display_name: emp.display_name || '',
+      work_email: emp.work_email || '',
+      job_title: emp.job_title || '',
+      avatar: emp.avatar || '',
     }));
   }
   
@@ -82,9 +88,9 @@ class BambooHRService {
         // Extract category from category name if possible
         category: training.category?.name?.split(' - ')[1] || training.category?.name || 'General',
         description: training.description || '',
-        durationHours: parseFloat(training.hours) || 0,
-        // Use 'required' flag to populate requiredFor
-        requiredFor: training.required ? ['Required'] : [],
+        duration_hours: parseFloat(training.hours) || 0,
+        // Use 'required' flag to populate required_for
+        required_for: training.required ? ['Required'] : [],
       };
       
       // Add to cache
@@ -132,20 +138,20 @@ class BambooHRService {
             type: trainingId,
             category: record.category || 'General',
             description: record.description || 'No description available',
-            durationHours: 0,
-            requiredFor: []
+            duration_hours: 0,
+            required_for: []
           };
         }
         
         return {
           id: record.id?.toString() || '',
-          employeeId: record.employeeId?.toString() || employeeId,
-          trainingId: trainingId,
-          completionDate: record.completed || '',
+          employee_id: record.employee_id?.toString() || employeeId,
+          training_id: trainingId,
+          completion_date: record.completion_date || '',
           instructor: record.instructor || '',
           notes: record.notes || '',
           // Include training details
-          trainingDetails: trainingDetails,
+          training_details: trainingDetails,
           // Pass through original fields in case they're needed
           type: record.type?.toString(),
           completed: record.completed
@@ -213,12 +219,12 @@ class BambooHRService {
             
             // Convert user trainings to training completions format
             const employeeCompletions = employeeTrainings
-              .filter(training => training.completionDate) // Only include completed trainings
+              .filter(training => training.completion_date) // Only include completed trainings
               .map(training => ({
                 id: training.id,
-                employeeId: training.employeeId,
-                trainingId: training.trainingId,
-                completionDate: training.completionDate,
+                employee_id: training.employee_id,
+                training_id: training.training_id,
+                completion_date: training.completion_date,
                 status: 'completed' as const,
                 // Other fields can be undefined
               }));
@@ -262,13 +268,13 @@ class BambooHRService {
   private mapCompletionData(data: any[]): TrainingCompletion[] {
     return data.map(completion => ({
       id: completion.id?.toString() || '',
-      employeeId: completion.employeeId?.toString() || '',
-      trainingId: completion.trainingId?.toString() || '',
-      completionDate: completion.completedDate || '',
-      expirationDate: completion.expirationDate || undefined,
+      employee_id: completion.employeeId?.toString() || '',
+      training_id: completion.trainingId?.toString() || '',
+      completion_date: completion.completedDate || '',
+      expiration_date: completion.expirationDate || undefined,
       status: completion.status || 'completed',
       score: completion.score ? parseFloat(completion.score) : undefined,
-      certificateUrl: completion.certificateUrl || undefined,
+      certificate_url: completion.certificateUrl || undefined,
     }));
   }
   

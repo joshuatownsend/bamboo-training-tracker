@@ -75,11 +75,11 @@ export function usePositionManagement() {
         const initialStructure: RequirementGroup = {
           logic: 'AND',
           requirements: Array.isArray(type === 'county' 
-            ? editingPosition.countyRequirements 
-            : editingPosition.avfrdRequirements)
+            ? editingPosition.county_requirements 
+            : editingPosition.avfrd_requirements)
             ? [...(type === 'county' 
-                ? editingPosition.countyRequirements as string[] 
-                : editingPosition.avfrdRequirements as string[])]
+                ? editingPosition.county_requirements as string[] 
+                : editingPosition.avfrd_requirements as string[])]
             : []
         };
         
@@ -250,10 +250,10 @@ export function usePositionManagement() {
 
     const updatedPosition: Position = {
       ...editingPosition,
-      countyRequirements: requirementsStructure.county.isComplex 
+      county_requirements: requirementsStructure.county.isComplex 
         ? requirementsStructure.county.structure 
         : selectedTrainings.county,
-      avfrdRequirements: requirementsStructure.avfrd.isComplex 
+      avfrd_requirements: requirementsStructure.avfrd.isComplex 
         ? requirementsStructure.avfrd.structure 
         : selectedTrainings.avfrd
     };
@@ -282,8 +282,8 @@ export function usePositionManagement() {
       title: "",
       description: "",
       department: "",
-      countyRequirements: [],
-      avfrdRequirements: []
+      county_requirements: [],
+      avfrd_requirements: []
     };
     setEditingPosition(newPosition);
     setSelectedTrainings({ county: [], avfrd: [] });
@@ -300,8 +300,8 @@ export function usePositionManagement() {
     setEditingPosition(position);
     
     // Initialize selected trainings and requirement structures
-    const countyReqs = position.countyRequirements;
-    const avfrdReqs = position.avfrdRequirements;
+    const countyReqs = position.county_requirements;
+    const avfrdReqs = position.avfrd_requirements;
     
     // Check if requirements are complex structures or simple arrays
     const countyIsComplex = !Array.isArray(countyReqs);

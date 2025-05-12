@@ -1,55 +1,56 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { UserTraining } from "@/lib/types";
+import { useState, useEffect } from 'react';
+import { UserTraining } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useTrainingTypeNames(trainings: UserTraining[]) {
   const [trainingTypeNames, setTrainingTypeNames] = useState<Record<string, string>>({});
-  const [isLoadingNames, setIsLoadingNames] = useState(true);
-
-  // Fetch training type names from Supabase
-  useEffect(() => {
-    const fetchTrainingTypeNames = async () => {
-      setIsLoadingNames(true);
+  
+  // Extract unique training types
+  const trainingTypeIds = Array.from(
+    new Set(
+      trainings
+        .filter(training => training.training_id)
+        .map(training => training.training_id)
+    )
+  );
+  
+  // Fetch training type names from the database
+  const { data: trainingTypes, isLoading: isLoadingNames } = useQuery({
+    queryKey: ['training-types'],
+    queryFn: async () => {
+      if (trainingTypeIds.length === 0) return [];
       
-      try {
-        // Extract all unique training IDs
-        const trainingIds = [...new Set(trainings.map(t => 
-          t.trainingId || t.type?.toString() || ''))]
-          .filter(id => id);
-
-        if (trainingIds.length === 0) {
-          setIsLoadingNames(false);
-          return;
-        }
-
-        // Fetch training names from Supabase
-        const { data, error } = await supabase
-          .from('bamboo_training_types')
-          .select('id, name')
-          .in('id', trainingIds);
-
-        if (error) {
-          console.error('Error fetching training names:', error);
-          return;
-        }
-
-        // Create a mapping of ID to name
-        const nameMap = data.reduce((acc, item) => {
-          acc[item.id] = item.name;
-          return acc;
-        }, {} as Record<string, string>);
-
-        setTrainingTypeNames(nameMap);
-      } catch (error) {
-        console.error('Error in fetchTrainingTypeNames:', error);
-      } finally {
-        setIsLoadingNames(false);
+      // Fetch training types from database
+      const { data, error } = await supabase
+        .from('bamboo_training_types')
+        .select('id, name')
+        .in('id', trainingTypeIds);
+        
+      if (error) {
+        console.error('Error fetching training types:', error);
+        return [];
       }
-    };
-
-    fetchTrainingTypeNames();
-  }, [trainings]);
-
+      
+      return data || [];
+    }
+  });
+  
+  // Update training type names when data is fetched
+  useEffect(() => {
+    if (trainingTypes?.length) {
+      const namesMap: Record<string, string> = {};
+      
+      trainingTypes.forEach(type => {
+        if (type.id && type.name) {
+          namesMap[type.id] = type.name;
+        }
+      });
+      
+      setTrainingTypeNames(namesMap);
+    }
+  }, [trainingTypes]);
+  
   return { trainingTypeNames, isLoadingNames };
 }
