@@ -1,5 +1,10 @@
 
-import { corsHeaders, logWithTimestamp } from "./utils.ts";
+import { corsHeaders } from "./utils.ts";
+
+// Function to log with timestamp for better debugging
+export function logWithTimestamp(message: string) {
+  console.log(`[${new Date().toISOString()}] ${message}`);
+}
 
 // Function to check if required secrets are properly set
 export async function handleSecretsCheck(req: Request) {
@@ -48,18 +53,19 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
       );
     }
     
-    // Fix: Fix the URL parameter handling to avoid double-encoding issues
+    // Log query parameters for debugging
+    logWithTimestamp(`Query parameters: ?${params.toString()}`);
+    
     // Remove subdomain from params as we'll use it directly in the URL
     params.delete('subdomain');
     
     // Construct the BambooHR API URL
-    // Important: Build query string manually instead of appending params to avoid encoding issues
     let bambooUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}`;
     
     // Add any remaining query parameters
     const queryParams: string[] = [];
     params.forEach((value, key) => {
-      queryParams.push(`${key}=${value}`);
+      queryParams.push(`${key}=${encodeURIComponent(value)}`);
     });
     
     if (queryParams.length > 0) {
@@ -103,12 +109,12 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
       }
     );
   } catch (error) {
-    logWithTimestamp(`Error in BambooHR request: ${error.message}`);
+    logWithTimestamp(`Error in BambooHR request: ${error instanceof Error ? error.message : String(error)}`);
     
     return new Response(
       JSON.stringify({
         error: "Failed to process BambooHR request",
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         path: path
       }),
       { 

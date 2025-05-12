@@ -1,122 +1,112 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from "@/components/ui/card";
+import { RefreshCw, UserCheck } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { useUser } from "@/contexts/user";
-import { useBambooSync } from '@/hooks/cache/useBambooSync';
 
 interface SyncActionsProps {
   onRefresh: () => void;
 }
 
 export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
-  const [syncingEmployees, setSyncingEmployees] = useState(false);
-  const [manualSyncLoading, setManualSyncLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const { toast } = useToast();
-  const { refreshEmployeeId } = useUser();
-  const { triggerSync } = useBambooSync();
 
-  // Handle syncing employee data from BambooHR via edge function
-  const handleSyncFromBambooHR = async () => {
-    setSyncingEmployees(true);
-    
+  const handleEnhancedSync = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('sync-employee-mappings');
+      setIsSyncing(true);
       
-      if (error) {
-        console.error("Error syncing employee mappings:", error);
-        toast({
-          title: "Sync Failed",
-          description: error.message || "Failed to sync employee mappings from BambooHR",
-          variant: "destructive"
-        });
-        return;
+      // Get the auth session for the bearer token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Authentication required to trigger sync");
       }
-      
-      console.log("Sync response:", data);
-      
-      if (data.success) {
-        toast({
-          title: "Sync Successful",
-          description: `Synced ${data.count} employee mappings from BambooHR`,
-        });
-        
-        // Reload the data to show updated mappings
-        onRefresh();
-        await refreshEmployeeId(); // Refresh the current user's employee ID if relevant
-      } else {
-        toast({
-          title: "Sync Issue",
-          description: data.message || "Unknown issue during sync",
-          variant: "default"
-        });
+
+      // Call the enhanced sync edge function
+      const response = await fetch('https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-employee-mappings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
       }
-    } catch (error) {
-      console.error("Exception during sync:", error);
+
+      const result = await response.json();
+      
+      // Store the last sync time
+      setLastSyncTime(new Date().toISOString());
+      
       toast({
-        title: "Sync Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: "Employee sync successful",
+        description: `Synced ${result.count || 0} employees from BambooHR`,
+      });
+      
+      // Refresh the mappings list
+      onRefresh();
+    } catch (error) {
+      console.error('Error syncing employees:', error);
+      toast({
+        title: "Sync failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
     } finally {
-      setSyncingEmployees(false);
-    }
-  };
-
-  // Handle manual execution of the cron job function
-  const handleManualSync = async () => {
-    setManualSyncLoading(true);
-    
-    try {
-      // Call the triggerSync function from useBambooSync hook
-      console.log("Initiating manual BambooHR sync...");
-      const result = await triggerSync();
-      console.log("Manual sync result:", result);
-      
-      if (result) {
-        toast({
-          title: "Manual Sync Initiated",
-          description: "The sync job has been manually triggered. Check status in the Sync Status panel.",
-        });
-        
-        // Reload the data after a short delay to allow the sync to complete
-        setTimeout(() => {
-          onRefresh();
-          refreshEmployeeId(); // Refresh the current user's employee ID if relevant
-        }, 3000);
-      }
-    } catch (error) {
-      console.error("Exception during manual sync:", error);
-      toast({
-        title: "Manual Sync Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setManualSyncLoading(false);
+      setIsSyncing(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      <Button
-        variant="default"
-        onClick={handleSyncFromBambooHR}
-        disabled={syncingEmployees}
-        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
-      >
-        {syncingEmployees ? "Syncing..." : "Sync from BambooHR"}
-      </Button>
-      
-      <Button
-        variant="outline"
-        onClick={handleManualSync}
-        disabled={manualSyncLoading}
-        className="w-full"
-      >
-        {manualSyncLoading ? "Running..." : "Run Full Sync Job Now"}
-      </Button>
-    </div>
+    <Card className="bg-gray-50">
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Enhanced Employee Sync</h4>
+            <p className="text-xs text-muted-foreground">
+              Sync all employee information from BambooHR (names, departments, divisions, etc)
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              disabled={isSyncing}
+              onClick={handleEnhancedSync}
+            >
+              <UserCheck className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync All Employee Info'}
+            </Button>
+            {lastSyncTime && (
+              <p className="text-xs text-muted-foreground">
+                Last sync: {new Date(lastSyncTime).toLocaleString()}
+              </p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Refresh Local Data</h4>
+            <p className="text-xs text-muted-foreground">
+              Refresh the data in this page without triggering a new sync
+            </p>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={onRefresh}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
+
+export default SyncActions;

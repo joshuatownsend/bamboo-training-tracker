@@ -170,25 +170,64 @@ export type Database = {
       }
       employee_mappings: {
         Row: {
+          avatar: string | null
           bamboo_employee_id: string
           created_at: string | null
+          department: string | null
+          display_name: string | null
+          division: string | null
           email: string
+          first_name: string | null
+          hire_date: string | null
           id: string
+          job_title: string | null
+          last_name: string | null
+          last_sync: string | null
+          name: string | null
+          position: string | null
+          status: string | null
           updated_at: string | null
+          work_email: string | null
         }
         Insert: {
+          avatar?: string | null
           bamboo_employee_id: string
           created_at?: string | null
+          department?: string | null
+          display_name?: string | null
+          division?: string | null
           email: string
+          first_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
+          last_name?: string | null
+          last_sync?: string | null
+          name?: string | null
+          position?: string | null
+          status?: string | null
           updated_at?: string | null
+          work_email?: string | null
         }
         Update: {
+          avatar?: string | null
           bamboo_employee_id?: string
           created_at?: string | null
+          department?: string | null
+          display_name?: string | null
+          division?: string | null
           email?: string
+          first_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
+          last_name?: string | null
+          last_sync?: string | null
+          name?: string | null
+          position?: string | null
+          status?: string | null
           updated_at?: string | null
+          work_email?: string | null
         }
         Relationships: []
       }

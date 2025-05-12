@@ -27,6 +27,11 @@ function getSecretStatus() {
   };
 }
 
+// Function to log with timestamps for better debugging
+function logWithTimestamp(message: string) {
+  console.log(`[${new Date().toISOString()}] ${message}`);
+}
+
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -51,7 +56,6 @@ serve(async (req) => {
     }
     
     // Check if this is an authorized request
-    // You can implement more robust auth checking if needed
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(
@@ -83,7 +87,7 @@ serve(async (req) => {
     // Check if secrets are configured
     const secretStatus = getSecretStatus();
     if (!secretStatus.BAMBOOHR_SUBDOMAIN || !secretStatus.BAMBOOHR_API_KEY) {
-      console.error("Missing BambooHR credentials in environment variables:", secretStatus);
+      logWithTimestamp("Missing BambooHR credentials in environment variables: " + JSON.stringify(secretStatus));
       return new Response(
         JSON.stringify({ 
           error: "Server configuration error: Missing BambooHR credentials", 
@@ -113,16 +117,21 @@ serve(async (req) => {
       },
     };
     
-    // Log the authorization header being used (with sensitive parts redacted)
-    console.log(`Using Authorization header: Basic ${btoa(`${apiKey.substring(0, 3)}...:`)} for subdomain ${subdomain}`);
+    logWithTimestamp(`Using Authorization header: Basic ${btoa(`${apiKey.substring(0, 3)}...:`)} for subdomain ${subdomain}`);
     
-    // Fetch employee directory from BambooHR
-    console.log(`Fetching employee directory from BambooHR (${subdomain})...`);
-    const bambooResponse = await fetch(`https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`, fetchOptions);
+    // Fetch employee directory with expanded fields from BambooHR
+    logWithTimestamp(`Fetching employee directory from BambooHR (${subdomain})...`);
+
+    // Use the employee directory endpoint but request specific fields we need
+    const fields = "id,displayName,firstName,lastName,jobTitle,department,division,workEmail,workEmail2,mobilePhone,hireDate,status,photoUploaded,photoUrl";
+    const bambooResponse = await fetch(
+      `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory?fields=${fields}`,
+      fetchOptions
+    );
     
     if (!bambooResponse.ok) {
       const errorText = await bambooResponse.text();
-      console.error(`BambooHR API Error (${bambooResponse.status}):`, errorText);
+      logWithTimestamp(`BambooHR API Error (${bambooResponse.status}): ${errorText}`);
       
       return new Response(
         JSON.stringify({ 
@@ -135,7 +144,7 @@ serve(async (req) => {
     }
     
     const employeeData = await bambooResponse.json();
-    console.log(`Retrieved ${employeeData.employees?.length || 0} employees from BambooHR`);
+    logWithTimestamp(`Retrieved ${employeeData.employees?.length || 0} employees from BambooHR`);
     
     // Check if we have employees data in the expected format
     if (!employeeData.employees || !Array.isArray(employeeData.employees)) {
@@ -148,20 +157,31 @@ serve(async (req) => {
       );
     }
     
-    // Create mappings array for database operations
+    // Create mappings array with expanded employee data for database operations
     const mappings = employeeData.employees
       .filter(emp => emp.workEmail && emp.id) // Only include employees with both email and ID
       .map(emp => ({
         email: emp.workEmail.toLowerCase(),
         bamboo_employee_id: emp.id.toString(),
-        updated_at: new Date().toISOString()
+        name: emp.displayName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+        display_name: emp.displayName || null,
+        first_name: emp.firstName || null,
+        last_name: emp.lastName || null,
+        position: emp.jobTitle || null,
+        job_title: emp.jobTitle || null,
+        department: emp.department || null,
+        division: emp.division || null,
+        work_email: emp.workEmail || null,
+        avatar: emp.photoUrl || (emp.photoUploaded === 'yes' ? `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/${emp.id}/photo` : null),
+        hire_date: emp.hireDate || null,
+        status: emp.status || null,
+        updated_at: new Date().toISOString(),
+        last_sync: new Date().toISOString()
       }));
     
-    console.log(`Prepared ${mappings.length} employee mappings for database update`);
+    logWithTimestamp(`Prepared ${mappings.length} employee mappings for database update`);
     
-    // Initialize Supabase admin client for direct database operations
-    // Note: In an edge function, we need to use fetch for Supabase operations
-    // FIXED: Use upsert with on_conflict=email to handle existing records
+    // Try updating records using upsert (insert if not exists, update if exists)
     const insertResults = await fetch(`${supabaseUrl}/rest/v1/employee_mappings`, {
       method: "POST",
       headers: {
@@ -175,11 +195,11 @@ serve(async (req) => {
     
     if (!insertResults.ok) {
       const errorText = await insertResults.text();
-      console.error(`Supabase Error (${insertResults.status}):`, errorText);
+      logWithTimestamp(`Supabase Error (${insertResults.status}): ${errorText}`);
       
-      // If we got a conflict error, we'll try a different approach
+      // If we got a conflict error, try a different approach
       if (insertResults.status === 409) {
-        console.log("Received 409 conflict error, trying individual upserts...");
+        logWithTimestamp("Received 409 conflict error, trying individual upserts...");
         
         // Try updating records one by one to handle the conflicts
         let successCount = 0;
@@ -197,7 +217,20 @@ serve(async (req) => {
               },
               body: JSON.stringify({
                 bamboo_employee_id: mapping.bamboo_employee_id,
-                updated_at: mapping.updated_at
+                name: mapping.name,
+                display_name: mapping.display_name,
+                first_name: mapping.first_name,
+                last_name: mapping.last_name,
+                position: mapping.position,
+                job_title: mapping.job_title,
+                department: mapping.department,
+                division: mapping.division,
+                work_email: mapping.work_email,
+                avatar: mapping.avatar,
+                hire_date: mapping.hire_date,
+                status: mapping.status,
+                updated_at: mapping.updated_at,
+                last_sync: mapping.last_sync
               })
             });
             
@@ -252,7 +285,7 @@ serve(async (req) => {
     );
     
   } catch (error) {
-    console.error("Error in sync-employee-mappings function:", error);
+    logWithTimestamp(`Error in sync-employee-mappings function: ${error instanceof Error ? error.message : String(error)}`);
     
     return new Response(
       JSON.stringify({
