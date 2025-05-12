@@ -14,18 +14,18 @@ export interface TrainingTableRowProps {
 export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableRowProps) {
   // Helper function to get training name from type ID
   const getTrainingName = (training: UserTraining): string => {
-    if (training.trainingDetails?.title) {
-      return safeTextValue(training.trainingDetails.title);
+    if (training.training_details?.title) {
+      return safeTextValue(training.training_details.title);
     }
     
     // Use the training type ID to look up the name in trainingTypeNames
-    const typeId = training.trainingId || training.type?.toString() || '';
+    const typeId = training.training_id || training.type?.toString() || '';
     return trainingTypeNames[typeId] || `Training ${typeId}`;
   };
 
   // Get the category from training details or display "Uncategorized"
   const getCategory = (training: UserTraining): string => {
-    return safeTextValue(training.trainingDetails?.category) || "Uncategorized";
+    return safeTextValue(training.training_details?.category) || "Uncategorized";
   };
 
   return (
@@ -36,7 +36,7 @@ export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableR
             {getTrainingName(training)}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {safeTextValue(training.trainingDetails?.description) || "No description available"}
+            {safeTextValue(training.training_details?.description) || "No description available"}
           </div>
         </div>
       </TableCell>
@@ -44,12 +44,12 @@ export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableR
         {getCategory(training)}
       </TableCell>
       <TableCell>
-        {formatDate(safeTextValue(training.completionDate))}
+        {formatDate(safeTextValue(training.completion_date))}
       </TableCell>
       <TableCell>
-        {training.trainingDetails && 
-          ('expirationDate' in training.trainingDetails) ? 
-          formatDate(safeTextValue(training.trainingDetails.expirationDate as string)) : 
+        {training.training_details && 
+          ('expiration_date' in training.training_details) ? 
+          formatDate(safeTextValue(training.training_details.expiration_date as string)) : 
           "No expiration"
         }
       </TableCell>
@@ -57,7 +57,7 @@ export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableR
         <Button 
           variant="outline" 
           size="sm"
-          onClick={() => openInBambooHR(training.employeeId)}
+          onClick={() => openInBambooHR(training.employee_id)}
           className="gap-1"
         >
           <ExternalLink className="h-4 w-4" /> 

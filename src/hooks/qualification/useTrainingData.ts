@@ -1,55 +1,59 @@
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@/contexts/user";
-import { Training, TrainingCompletion } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { Training, TrainingCompletion } from "@/lib/types";
 
 export function useTrainingData() {
   const { currentUser } = useUser();
-  const { toast } = useToast();
 
-  // Fetch user's trainings from BambooHR
+  // Fetch user's completed trainings
   const {
-    data: userTrainings = [],
+    data: userCompletedTrainings = [],
     isLoading: isLoadingTrainings,
     error: trainingsError
   } = useQuery({
-    queryKey: ['trainings', currentUser?.employeeId],
+    queryKey: ['user-trainings', currentUser?.employee_id],
     queryFn: async () => {
-      if (!currentUser?.employeeId) {
-        throw new Error("No employee ID available");
+      if (!currentUser?.employee_id) {
+        console.log('No employee_id found for current user');
+        return [];
       }
-
-      const bamboo = new (await import('@/lib/bamboohr/api')).default({
-        subdomain: 'avfrd',
-        apiKey: '',
-        useEdgeFunction: true,
-        edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
-      });
       
-      try {
-        const result = await bamboo.getUserTrainings(currentUser.employeeId);
-        console.log("Fetched user trainings:", result);
-        return result || [];
-      } catch (err) {
-        console.error("Error fetching training data:", err);
-        throw err;
+      const { data, error } = await supabase
+        .from('cached_training_completions')
+        .select('*')
+        .eq('employee_id', currentUser.employee_id);
+      
+      if (error) {
+        console.error("Error fetching user trainings:", error);
+        throw error;
       }
+      
+      return data.map(completion => ({
+        id: completion.id || `completion-${completion.employee_id}-${completion.training_id}`,
+        employee_id: completion.employee_id,
+        training_id: completion.training_id,
+        completion_date: completion.completion_date || '',
+        expiration_date: completion.expiration_date || undefined,
+        status: completion.status || 'completed',
+        score: completion.score,
+        certificate_url: completion.certificate_url
+      })) as TrainingCompletion[];
     },
-    enabled: !!currentUser?.employeeId
+    enabled: !!currentUser?.employee_id
   });
 
-  // Fetch all training types from Supabase
+  // Fetch all training types
   const {
     data: trainingTypes = [],
-    isLoading: isLoadingTrainingTypes
+    isLoading: isLoadingTrainingTypes,
+    error: trainingTypesError
   } = useQuery({
     queryKey: ['training-types'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('bamboo_training_types')
+        .from('cached_trainings')
         .select('*');
       
       if (error) {
@@ -57,34 +61,24 @@ export function useTrainingData() {
         throw error;
       }
       
-      // Map the data to match the Training type
-      return data.map(item => ({
-        id: item.id,
-        title: item.name,
-        type: item.category || 'unknown',
-        category: item.category || 'uncategorized',
-        description: item.description || '',
-        durationHours: 0, // Default value as it's not in the database
-        requiredFor: [] // Default value as it's not in the database
+      return data.map(training => ({
+        id: training.id,
+        title: training.title,
+        type: training.type,
+        category: training.category,
+        description: training.description,
+        duration_hours: training.duration_hours,
+        required_for: training.required_for || []
       })) as Training[];
     },
     enabled: !!currentUser
   });
-
-  // Process training completions once we have the data
-  const userCompletedTrainings: TrainingCompletion[] = userTrainings.map(training => ({
-    id: training.id,
-    employeeId: currentUser?.employeeId || '',
-    trainingId: training.trainingId || training.type?.toString() || '',
-    completionDate: training.completionDate,
-    status: 'completed' as const
-  }));
 
   return {
     userCompletedTrainings,
     trainingTypes,
     isLoadingTrainings,
     isLoadingTrainingTypes,
-    trainingsError
+    trainingsError: trainingsError || trainingTypesError
   };
 }

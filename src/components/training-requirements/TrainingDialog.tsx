@@ -71,8 +71,8 @@ export function TrainingDialog({
                 <Input
                   id="durationHours"
                   type="number"
-                  value={editingTraining.durationHours}
-                  onChange={(e) => updateTrainingField("durationHours", Number(e.target.value))}
+                  value={editingTraining.duration_hours}
+                  onChange={(e) => updateTrainingField("duration_hours", Number(e.target.value))}
                 />
               </div>
             </div>
@@ -81,8 +81,8 @@ export function TrainingDialog({
               <Input
                 id="expiryYears"
                 type="number"
-                value={editingTraining.expiryYears || 0}
-                onChange={(e) => updateTrainingField("expiryYears", Number(e.target.value))}
+                value={editingTraining.expiry_years || 0}
+                onChange={(e) => updateTrainingField("expiry_years", Number(e.target.value))}
               />
             </div>
           </div>

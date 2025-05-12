@@ -20,8 +20,8 @@ export function PositionSelector({
       </SelectTrigger>
       <SelectContent>
         {nextPositions.map((qualification) => (
-          <SelectItem key={qualification.positionId} value={qualification.positionId}>
-            {qualification.positionTitle}
+          <SelectItem key={qualification.position_id} value={qualification.position_id}>
+            {qualification.position_title}
           </SelectItem>
         ))}
         {nextPositions.length === 0 && (

@@ -41,11 +41,11 @@ export function TrainingRequirementsTable({ requiredTrainings }: TrainingRequire
               {training.description || "No description available"}
             </TableCell>
             <TableCell className="text-right">
-              {training.externalUrl ? (
+              {training.external_url ? (
                 <Button 
                   size="sm" 
                   className="bg-company-yellow text-company-black hover:bg-company-yellow/90"
-                  onClick={() => window.open(training.externalUrl, '_blank')}
+                  onClick={() => window.open(training.external_url, '_blank')}
                 >
                   <ExternalLink className="mr-1 h-4 w-4" />
                   Link

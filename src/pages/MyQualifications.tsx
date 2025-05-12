@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -17,7 +18,7 @@ export default function MyQualifications() {
     return <QualificationsLoadingState />;
   }
 
-  if (!currentUser?.employeeId) {
+  if (!currentUser?.employee_id) {
     // Add isAdmin prop with a default value of false
     return <MissingEmployeeIdAlert isAdmin={false} />;
   }

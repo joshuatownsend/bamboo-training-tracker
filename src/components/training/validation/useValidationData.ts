@@ -62,26 +62,26 @@ export function useValidationData(
     
     // Check completion dates
     completions.forEach(completion => {
-      if (!completion.completionDate) return;
+      if (!completion.completion_date) return;
       
-      const completionDate = new Date(completion.completionDate);
-      const employee = employeeMap.get(completion.employeeId);
-      const trainingName = trainingMap.get(completion.trainingId) || "Unknown Training";
+      const completionDate = new Date(completion.completion_date);
+      const employee = employeeMap.get(completion.employee_id);
+      const trainingName = trainingMap.get(completion.training_id) || "Unknown Training";
       
       // Skip if we can't find the employee
       if (!employee) {
-        console.log(`Skipping completion record - employee not found: ${completion.employeeId}`);
+        console.log(`Skipping completion record - employee not found: ${completion.employee_id}`);
         return;
       }
       
       // Check if date is before minimum valid date
       if (completionDate < MIN_VALID_DATE) {
         issues.push({
-          employeeId: completion.employeeId,
+          employeeId: completion.employee_id,
           employeeName: employee.name,
-          trainingId: completion.trainingId,
+          trainingId: completion.training_id,
           trainingName,
-          completionDate: completion.completionDate,
+          completionDate: completion.completion_date,
           issueType: 'past'
         });
         pastCount++;
@@ -89,13 +89,13 @@ export function useValidationData(
       
       // Check if date is in the future
       else if (completionDate > now) {
-        console.log(`Found future date: ${completion.completionDate} for employee ${employee.name}, training ${trainingName}`);
+        console.log(`Found future date: ${completion.completion_date} for employee ${employee.name}, training ${trainingName}`);
         issues.push({
-          employeeId: completion.employeeId,
+          employeeId: completion.employee_id,
           employeeName: employee.name,
-          trainingId: completion.trainingId,
+          trainingId: completion.training_id,
           trainingName,
-          completionDate: completion.completionDate,
+          completionDate: completion.completion_date,
           issueType: 'future'
         });
         futureCount++;
