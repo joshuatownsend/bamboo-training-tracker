@@ -118,7 +118,12 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
       // Get the auth session for the bearer token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error("Authentication required to trigger sync");
+        toast({
+          title: "Authentication required",
+          description: "You must be logged in to trigger a sync",
+          variant: "destructive"
+        });
+        return false;
       }
 
       // Call the edge function to sync employee data
@@ -131,11 +136,12 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
         body: JSON.stringify({})
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
+        const result = await response.json();
         throw new Error(result.message || result.error || 'Sync failed');
       }
+
+      const result = await response.json();
 
       toast({
         title: "Sync complete",

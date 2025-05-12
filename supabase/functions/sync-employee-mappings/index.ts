@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -58,8 +57,12 @@ serve(async (req) => {
     // Check if this is an authorized request
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logWithTimestamp("Missing or invalid authorization header");
       return new Response(
-        JSON.stringify({ error: "Unauthorized: Missing or invalid authorization header" }),
+        JSON.stringify({ 
+          error: "Unauthorized", 
+          message: "Missing or invalid authorization header. You must be authenticated to use this endpoint."
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
@@ -90,7 +93,8 @@ serve(async (req) => {
       logWithTimestamp("Missing BambooHR credentials in environment variables: " + JSON.stringify(secretStatus));
       return new Response(
         JSON.stringify({ 
-          error: "Server configuration error: Missing BambooHR credentials", 
+          error: "Server configuration error", 
+          message: "Missing BambooHR credentials. Please configure them in the Supabase secrets.",
           secretStatus 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -103,7 +107,10 @@ serve(async (req) => {
     
     if (!supabaseKey) {
       return new Response(
-        JSON.stringify({ error: "Server configuration error: Missing Supabase service role key" }),
+        JSON.stringify({ 
+          error: "Server configuration error", 
+          message: "Missing Supabase service role key. Please configure it in the Supabase secrets."
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
