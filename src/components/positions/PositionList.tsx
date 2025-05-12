@@ -109,10 +109,10 @@ export function PositionList({
                   
                   <TabsContent value="county" className="p-2">
                     <div className="text-sm">
-                      {position.county_requirements && (Array.isArray(position.county_requirements) ? 
-                        position.county_requirements.length : 
-                        (position.county_requirements.requirements || []).length) > 0 ? (
-                        formatRequirements(position.county_requirements, trainings)
+                      {position.countyRequirements && (Array.isArray(position.countyRequirements) ? 
+                        position.countyRequirements.length : 
+                        (position.countyRequirements.requirements || []).length) > 0 ? (
+                        formatRequirements(position.countyRequirements, trainings)
                       ) : (
                         <p className="text-muted-foreground italic">No county requirements specified</p>
                       )}
@@ -121,10 +121,10 @@ export function PositionList({
                   
                   <TabsContent value="avfrd" className="p-2">
                     <div className="text-sm">
-                      {position.avfrd_requirements && (Array.isArray(position.avfrd_requirements) ? 
-                        position.avfrd_requirements.length : 
-                        (position.avfrd_requirements.requirements || []).length) > 0 ? (
-                        formatRequirements(position.avfrd_requirements, trainings)
+                      {position.avfrdRequirements && (Array.isArray(position.avfrdRequirements) ? 
+                        position.avfrdRequirements.length : 
+                        (position.avfrdRequirements.requirements || []).length) > 0 ? (
+                        formatRequirements(position.avfrdRequirements, trainings)
                       ) : (
                         <p className="text-muted-foreground italic">No AVFRD requirements specified</p>
                       )}

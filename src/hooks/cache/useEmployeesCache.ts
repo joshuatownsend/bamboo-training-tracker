@@ -36,17 +36,17 @@ export function useEmployeesCache() {
       return data.map((emp): Employee => ({
         id: emp.id,
         name: emp.name,
-        display_name: emp.display_name,
-        first_name: emp.first_name,
-        last_name: emp.last_name,
+        displayName: emp.display_name,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
         position: emp.position,
-        job_title: emp.job_title,
+        jobTitle: emp.job_title,
         department: emp.department,
         division: emp.division,
         email: emp.email,
-        work_email: emp.work_email,
+        workEmail: emp.work_email,
         avatar: emp.avatar,
-        hire_date: emp.hire_date
+        hireDate: emp.hire_date
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

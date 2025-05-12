@@ -43,14 +43,14 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
                 labelFormatter={(label) => `Division: ${label}`}
               />
               <Bar 
-                dataKey="compliance_rate" 
+                dataKey="complianceRate" 
                 radius={[4, 4, 0, 0]}
               >
                 {data.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={entry.compliance_rate >= 90 ? "#84cc16" : 
-                          entry.compliance_rate >= 70 ? "#eab308" : 
+                    fill={entry.complianceRate >= 90 ? "#84cc16" : 
+                          entry.complianceRate >= 70 ? "#eab308" : 
                           "#f43f5e"}
                   />
                 ))}
@@ -64,3 +64,4 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
 }
 
 export default ComplianceChart;
+

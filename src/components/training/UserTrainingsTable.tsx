@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrainingTableRow } from "./TrainingTableRow";
@@ -37,7 +36,7 @@ export function UserTrainingsTable({ trainings }: UserTrainingsTableProps) {
         ) : (
           trainings.map(training => (
             <TrainingTableRow 
-              key={`${training.id}-${training.completion_date}`}
+              key={`${training.id}-${training.completionDate}`}
               training={training}
               trainingTypeNames={trainingTypeNames}
             />

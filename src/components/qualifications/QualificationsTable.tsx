@@ -14,8 +14,8 @@ interface QualificationsTableProps {
 }
 
 export function QualificationsTable({ qualifications, type }: QualificationsTableProps) {
-  const isQualifiedKey = type === 'county' ? 'is_qualified_county' : 'is_qualified_avfrd';
-  const missingTrainingsKey = type === 'county' ? 'missing_county_trainings' : 'missing_avfrd_trainings';
+  const isQualifiedKey = type === 'county' ? 'isQualifiedCounty' : 'isQualifiedAVFRD';
+  const missingTrainingsKey = type === 'county' ? 'missingCountyTrainings' : 'missingAVFRDTrainings';
   
   return (
     <Table>
@@ -28,9 +28,9 @@ export function QualificationsTable({ qualifications, type }: QualificationsTabl
       </TableHeader>
       <TableBody>
         {qualifications.map((qualification) => (
-          <TableRow key={qualification.position_id}>
+          <TableRow key={qualification.positionId}>
             <TableCell className="font-medium">
-              {qualification.position_title}
+              {qualification.positionTitle}
             </TableCell>
             <TableCell>
               {qualification[isQualifiedKey] ? (

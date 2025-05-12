@@ -13,13 +13,13 @@ export function RequiredTrainingDetails({ selectedQualification }: RequiredTrain
 
   // Combine missing trainings from both county and AVFRD with source information
   const requiredTrainings = [
-    ...selectedQualification.missing_county_trainings.map(training => ({
+    ...selectedQualification.missingCountyTrainings.map(training => ({
       ...training,
       source: 'County' as const
     })),
-    ...selectedQualification.missing_avfrd_trainings
+    ...selectedQualification.missingAVFRDTrainings
       .filter(avfrdTraining => 
-        !selectedQualification.missing_county_trainings.some(
+        !selectedQualification.missingCountyTrainings.some(
           countyTraining => countyTraining.id === avfrdTraining.id
         )
       )
@@ -33,7 +33,7 @@ export function RequiredTrainingDetails({ selectedQualification }: RequiredTrain
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-medium">
-          Required Trainings for {selectedQualification.position_title}
+          Required Trainings for {selectedQualification.positionTitle}
         </h3>
         <p className="text-sm text-muted-foreground">
           Complete these trainings to qualify for this position

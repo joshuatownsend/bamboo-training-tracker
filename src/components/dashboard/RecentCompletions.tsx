@@ -42,7 +42,7 @@ export function RecentCompletions({
   // Get most recent completions
   const recentCompletions = [...completions]
     .sort((a, b) => 
-      new Date(b.completion_date).getTime() - new Date(a.completion_date).getTime()
+      new Date(b.completionDate).getTime() - new Date(a.completionDate).getTime()
     )
     .slice(0, 5);
     
@@ -71,8 +71,8 @@ export function RecentCompletions({
       <CardContent>
         <div className="space-y-4">
           {recentCompletions.map((completion) => {
-            const employee = employees.find(e => e.id === completion.employee_id);
-            const training = trainings.find(t => t.id === completion.training_id);
+            const employee = employees.find(e => e.id === completion.employeeId);
+            const training = trainings.find(t => t.id === completion.trainingId);
             
             if (!employee || !training) return null;
             
@@ -92,7 +92,7 @@ export function RecentCompletions({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {completion.completion_date ? format(new Date(completion.completion_date), "MMM d, yyyy") : "No date"}
+                    {completion.completionDate ? format(new Date(completion.completionDate), "MMM d, yyyy") : "No date"}
                   </span>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 </div>

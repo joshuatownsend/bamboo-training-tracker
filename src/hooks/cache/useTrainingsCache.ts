@@ -31,8 +31,8 @@ export function useTrainingsCache() {
         type: training.type,
         category: training.category,
         description: training.description || '',
-        duration_hours: training.duration_hours || 0,
-        required_for: training.required_for || []
+        durationHours: training.duration_hours || 0,
+        requiredFor: training.required_for || []
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

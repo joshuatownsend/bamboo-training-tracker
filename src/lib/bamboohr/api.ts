@@ -1,4 +1,3 @@
-
 import { BambooHRClient } from './client/base';
 import { BambooHRApiClient } from './client/api-client';
 import { Employee, Training, TrainingCompletion, UserTraining } from '@/lib/types';
@@ -7,7 +6,7 @@ import { BambooHRClientInterface } from './client/types';
 
 interface BambooHRServiceOptions {
   subdomain: string;
-  api_key: string;
+  apiKey: string;
   useEdgeFunction?: boolean;
   edgeFunctionUrl?: string;
   client?: any; // Add client to the interface
@@ -20,14 +19,14 @@ class BambooHRApi {
   constructor(options: BambooHRServiceOptions) {
     this.client = new BambooHRApiClient({
       subdomain: options.subdomain,
-      apiKey: options.api_key,
+      apiKey: options.apiKey,
       useEdgeFunction: options.useEdgeFunction || false,
       edgeFunctionUrl: options.edgeFunctionUrl,
     });
     
     this.service = new BambooHRService({
       subdomain: options.subdomain,
-      api_key: options.api_key,
+      apiKey: options.apiKey,
       useEdgeFunction: options.useEdgeFunction || false,
       edgeFunctionUrl: options.edgeFunctionUrl,
       client: this.client

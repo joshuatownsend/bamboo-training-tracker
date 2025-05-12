@@ -70,17 +70,17 @@ export function BambooHRSyncStatus() {
     return employees.map(emp => ({
       id: emp.id,
       name: emp.name,
-      first_name: emp.first_name,
-      last_name: emp.last_name,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
       department: emp.department,
       email: emp.email,
       position: emp.position,
-      job_title: emp.job_title,
+      jobTitle: emp.jobTitle,
       division: emp.division,
-      work_email: emp.work_email,
-      display_name: emp.display_name,
+      workEmail: emp.workEmail,
+      displayName: emp.displayName,
       avatar: emp.avatar,
-      hire_date: emp.hire_date
+      hireDate: emp.hireDate
     }));
   }, [employees]);
 
@@ -92,21 +92,21 @@ export function BambooHRSyncStatus() {
       type: train.type,
       category: train.category,
       description: train.description,
-      duration_hours: train.duration_hours,
-      required_for: train.required_for
+      duration_hours: train.durationHours,
+      required_for: train.requiredFor
     }));
   }, [trainings]);
 
   const mappedCompletions: CachedCompletion[] = React.useMemo(() => {
     return completions.map(comp => ({
       id: comp.id,
-      employee_id: comp.employee_id,
-      training_id: comp.training_id,
-      completion_date: comp.completion_date,
-      expiration_date: comp.expiration_date,
+      employee_id: comp.employeeId,
+      training_id: comp.trainingId,
+      completionDate: comp.completionDate,
+      expirationDate: comp.expirationDate,
       status: comp.status as string,
       score: comp.score,
-      certificate_url: comp.certificate_url
+      certificateUrl: comp.certificateUrl
     }));
   }, [completions]);
   

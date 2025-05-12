@@ -21,10 +21,10 @@ export function useTrainingDialog() {
       title: "",
       description: "",
       category: "",
-      duration_hours: 0,
+      durationHours: 0,
       type: "",
-      required_for: [],
-      expiry_years: 0
+      requiredFor: [],
+      expiryYears: 0
     });
     setIsDialogOpen(true);
   };
