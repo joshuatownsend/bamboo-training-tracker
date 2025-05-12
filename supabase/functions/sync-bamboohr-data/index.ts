@@ -206,59 +206,95 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
     
     // Process employees to get completions
     console.log("Fetching training completions for employees...");
-    const sampleSize = 20; // Increased from 10 to get more data
-    const sampleEmployees = employees.slice(0, Math.min(sampleSize, employees.length));
     
     let allCompletions: any[] = [];
     
     // Try to get completions from a custom report first (more efficient)
     try {
       console.log("Attempting to fetch completions from custom report...");
-      // Fix: URL format for custom reports
-      const customReportUrl = `${baseUrl}/custom_reports/report?id=41`;
-      console.log(`Fetching custom report from: ${customReportUrl}`);
       
-      const customReportResponse = await fetch(customReportUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Basic ${auth}`
-        }
-      });
+      // Try different custom report IDs since we're not sure which one contains the training data
+      const reportIds = [41, 43, 46, 50];  // Try multiple report IDs that might contain training data
+      let reportData = null;
       
-      if (customReportResponse.ok) {
-        const reportData = await customReportResponse.json();
-        if (Array.isArray(reportData) && reportData.length > 0) {
-          console.log(`Found ${reportData.length} training completions in custom report`);
-          allCompletions = reportData.map(record => ({
-            id: `${record.employeeId}-${record.trainingId}`,
-            employee_id: record.employeeId,
-            training_id: record.trainingId,
-            completion_date: record.completedDate,
-            status: 'completed',
-          }));
+      // Try each report ID until we find one with data
+      for (const reportId of reportIds) {
+        try {
+          console.log(`Trying custom report ID ${reportId}...`);
+          const customReportUrl = `${baseUrl}/custom_reports/report?id=${reportId}`;
           
-          console.log(`Processed ${allCompletions.length} completions from custom report`);
-          return {
-            employees,
-            trainings,
-            completions: allCompletions
-          };
-        } else {
-          console.log("Custom report returned no data or invalid format, falling back to individual requests");
+          const customReportResponse = await fetch(customReportUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Basic ${auth}`
+            }
+          });
+          
+          if (customReportResponse.ok) {
+            const data = await customReportResponse.json();
+            if (Array.isArray(data) && data.length > 0) {
+              console.log(`Found ${data.length} records in custom report ${reportId}`);
+              
+              // Check if this looks like training data by examining fields
+              const firstRecord = data[0];
+              if (firstRecord.employeeId || firstRecord.trainingId || 
+                  firstRecord.completedDate || firstRecord.employee_id || 
+                  firstRecord.training_id) {
+                console.log(`Report ${reportId} appears to contain training data. Using this report.`);
+                reportData = data;
+                break;
+              } else {
+                console.log(`Report ${reportId} doesn't appear to contain training data. Skipping.`);
+              }
+            } else {
+              console.log(`Custom report ${reportId} returned no data or invalid format`);
+            }
+          } else {
+            console.log(`Custom report ${reportId} request failed with status ${customReportResponse.status}`);
+          }
+        } catch (err) {
+          console.warn(`Error trying custom report ${reportId}:`, err);
         }
+      }
+      
+      if (reportData && reportData.length > 0) {
+        console.log(`Found ${reportData.length} training completions in custom report`);
+        
+        // Map the report data to our expected format
+        allCompletions = reportData.map(record => {
+          // Handle different possible field names
+          return {
+            id: `${record.employeeId || record.employee_id}-${record.trainingId || record.training_id}`,
+            employee_id: record.employeeId || record.employee_id,
+            training_id: record.trainingId || record.training_id,
+            completion_date: record.completedDate || record.completed_date || record.completed || '',
+            status: 'completed',
+          };
+        });
+        
+        console.log(`Processed ${allCompletions.length} completions from custom report`);
+        return {
+          employees,
+          trainings,
+          completions: allCompletions
+        };
       } else {
-        console.log(`Custom report request failed with status ${customReportResponse.status}, falling back to individual requests`);
+        console.log("No valid training data found in custom reports, falling back to individual requests");
       }
     } catch (reportError) {
-      console.warn("Error fetching custom report:", reportError);
+      console.warn("Error fetching custom reports:", reportError);
       console.log("Falling back to individual employee training records...");
     }
     
-    // Fallback: Process employees in batches to avoid overwhelming the API
-    const batchSize = 5;
-    for (let i = 0; i < sampleEmployees.length; i += batchSize) {
-      const batch = sampleEmployees.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(sampleEmployees.length/batchSize)}`);
+    // Fallback: Process all employees to get their training records
+    // No sample size limit - process all employees
+    console.log(`Processing all ${employees.length} employees for training records`);
+    
+    // Process employees in batches to avoid overwhelming the API
+    const batchSize = 10; // Increased batch size to process more employees at once
+    for (let i = 0; i < employees.length; i += batchSize) {
+      const batch = employees.slice(i, i + batchSize);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(employees.length/batchSize)}`);
       
       const batchPromises = batch.map(async (employee: any) => {
         try {
@@ -267,6 +303,8 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
               'Accept': 'application/json',
               'Authorization': `Basic ${auth}`
             },
+            // Add timeout control
+            signal: AbortSignal.timeout(10000) // 10 second timeout
           });
           
           // Handle 404 errors gracefully - this is expected for employees with no training records
@@ -320,7 +358,9 @@ async function fetchBambooHRData(subdomain: string, apiKey: string) {
       });
       
       // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log(`Progress: ${Math.min(i + batchSize, employees.length)}/${employees.length} employees processed, ${allCompletions.length} total completions found`);
     }
     
     console.log(`Fetched ${allCompletions.length} total completions`);
@@ -470,8 +510,8 @@ async function syncCompletions(supabase: any, completions: any[]) {
   // Transform completions to match our cached_training_completions schema
   const mappedCompletions = completions.map(completion => ({
     id: completion.id || `${completion.employee_id}-${completion.training_id}`,
-    employee_id: completion.employee_id,
-    training_id: completion.training_id,
+    employee_id: completion.employee_id || completion.employeeId,
+    training_id: completion.training_id || completion.trainingId,
     completion_date: completion.completion_date || completion.completedDate || completion.completed || null,
     expiration_date: completion.expiration_date || completion.expirationDate || null,
     status: completion.status || 'completed',
@@ -485,7 +525,7 @@ async function syncCompletions(supabase: any, completions: any[]) {
   }
   
   // Insert completions in batches to avoid payload size limits
-  const batchSize = 100;
+  const batchSize = 500; // Increased batch size for faster processing
   let totalUpserted = 0;
   
   for (let i = 0; i < mappedCompletions.length; i += batchSize) {

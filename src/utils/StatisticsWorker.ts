@@ -22,6 +22,28 @@ export function calculateStatisticsAsync(
   // Log some sample data for debugging
   if (completions && completions.length > 0) {
     console.log("Sample completion data for statistics:", completions.slice(0, 3));
+    
+    // Count completion statuses for better debugging
+    const statusCounts: Record<string, number> = {};
+    completions.forEach(c => {
+      const status = c.status || 'unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    
+    console.log("Completion status breakdown:", statusCounts);
+    
+    // Count completions by employee (sample)
+    const employeeCompletionCounts: Record<string, number> = {};
+    completions.slice(0, 100).forEach(c => {
+      const employeeId = c.employeeId || 'unknown';
+      employeeCompletionCounts[employeeId] = (employeeCompletionCounts[employeeId] || 0) + 1;
+    });
+    
+    console.log("Sample employee completion counts:", 
+      Object.entries(employeeCompletionCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+    );
   } else {
     console.log("No completion data available for statistics calculation");
   }
@@ -35,8 +57,10 @@ export function calculateStatisticsAsync(
     totalTrainings: stats.totalTrainings,
     completedTrainings: stats.completedTrainings,
     expiredTrainings: stats.expiredTrainings,
-    completionRate: stats.completionRate
+    completionRate: stats.completionRate,
+    departmentCount: stats.departmentStats?.length || 0
   });
+  
   return stats;
 }
 
@@ -56,7 +80,8 @@ export function calculateStatisticsWithPerf(
     totalTrainings: result.totalTrainings,
     completedTrainings: result.completedTrainings,
     expiredTrainings: result.expiredTrainings,
-    completionRate: result.completionRate
+    completionRate: result.completionRate,
+    departmentCount: result.departmentStats?.length || 0
   });
   return result;
 }
