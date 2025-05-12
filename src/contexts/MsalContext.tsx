@@ -12,7 +12,7 @@ import { msalConfig } from '../lib/authConfig';
 // Create the MSAL instance
 const msalInstance = new PublicClientApplication(msalConfig);
 
-// Initialize MSAL immediately
+// Initialize MSAL immediately as a self-invoking async function
 (async () => {
   try {
     await msalInstance.initialize();
@@ -79,13 +79,20 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    // Ensure MSAL is initialized before using it
+    const checkMsalInitialized = () => {
+      if (!msalInstance.initialized) {
+        console.log("MSAL not fully initialized yet, waiting...");
+        setTimeout(checkMsalInitialized, 100);
+        return false;
+      }
+      return true;
+    };
+
     const initializeAuth = async () => {
       try {
-        // Check if MSAL is initialized
-        if (!msalInstance.getActiveAccount) {
-          console.log("MSAL not fully initialized yet, waiting...");
-          setTimeout(initializeAuth, 100); // Retry after a short delay
-          return;
+        if (!checkMsalInitialized()) {
+          return; // Wait for initialization
         }
 
         // Check if we have accounts
@@ -93,6 +100,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAccounts(currentAccounts);
         
         if (currentAccounts.length > 0) {
+          msalInstance.setActiveAccount(currentAccounts[0]);
           setCurrentAccount(currentAccounts[0]);
           setIsAuthenticated(true);
         }
@@ -118,6 +126,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAccounts(currentAccounts);
         
         if (currentAccounts.length > 0) {
+          msalInstance.setActiveAccount(currentAccounts[0]);
           setCurrentAccount(currentAccounts[0]);
           setIsAuthenticated(true);
         }

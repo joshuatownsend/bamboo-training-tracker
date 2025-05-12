@@ -123,13 +123,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    fetchUserData();
+    // Only attempt to fetch data if MSAL instance is initialized
+    if (instance.initialized) {
+      fetchUserData();
+    } else {
+      console.log("MSAL instance not initialized yet, waiting...");
+      // Set a short timeout to check again
+      const checkInterval = setInterval(() => {
+        if (instance.initialized) {
+          clearInterval(checkInterval);
+          fetchUserData();
+        }
+      }, 100);
+      
+      // Clear interval after a reasonable timeout (5 seconds)
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!instance.initialized) {
+          console.error("MSAL initialization timed out");
+          setIsLoading(false);
+          setAuthAttempted(true);
+        }
+      }, 5000);
+    }
   }, [instance, currentAccount, adminSettings, getEmployeeIdByEmail]);
 
   // Interactive login - use popup for better iframe compatibility
   const login = async () => {
     setIsLoading(true);
     try {
+      // Check if MSAL is initialized
+      if (!instance.initialized) {
+        throw new Error("MSAL not initialized. Please wait and try again.");
+      }
+
       // Try silent authentication first
       const accounts = instance.getAllAccounts();
       if (accounts.length > 0) {
@@ -141,6 +168,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           const user = await mapAccountToUser(response.account, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
+          setIsLoading(false);
           return;
         } catch (error) {
           // Silent acquisition failed, fallback to popup
