@@ -6,14 +6,14 @@ export interface Employee {
   division: string;
   email: string;
   avatar?: string;
-  hireDate: string;
+  hire_date: string;
   
-  // Add these missing properties that are used in the components
-  displayName?: string;
-  firstName?: string;
-  lastName?: string;
-  jobTitle?: string;
-  workEmail?: string;
+  // Add these as snake_case to match database schema
+  display_name?: string;
+  first_name?: string;
+  last_name?: string;
+  job_title?: string;
+  work_email?: string;
 }
 
 export interface Training {
@@ -22,41 +22,38 @@ export interface Training {
   type: string;
   category: string;
   description: string;
-  durationHours: number;
-  requiredFor: string[];
-  // Add expirationDate to fix the type error
-  expirationDate?: string;
-  // Add expiryYears property
-  expiryYears?: number;
-  // Add external URL property
-  externalUrl?: string;
+  duration_hours: number;
+  required_for: string[];
+  expiration_date?: string;
+  expiry_years?: number;
+  external_url?: string;
 }
 
 export interface TrainingCompletion {
   id: string;
-  employeeId: string;
-  trainingId: string;
-  completionDate: string;
-  expirationDate?: string;
+  employee_id: string;
+  training_id: string;
+  completion_date: string;
+  expiration_date?: string;
   status: 'completed' | 'expired' | 'due';
   score?: number;
-  certificateUrl?: string;
+  certificate_url?: string;
 }
 
 export interface DepartmentStats {
   department: string;
-  completedCount: number;
-  totalRequired: number;
-  complianceRate: number;
+  completed_count: number;
+  total_required: number;
+  compliance_rate: number;
 }
 
 export interface TrainingStatistics {
-  totalTrainings: number;
-  completedTrainings: number;
-  expiredTrainings: number;
-  upcomingTrainings: number;
-  completionRate: number;
-  departmentStats: DepartmentStats[];
+  total_trainings: number;
+  completed_trainings: number;
+  expired_trainings: number;
+  upcoming_trainings: number;
+  completion_rate: number;
+  department_stats: DepartmentStats[];
 }
 
 // Updated Position interface to include complex requirement structures
@@ -65,8 +62,8 @@ export interface Position {
   title: string;
   description: string;
   department: string;
-  countyRequirements: string[] | RequirementGroup; // Support both legacy array and new structure
-  avfrdRequirements: string[] | RequirementGroup; // Support both legacy array and new structure
+  county_requirements: string[] | RequirementGroup; // Support both legacy array and new structure
+  avfrd_requirements: string[] | RequirementGroup; // Support both legacy array and new structure
   created_at?: string;
   updated_at?: string;
 }
@@ -81,13 +78,13 @@ export interface RequirementGroup {
 }
 
 export interface QualificationStatus {
-  positionId: string;
-  positionTitle: string;
-  isQualifiedCounty: boolean;
-  isQualifiedAVFRD: boolean;
-  missingCountyTrainings: Training[];
-  missingAVFRDTrainings: Training[];
-  completedTrainings: Training[];
+  position_id: string;
+  position_title: string;
+  is_qualified_county: boolean;
+  is_qualified_avfrd: boolean;
+  missing_county_trainings: Training[];
+  missing_avfrd_trainings: Training[];
+  completed_trainings: Training[];
 }
 
 export interface User {
@@ -95,19 +92,18 @@ export interface User {
   name: string;
   email: string;
   role: 'user' | 'admin';
-  employeeId: string;
+  employee_id: string;
 }
 
 export interface UserTraining {
   id: string;
-  employeeId: string;
-  trainingId?: string;
-  completionDate: string;
+  employee_id: string;
+  training_id?: string;
+  completion_date: string;
   instructor?: string;
   notes?: string;
-  trainingDetails: Training | null;
-  // Add type or any other fields that might be present in the BambooHR response
-  type?: string;  
+  training_details: Training | null;
+  type?: string;
   completed?: string;
 }
 

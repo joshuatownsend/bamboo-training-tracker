@@ -26,13 +26,13 @@ export function useCompletionsCache() {
       // Map Supabase data to our TrainingCompletion type
       return data.map((completion): TrainingCompletion => ({
         id: completion.id,
-        employeeId: completion.employee_id,
-        trainingId: completion.training_id,
-        completionDate: completion.completion_date,
-        expirationDate: completion.expiration_date,
+        employee_id: completion.employee_id,
+        training_id: completion.training_id,
+        completion_date: completion.completion_date,
+        expiration_date: completion.expiration_date,
         status: completion.status as any,
         score: completion.score,
-        certificateUrl: completion.certificate_url
+        certificate_url: completion.certificate_url
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

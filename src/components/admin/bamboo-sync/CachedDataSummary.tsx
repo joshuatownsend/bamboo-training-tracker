@@ -88,7 +88,7 @@ export const CachedDataSummary: React.FC<CachedDataSummaryProps> = ({
             <span>Most recent employee:</span>
             <span className="font-mono">
               {employees.length > 0 
-                ? employees[0].displayName || employees[0].name || `ID: ${employees[0].id}`
+                ? employees[0].display_name || employees[0].name || `ID: ${employees[0].id}`
                 : "None"}
             </span>
           </div>

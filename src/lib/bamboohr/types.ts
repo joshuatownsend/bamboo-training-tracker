@@ -1,29 +1,29 @@
 
 export interface BambooApiOptions {
   subdomain: string;
-  apiKey: string;
-  useProxy?: boolean;
-  useEdgeFunction?: boolean;
-  edgeFunctionUrl?: string;
-  client?: any; // Add client to the interface
+  api_key: string;
+  use_proxy?: boolean;
+  use_edge_function?: boolean;
+  edge_function_url?: string;
+  client?: any;
 }
 
 export interface BambooEmployee {
   id: string;
-  displayName?: string;
-  firstName?: string;
-  lastName?: string;
-  jobTitle?: {
+  display_name?: string;
+  first_name?: string;
+  last_name?: string;
+  job_title?: {
     name: string;
   } | string;
   department?: {
     name: string;
   } | string;
   division?: string;
-  workEmail?: string;
+  work_email?: string;
   email?: string;
-  photoUrl?: string;
-  hireDate?: string;
+  photo_url?: string;
+  hire_date?: string;
 }
 
 export interface BambooTraining {
@@ -33,16 +33,16 @@ export interface BambooTraining {
   category: string;
   description?: string;
   duration: number;
-  requiredFor?: string[];
+  required_for?: string[];
 }
 
 export interface BambooTrainingCompletion {
   id: string;
-  employeeId: string;
-  trainingId: string;
-  completedDate: string;
-  expirationDate?: string;
+  employee_id: string;
+  training_id: string;
+  completed_date: string;
+  expiration_date?: string;
   status: string;
   score?: number;
-  certificateUrl?: string;
+  certificate_url?: string;
 }
