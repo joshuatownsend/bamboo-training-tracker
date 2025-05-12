@@ -33,6 +33,44 @@ function logWithTimestamp(message: string) {
   console.log(`[${new Date().toISOString()}] ${message}`);
 }
 
+// Function to validate admin access
+async function isAdminUser(email: string, supabase: any): Promise<boolean> {
+  try {
+    if (!email) return false;
+    
+    // 1. Check if the email is in admin_users table
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin_users')
+      .select('email')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+      
+    if (adminData?.email) {
+      logWithTimestamp(`${email} found in admin_users table - admin access granted`);
+      return true;
+    }
+    
+    // 2. Check if any admin settings list this email
+    // This is a fallback if admin_users table doesn't contain the user
+    
+    // We'll use a direct SQL query for this to simplify checking in any possible settings
+    const { data: settingsData, error: settingsError } = await supabase
+      .rpc('check_admin_access', { admin_email: email.toLowerCase() });
+    
+    // If there's data and it indicates admin access
+    if (settingsData === true) {
+      logWithTimestamp(`${email} validated through admin settings - admin access granted`);
+      return true;
+    }
+    
+    logWithTimestamp(`${email} not found in admin lists - access denied`);
+    return false;
+  } catch (error) {
+    logWithTimestamp(`Error validating admin access: ${error}`);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -56,49 +94,84 @@ serve(async (req) => {
       );
     }
     
-    // Check if this is an authorized request by getting the JWT from the Authorization header
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      logWithTimestamp("Missing or invalid authorization header");
+    // Parse the request body to get admin information
+    const requestData = await req.json();
+    let isAdminAuthenticated = false;
+    let adminEmail = '';
+    let adminName = '';
+    
+    // Initialize Supabase client with service role key for admin operations
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    
+    if (!supabaseKey) {
       return new Response(
         JSON.stringify({ 
-          error: "Unauthorized", 
-          message: "Missing or invalid authorization header. You must be authenticated to use this endpoint."
+          error: "Server configuration error", 
+          message: "Missing Supabase service role key. Please configure it in the Supabase secrets."
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
     
-    // Extract the JWT token
-    const token = authHeader.replace('Bearer ', '');
+    // Create Supabase client with the service role key
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Initialize Supabase client with admin role to verify the token
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+    // Verify if this is an admin request
+    if (requestData.adminRequest && requestData.adminEmail) {
+      adminEmail = requestData.adminEmail;
+      adminName = requestData.adminName || 'Admin User';
+      
+      // Validate if this email has admin access
+      isAdminAuthenticated = await isAdminUser(adminEmail, supabase);
+      
+      if (!isAdminAuthenticated) {
+        logWithTimestamp(`Admin authentication failed for ${adminEmail}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Unauthorized", 
+            message: "You don't have admin privileges to perform this operation."
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+        );
       }
-    );
-    
-    // Verify the JWT token
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      logWithTimestamp(`Auth error: ${authError?.message || 'Invalid token'}`);
-      return new Response(
-        JSON.stringify({ 
-          error: "Unauthorized", 
-          message: "Invalid authentication token. Please log in again."
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
+      
+      logWithTimestamp(`Admin request authenticated for ${adminEmail}`);
+    } else {
+      // Fall back to traditional JWT validation if not an admin request
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logWithTimestamp("Missing or invalid authorization header");
+        return new Response(
+          JSON.stringify({ 
+            error: "Unauthorized", 
+            message: "Missing or invalid authorization header. You must be authenticated to use this endpoint."
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        );
+      }
+      
+      // Extract the JWT token
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Verify the JWT token
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        logWithTimestamp(`Auth error: ${authError?.message || 'Invalid token'}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Unauthorized", 
+            message: "Invalid authentication token. Please log in again."
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        );
+      }
+      
+      isAdminAuthenticated = true;
+      adminEmail = user.email || '';
+      logWithTimestamp(`Authenticated request from user: ${adminEmail}`);
     }
-    
-    logWithTimestamp(`Authenticated request from user: ${user.email}`);
     
     // Rate limiting - check if we've run this too recently
     const now = Date.now();
@@ -129,20 +202,6 @@ serve(async (req) => {
           error: "Server configuration error", 
           message: "Missing BambooHR credentials. Please configure them in the Supabase secrets.",
           secretStatus 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-    
-    // Create Supabase client with the service role key for admin operations
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    
-    if (!supabaseKey) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Server configuration error", 
-          message: "Missing Supabase service role key. Please configure it in the Supabase secrets."
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
@@ -221,9 +280,6 @@ serve(async (req) => {
     
     logWithTimestamp(`Prepared ${mappings.length} employee mappings for database update`);
     
-    // Initialize Supabase client for database operations
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
     // Try updating records using upsert
     const { data, error: upsertError } = await supabase
       .from('employee_mappings')
@@ -264,6 +320,17 @@ serve(async (req) => {
         }
       }
       
+      // Update the sync status
+      await supabase
+        .from('sync_status')
+        .upsert({
+          id: 'bamboohr',
+          status: successCount > 0 ? 'completed' : 'error',
+          error: successCount === 0 ? "Failed to update employee mappings" : null,
+          last_sync: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+        
       return new Response(
         JSON.stringify({
           success: successCount > 0,
@@ -275,6 +342,17 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
+    
+    // Update the sync status
+    await supabase
+      .from('sync_status')
+      .upsert({
+        id: 'bamboohr',
+        status: 'completed',
+        error: null,
+        last_sync: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
     
     // Return success response
     return new Response(

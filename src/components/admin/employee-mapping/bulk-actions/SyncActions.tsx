@@ -21,25 +21,25 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
     try {
       setIsSyncing(true);
       
-      // Get the auth session for the bearer token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.error("No authenticated session found");
+      if (!currentUser || !isAdmin) {
         toast({
-          title: "Authentication required",
-          description: "You must be logged in to trigger a sync",
+          title: "Permission denied",
+          description: "You must be an administrator to trigger a sync",
           variant: "destructive"
         });
         return false;
       }
 
-      console.log("Authenticated user found, triggering sync with token");
+      console.log("Admin user authenticated, triggering sync");
       
-      // Call the enhanced sync edge function
+      // Call the enhanced sync edge function with admin header
       const response = await supabase.functions.invoke('sync-employee-mappings', {
         method: 'POST',
-        body: {}
+        body: {
+          adminRequest: true,
+          adminEmail: currentUser.email,
+          adminName: currentUser.name
+        }
       });
       
       if (response.error) {
@@ -82,7 +82,7 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
             <Button 
               variant="outline" 
               size="sm"
-              disabled={isSyncing || !currentUser}
+              disabled={isSyncing || !currentUser || !isAdmin}
               onClick={handleEnhancedSync}
             >
               <UserCheck className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -91,6 +91,11 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
             {!currentUser && (
               <p className="text-xs text-red-600">
                 You need to be logged in to perform a sync
+              </p>
+            )}
+            {currentUser && !isAdmin && (
+              <p className="text-xs text-red-600">
+                Administrator access required for this operation
               </p>
             )}
             {lastSyncTime && (
