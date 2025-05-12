@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useBambooSync } from "@/hooks/cache/useBambooSync";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StatusBadgeProps {
   status: string;
@@ -52,6 +53,7 @@ export function BambooHRSyncStatus() {
   
   const [showDataDetails, setShowDataDetails] = React.useState(false);
   const [showDebugInfo, setShowDebugInfo] = React.useState(false);
+  const [localIsSyncing, setLocalIsSyncing] = React.useState(false);
   
   // Performance tracking for the sync operation
   const [syncStartTime, setSyncStartTime] = React.useState<number | null>(null);
@@ -84,7 +86,7 @@ export function BambooHRSyncStatus() {
   };
   
   const handleSync = async () => {
-    setIsSyncing(true);
+    setLocalIsSyncing(true);
     const startTime = performance.now();
     setSyncStartTime(startTime);
     
@@ -152,7 +154,7 @@ export function BambooHRSyncStatus() {
         variant: "destructive"
       });
     } finally {
-      setIsSyncing(false);
+      setLocalIsSyncing(false);
     }
   };
   
@@ -300,7 +302,7 @@ export function BambooHRSyncStatus() {
                     <span className="text-muted-foreground">Recent completions:</span>
                     <span className="font-mono">
                       {completions.filter(c => {
-                        const date = c.completion_date ? new Date(c.completion_date) : null;
+                        const date = c.completionDate ? new Date(c.completionDate) : null;
                         if (!date) return false;
                         const now = new Date();
                         const oneMonthAgo = new Date();
@@ -360,11 +362,11 @@ export function BambooHRSyncStatus() {
       <CardFooter className="flex flex-col gap-2">
         <Button 
           onClick={handleSync} 
-          disabled={isSyncStatusLoading || isSyncing || syncStatus?.status === 'running'}
+          disabled={isSyncStatusLoading || localIsSyncing || syncStatus?.status === 'running'}
           className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing 
+          <RefreshCw className={`h-4 w-4 mr-2 ${localIsSyncing ? "animate-spin" : ""}`} />
+          {localIsSyncing 
             ? syncStartTime 
               ? `Syncing... (${((performance.now() - syncStartTime) / 1000).toFixed(1)}s)` 
               : "Syncing..." 
