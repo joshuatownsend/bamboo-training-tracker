@@ -1,3 +1,4 @@
+
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -23,10 +24,10 @@ export const calculateTrainingStatistics = (
   console.log("First few completions:", safeCompletions.slice(0, 3));
   
   // Calculate basic statistics
-  const totalTrainings = safeTrainings.length;
-  const completedTrainings = safeCompletions.length;
-  const expiredTrainings = safeCompletions.filter(c => c.status === "expired").length;
-  const upcomingTrainings = safeCompletions.filter(c => c.status === "due").length;
+  const totalTrainings = safeTrainings.length || 0;
+  const completedTrainings = safeCompletions.length || 0;
+  const expiredTrainings = safeCompletions.filter(c => c.status === "expired").length || 0;
+  const upcomingTrainings = safeCompletions.filter(c => c.status === "due").length || 0;
 
   // Calculate completion rate based on total possible completions (employees × trainings)
   const totalPossibleCompletions = safeEmployees.length * safeTrainings.length || 1; // Avoid division by zero

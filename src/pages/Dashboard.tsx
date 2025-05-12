@@ -24,9 +24,13 @@ const Dashboard = () => {
   useEffect(() => {
     console.log("Dashboard data:", { 
       hasEmployees: Boolean(employees?.length), 
+      employeesCount: employees?.length || 0,
       hasTrainings: Boolean(trainings?.length),
+      trainingsCount: trainings?.length || 0,
       hasCompletions: Boolean(completions?.length),
-      hasStatistics: Boolean(statistics)
+      completionsCount: completions?.length || 0,
+      hasStatistics: Boolean(statistics),
+      statistics: statistics
     });
   }, [employees, trainings, completions, statistics]);
 
