@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import useBambooHR from "@/hooks/useBambooHR";
 import { UserTrainingsTable } from "@/components/training/UserTrainingsTable";
 import { useToast } from "@/hooks/use-toast";

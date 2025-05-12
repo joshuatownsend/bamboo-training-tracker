@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 
 interface MappingFormProps {
   onSuccess: () => void;

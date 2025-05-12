@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 
 /**
  * Hook for BambooHR sync operations

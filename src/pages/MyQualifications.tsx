@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -8,7 +7,7 @@ import { QualificationsTabs } from "@/components/qualifications/QualificationsTa
 import { QualificationsHeader } from "@/components/qualifications/QualificationsHeader";
 import { useQualifications } from "@/hooks/useQualifications";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 
 export default function MyQualifications() {
   const { currentUser } = useUser();

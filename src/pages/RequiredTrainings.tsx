@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useQualifications } from "@/hooks/useQualifications";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
 import { PositionSelector } from "@/components/required-trainings/PositionSelector";
 import { RequiredTrainingDetails } from "@/components/required-trainings/RequiredTrainingDetails";

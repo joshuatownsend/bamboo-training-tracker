@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import useBambooHR from '@/hooks/useBambooHR';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 
 interface BulkActionsProps {
   onRefresh: () => void;

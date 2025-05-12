@@ -1,6 +1,5 @@
-
 import { useEffect } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { QualificationStatus } from "@/lib/types";
 import { getAllPositionQualifications } from "@/lib/qualifications";
 import { useToast } from "@/components/ui/use-toast";

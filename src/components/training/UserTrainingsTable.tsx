@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrainingTableRow } from "./TrainingTableRow";
@@ -6,7 +5,7 @@ import { EmptyTrainingsState } from "./EmptyTrainingsState";
 import { UserTraining } from "@/lib/types";
 import { LoadingState } from "./LoadingState";
 import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 
 interface UserTrainingsTableProps {
   trainings: UserTraining[];

@@ -1,7 +1,7 @@
 
 import React, { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { useTrainings } from "@/hooks/training/useTrainings";
 import { useTrainingRequirements } from "@/hooks/training/useTrainingRequirements";
 import { useTrainingTableState } from "@/hooks/training/useTrainingTableState";

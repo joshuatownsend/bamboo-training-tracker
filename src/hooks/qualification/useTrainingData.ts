@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { Training, TrainingCompletion } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
