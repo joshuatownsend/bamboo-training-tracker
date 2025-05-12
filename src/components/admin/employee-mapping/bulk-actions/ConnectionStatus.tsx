@@ -21,9 +21,10 @@ export const ConnectionStatus = ({ connectionStatus, setConnectionStatus }: Conn
     
     try {
       // Check if the BambooHR service is properly instantiated
-      const isConfigured = bambooHR.isConfigured;
+      console.log("Testing BambooHR connection, bambooHR:", bambooHR);
+      console.log("Is BambooHR configured:", bambooHR.isConfigured);
       
-      if (!isConfigured) {
+      if (!bambooHR.isConfigured) {
         setConnectionStatus({
           success: false,
           message: "BambooHR is not properly configured. Check API credentials in Supabase."
@@ -32,7 +33,11 @@ export const ConnectionStatus = ({ connectionStatus, setConnectionStatus }: Conn
       }
       
       // Test the actual connection
-      const connected = await bambooHR.getBambooService().testConnection();
+      console.log("Getting BambooHR service...");
+      const service = bambooHR.getBambooService();
+      console.log("Testing connection...");
+      const connected = await service.testConnection();
+      console.log("Connection test result:", connected);
       
       if (connected) {
         setConnectionStatus({
@@ -42,7 +47,9 @@ export const ConnectionStatus = ({ connectionStatus, setConnectionStatus }: Conn
         
         // Try to fetch a small sample of data
         try {
-          const testData = await bambooHR.getBambooService().fetchAllData(true);
+          console.log("Fetching test data...");
+          const testData = await service.fetchAllData(true);
+          console.log("Test data retrieved:", testData);
           if (testData) {
             setConnectionStatus({
               success: true,

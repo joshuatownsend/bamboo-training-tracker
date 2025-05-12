@@ -172,9 +172,10 @@ export function BambooHRSyncStatus() {
   // Check database connection
   const checkDatabaseConnection = async () => {
     try {
+      // Fix the query syntax by properly selecting count
       const { data, error } = await supabase
         .from('cached_employees')
-        .select('count(*)');
+        .select('*', { count: 'exact', head: true });
       
       if (error) {
         toast({
