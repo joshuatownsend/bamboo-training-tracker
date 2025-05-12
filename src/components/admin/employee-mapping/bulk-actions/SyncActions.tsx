@@ -69,10 +69,9 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
     setManualSyncLoading(true);
     
     try {
-      // Get the result directly as a boolean value
+      // Get the result as a boolean value and check it directly
       const result = await triggerSync();
       
-      // Check if result is true (success)
       if (result) {
         toast({
           title: "Manual Sync Initiated",

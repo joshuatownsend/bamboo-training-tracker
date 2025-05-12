@@ -5,11 +5,12 @@ import useBambooHR from '@/hooks/useBambooHR';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import { useUser } from "@/contexts/user";
 
-interface ActionButtonsProps {
+interface BulkActionButtonsProps {
   onRefresh: () => void;
 }
 
-export const ActionButtons = ({ onRefresh }: ActionButtonsProps) => {
+// Renamed component to BulkActionButtons to avoid name collision
+export const BulkActionButtons = ({ onRefresh }: BulkActionButtonsProps) => {
   const { toast } = useToast();
   const { refreshEmployeeId } = useUser();
   const { saveBulkEmployeeMappings } = useEmployeeMapping();
