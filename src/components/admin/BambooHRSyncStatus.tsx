@@ -44,9 +44,15 @@ export function BambooHRSyncStatus() {
   } = useEmployeeCache();
   
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const [showDataDetails, setShowDataDetails] = React.useState(false);
+  
+  // Performance tracking for the sync operation
+  const [syncStartTime, setSyncStartTime] = React.useState<number | null>(null);
   
   const handleSync = async () => {
     setIsSyncing(true);
+    const startTime = performance.now();
+    setSyncStartTime(startTime);
     
     toast({
       title: "Sync Started",
@@ -70,10 +76,14 @@ export function BambooHRSyncStatus() {
           clearInterval(pollInterval);
           setIsSyncing(false);
           
+          // Calculate how long the sync took
+          const endTime = performance.now();
+          const syncDuration = syncStartTime ? ((endTime - syncStartTime) / 1000).toFixed(1) : 'unknown';
+          
           if (currentStatus === 'success') {
             toast({
               title: "Sync Complete",
-              description: "BambooHR data has been successfully synchronized.",
+              description: `BambooHR data has been successfully synchronized in ${syncDuration}s.`,
               variant: "default",
               className: "bg-green-50 border-green-200 text-green-800"
             });
@@ -84,6 +94,8 @@ export function BambooHRSyncStatus() {
               variant: "destructive"
             });
           }
+          
+          setSyncStartTime(null);
         }
       }, 3000); // Check every 3 seconds
       
@@ -98,6 +110,8 @@ export function BambooHRSyncStatus() {
             variant: "default",
             className: "bg-yellow-50 border-yellow-200 text-yellow-800"
           });
+          
+          setSyncStartTime(null);
         }
       }, 120000); // 2 minutes
     } catch (error) {
@@ -107,6 +121,8 @@ export function BambooHRSyncStatus() {
         description: error instanceof Error ? error.message : "Failed to start synchronization",
         variant: "destructive"
       });
+      
+      setSyncStartTime(null);
     }
   };
   
@@ -149,7 +165,17 @@ export function BambooHRSyncStatus() {
             </div>
             
             <div className="border rounded-md p-3 space-y-2">
-              <p className="text-sm font-medium">Cached Data:</p>
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-medium">Cached Data:</p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowDataDetails(!showDataDetails)}
+                >
+                  {showDataDetails ? "Hide Details" : "Show Details"}
+                </Button>
+              </div>
+              
               <div className="grid grid-cols-3 gap-2">
                 <div className="flex flex-col items-center p-2 bg-gray-50 rounded-md">
                   {isEmployeesLoading ? (
@@ -176,6 +202,31 @@ export function BambooHRSyncStatus() {
                   <span className="text-xs text-muted-foreground">Completions</span>
                 </div>
               </div>
+              
+              {showDataDetails && !isEmployeesLoading && !isTrainingsLoading && !isCompletionsLoading && (
+                <div className="mt-2 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Employees by department:</span>
+                    <span className="font-mono">{new Set(employees.map(e => e.department)).size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Training categories:</span>
+                    <span className="font-mono">{new Set(trainings.map(t => t.category)).size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Recent completions:</span>
+                    <span className="font-mono">
+                      {completions.filter(c => {
+                        const date = new Date(c.completionDate);
+                        const now = new Date();
+                        const oneMonthAgo = new Date();
+                        oneMonthAgo.setMonth(now.getMonth() - 1);
+                        return date >= oneMonthAgo;
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -187,7 +238,11 @@ export function BambooHRSyncStatus() {
           className="w-full"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing ? "Syncing..." : "Sync Now"}
+          {isSyncing 
+            ? syncStartTime 
+              ? `Syncing... (${((performance.now() - syncStartTime) / 1000).toFixed(1)}s)` 
+              : "Syncing..." 
+            : "Sync Now"}
         </Button>
       </CardFooter>
     </Card>

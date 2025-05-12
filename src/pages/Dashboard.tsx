@@ -1,76 +1,39 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import WelcomeMessages from "@/components/dashboard/WelcomeMessages";
-import useBambooHR from "@/hooks/useBambooHR";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import useDashboardData from "@/hooks/useDashboardData";
 import { useToast } from "@/hooks/use-toast";
-import { TrainingStatistics } from "@/lib/types";
-import { calculateTrainingStatistics } from "@/utils/calculateStatistics";
-import { prefetchBambooHRData } from "@/services/dataCacheService";
 
 const Dashboard = () => {
-  const { useAllData } = useBambooHR();
-  const { data, isLoading, error, refetch } = useAllData();
+  const { 
+    employees, 
+    trainings,
+    completions,
+    statistics, 
+    isLoading, 
+    refreshDashboard 
+  } = useDashboardData();
   const { toast } = useToast();
-  const [stats, setStats] = useState<TrainingStatistics | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
 
-  // Process BambooHR data to generate statistics
+  // Show performance warning one time if dashboard loads slowly
   useEffect(() => {
-    if (data && data.employees) {
-      setIsCalculating(true);
-      
-      console.log("Dashboard received data from BambooHR:", {
-        employees: data.employees.length,
-        trainings: data.trainings?.length || 0,
-        completions: data.completions?.length || 0
-      });
-      
-      // Use setTimeout to avoid blocking UI while calculating stats
-      setTimeout(() => {
-        try {
-          const statistics = calculateTrainingStatistics(
-            data.employees, 
-            data.trainings || [], 
-            data.completions || []
-          );
-          
-          console.log("Calculated statistics:", statistics);
-          setStats(statistics);
-        } catch (err) {
-          console.error("Error calculating statistics:", err);
-          toast({
-            title: "Error calculating statistics",
-            description: "There was an error processing the training data",
-            variant: "destructive"
-          });
-        } finally {
-          setIsCalculating(false);
-        }
-      }, 10); // Small delay to let the UI render
-    }
-  }, [data, toast]);
-
-  // Show error toast if BambooHR data fetch fails
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Error loading dashboard data",
-        description: error instanceof Error ? error.message : "Failed to load data from BambooHR",
-        variant: "destructive"
-      });
-    }
-  }, [error, toast]);
-
-  // Prefetch data when dashboard loads
-  useEffect(() => {
-    prefetchBambooHRData();
+    const startTime = performance.now();
+    
+    return () => {
+      const loadTime = performance.now() - startTime;
+      if (loadTime > 3000) {
+        console.warn(`Dashboard took ${Math.round(loadTime)}ms to render completely`);
+      }
+    };
   }, []);
 
-  // If loading or calculating, show skeleton UI
-  if (isLoading || isCalculating) {
+  // If loading, show skeleton UI
+  if (isLoading) {
     return <DashboardSkeleton />;
   }
   
@@ -78,27 +41,37 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Training Dashboard</h1>
-        <button 
-          onClick={() => refetch()} 
-          className="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+        <Button 
+          onClick={() => {
+            refreshDashboard();
+            toast({
+              title: "Refreshing data",
+              description: "Dashboard data is being updated..."
+            });
+          }} 
+          variant="outline" 
+          size="sm"
+          className="gap-2"
         >
-          Refresh Data
-        </button>
+          <RefreshCw className="h-4 w-4" /> Refresh Data
+        </Button>
       </div>
       
-      {/* Welcome Messages - now using the context provider */}
+      {/* Welcome Messages */}
       <WelcomeMessages />
       
+      {/* Stats Cards */}
       <DashboardStats 
-        employeeCount={data?.employees?.length || 0}
-        stats={stats}
+        employeeCount={employees?.length || 0}
+        stats={statistics}
       />
       
+      {/* Charts and Reports */}
       <DashboardCharts 
-        departmentStats={stats?.departmentStats}
-        completions={data?.completions}
-        employees={data?.employees}
-        trainings={data?.trainings}
+        departmentStats={statistics?.departmentStats}
+        completions={completions}
+        employees={employees}
+        trainings={trainings}
       />
     </div>
   );

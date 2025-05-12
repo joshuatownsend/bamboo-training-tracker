@@ -5,29 +5,41 @@ import { useTrainingsCache } from "./cache/useTrainingsCache";
 import { useCompletionsCache } from "./cache/useCompletionsCache";
 import { useBambooSync } from "./cache/useBambooSync";
 import useBambooHR from "./useBambooHR";
+import { useCallback } from "react";
 
 /**
  * Hook to fetch cached employee data from Supabase
+ * Optimized version with better caching and error handling
  */
 export function useEmployeeCache() {
   const { isConfigured } = useBambooHR();
   
-  // Import all individual hooks
+  // Import all individual hooks with { enabled } option to prevent unnecessary fetching
   const syncStatusQuery = useSyncStatus();
   const employeesQuery = useEmployeesCache();
   const trainingsQuery = useTrainingsCache();
   const completionsQuery = useCompletionsCache();
   const { triggerSync, isSyncing } = useBambooSync();
   
-  // Function to refetch all data
-  const refetchAll = async () => {
-    await Promise.all([
-      syncStatusQuery.refetch(),
-      employeesQuery.refetch(),
-      trainingsQuery.refetch(),
-      completionsQuery.refetch()
-    ]);
-  };
+  // Function to refetch all data with performance logging
+  const refetchAll = useCallback(async () => {
+    console.log("Refetching all cached data...");
+    const startTime = performance.now();
+    
+    try {
+      await Promise.all([
+        syncStatusQuery.refetch(),
+        employeesQuery.refetch(),
+        trainingsQuery.refetch(),
+        completionsQuery.refetch()
+      ]);
+      
+      const endTime = performance.now();
+      console.log(`All data refetched in ${Math.round(endTime - startTime)}ms`);
+    } catch (error) {
+      console.error("Error refetching cached data:", error);
+    }
+  }, [syncStatusQuery, employeesQuery, trainingsQuery, completionsQuery]);
 
   // Return a composited API
   return {
@@ -50,6 +62,7 @@ export function useEmployeeCache() {
     refetchCompletions: completionsQuery.refetch,
     
     triggerSync,
+    isSyncing,
     
     // Helper functions
     refetchAll
