@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { WelcomeMessagesProvider } from "@/contexts/WelcomeMessagesContext";
-import { BambooHRSyncStatus } from "@/components/admin/BambooHRSyncStatus";
 
 export default function AdminSettingsPage() {
   // Add useEffect to check for any initialization issues
@@ -48,28 +47,25 @@ export default function AdminSettingsPage() {
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <BambooHRConfig />
-            <BambooHRSyncStatus />
-          </div>
+          <BambooHRConfig />
           
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md mt-6">
             <h3 className="text-sm font-medium text-yellow-800">About Data Synchronization</h3>
             <p className="text-sm mt-1 text-yellow-700">
-              Employee data from BambooHR is automatically synchronized every 6 hours and cached in the database.
-              This improves load times and reduces API calls to BambooHR.
+              Employee data synchronization is now managed through the Employee Mappings tab. Use the "Sync All Employee Info" 
+              button in the Employee Mappings section to manually trigger data synchronization with BambooHR.
             </p>
             
-            <h3 className="text-sm font-medium text-blue-800 mt-4">Manual Sync</h3>
+            <h3 className="text-sm font-medium text-blue-800 mt-4">Employee Data</h3>
             <p className="text-sm mt-1 text-blue-700">
-              Use the "Sync Now" button to manually trigger an immediate data synchronization with BambooHR.
-              This is useful after making changes in BambooHR.
+              For syncing employee data, training records, and mapping users to BambooHR IDs, please use the options 
+              available in the Employee Mappings tab.
             </p>
             
             <h3 className="text-sm font-medium text-gray-800 mt-4">Troubleshooting</h3>
             <p className="text-sm mt-1 text-gray-700">
               If sync fails, check your BambooHR API credentials. 
-              For persistent issues, review the error message and edge function logs.
+              For persistent issues, review the BambooHR Troubleshooting page linked above.
             </p>
           </div>
         </TabsContent>

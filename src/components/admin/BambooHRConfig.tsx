@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -112,7 +111,7 @@ const BambooHRConfig: React.FC = () => {
   };
 
   return (
-    <Card className="border-yellow-300">
+    <Card className="border-yellow-300 w-full">
       <CardHeader className={isConfigured ? "bg-green-50" : "bg-yellow-50"}>
         <CardTitle className="flex items-center gap-2">
           {isConfigured ? (
