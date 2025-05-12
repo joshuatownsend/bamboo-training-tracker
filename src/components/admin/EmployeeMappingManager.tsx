@@ -5,7 +5,6 @@ import { EmployeeMapping } from '@/hooks/useEmployeeMapping';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import useBambooHR from '@/hooks/useBambooHR';
 import { useToast } from '@/hooks/use-toast';
-import { MappingForm } from './employee-mapping/MappingForm';
 import { MappingDisplay } from './employee-mapping/MappingDisplay';
 import { BulkActions } from './employee-mapping/BulkActions';
 
@@ -71,9 +70,6 @@ const EmployeeMappingManager = () => {
         <div className="flex flex-col space-y-8">
           {/* Bulk actions section */}
           <BulkActions onRefresh={loadData} />
-          
-          {/* Form to add new mapping */}
-          <MappingForm onSuccess={loadData} />
           
           {/* Mappings display with search and table */}
           <MappingDisplay 
