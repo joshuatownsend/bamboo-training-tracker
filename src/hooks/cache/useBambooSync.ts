@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { useUser } from "@/contexts/user";
 export function useBambooSync() {
   const { toast } = useToast();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const { currentUser, isAdmin } = useUser();
   
   /**
@@ -36,6 +38,7 @@ export function useBambooSync() {
       }
       
       setIsSyncing(true);
+      setSyncError(null);
       console.log("Triggering BambooHR sync...");
       
       // First update the sync status to indicate it's in progress
@@ -54,6 +57,7 @@ export function useBambooSync() {
       }
       
       // Then call the database function that triggers the sync
+      console.log("Calling trigger_bamboohr_sync RPC function...");
       const { data, error } = await supabase.rpc('trigger_bamboohr_sync');
       
       if (error) {
@@ -61,31 +65,67 @@ export function useBambooSync() {
         throw new Error(`Sync error: ${error.message}`);
       }
       
-      console.log("Sync triggered successfully:", data);
+      console.log("Sync triggered successfully, response:", data);
+      
+      // Check if the response contains an error
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        throw new Error(`Sync returned error: ${data.error}`);
+      }
       
       toast({
         title: "Sync Triggered",
-        description: "BambooHR sync has been initiated successfully.",
+        description: "BambooHR sync has been initiated successfully. Check status in a few moments.",
       });
       
       return true;
     } catch (error) {
       console.error("Error in triggerSync:", error);
       
+      let errorMessage = "An unknown error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        setSyncError(errorMessage);
+      }
+      
       toast({
         title: "Sync Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
       
-      throw error;
+      return false;
     } finally {
       setIsSyncing(false);
     }
   };
   
+  /**
+   * Function to check sync status
+   */
+  const checkSyncStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sync_status')
+        .select('*')
+        .eq('id', 'bamboohr')
+        .single();
+        
+      if (error) {
+        console.error("Error fetching sync status:", error);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Error checking sync status:", error);
+      return null;
+    }
+  };
+  
   return {
     triggerSync,
-    isSyncing
+    checkSyncStatus,
+    isSyncing,
+    syncError
   };
 }

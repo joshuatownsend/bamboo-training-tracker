@@ -3,11 +3,13 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle, Clock, Database } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useBambooSync } from "@/hooks/cache/useBambooSync";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface StatusBadgeProps {
   status: string;
@@ -33,7 +35,6 @@ export function BambooHRSyncStatus() {
   const { 
     syncStatus, 
     isSyncStatusLoading, 
-    triggerSync,
     employees,
     trainings,
     completions,
@@ -43,11 +44,44 @@ export function BambooHRSyncStatus() {
     refetchAll
   } = useEmployeeCache();
   
-  const [isSyncing, setIsSyncing] = React.useState(false);
+  const {
+    triggerSync,
+    isSyncing,
+    syncError
+  } = useBambooSync();
+  
   const [showDataDetails, setShowDataDetails] = React.useState(false);
+  const [showDebugInfo, setShowDebugInfo] = React.useState(false);
   
   // Performance tracking for the sync operation
   const [syncStartTime, setSyncStartTime] = React.useState<number | null>(null);
+  const [lastRefreshTime, setLastRefreshTime] = React.useState<number>(Date.now());
+  
+  // Monitor sync status automatically
+  React.useEffect(() => {
+    if (syncStatus?.status === 'running') {
+      const interval = setInterval(() => {
+        refetchAll();
+      }, 5000); // Check every 5 seconds when sync is running
+      
+      return () => clearInterval(interval);
+    }
+  }, [syncStatus?.status, refetchAll]);
+  
+  // Load data when component mounts
+  React.useEffect(() => {
+    refetchAll();
+  }, []);
+  
+  const handleRefresh = async () => {
+    setLastRefreshTime(Date.now());
+    await refetchAll();
+    
+    toast({
+      title: "Data Refreshed",
+      description: "Cache status has been refreshed.",
+    });
+  };
   
   const handleSync = async () => {
     setIsSyncing(true);
@@ -60,12 +94,17 @@ export function BambooHRSyncStatus() {
     });
     
     try {
-      await triggerSync();
+      const success = await triggerSync();
       
-      toast({
-        title: "Sync Request Successful",
-        description: "Sync process has started. Data will be available shortly.",
-      });
+      if (success) {
+        toast({
+          title: "Sync Request Successful",
+          description: "Sync process has started. Data will be available shortly.",
+        });
+        
+        // Poll for status updates
+        await refetchAll();
+      }
       
       // Poll for status updates every few seconds
       const pollInterval = setInterval(async () => {
@@ -74,7 +113,6 @@ export function BambooHRSyncStatus() {
         
         if (currentStatus === 'success' || currentStatus === 'error') {
           clearInterval(pollInterval);
-          setIsSyncing(false);
           
           // Calculate how long the sync took
           const endTime = performance.now();
@@ -97,39 +135,76 @@ export function BambooHRSyncStatus() {
           
           setSyncStartTime(null);
         }
-      }, 3000); // Check every 3 seconds
+      }, 5000); // Check every 5 seconds
       
       // Set a timeout to stop polling after 2 minutes
       setTimeout(() => {
         clearInterval(pollInterval);
-        if (isSyncing) {
-          setIsSyncing(false);
-          toast({
-            title: "Sync Timeout",
-            description: "The sync process is taking longer than expected. You can check back later.",
-            variant: "default",
-            className: "bg-yellow-50 border-yellow-200 text-yellow-800"
-          });
-          
-          setSyncStartTime(null);
-        }
+        setSyncStartTime(null);
+        refetchAll(); // One final refresh
       }, 120000); // 2 minutes
+      
     } catch (error) {
-      setIsSyncing(false);
+      setSyncStartTime(null);
       toast({
         title: "Sync Error",
         description: error instanceof Error ? error.message : "Failed to start synchronization",
         variant: "destructive"
       });
-      
-      setSyncStartTime(null);
+    } finally {
+      setIsSyncing(false);
     }
   };
+  
+  // Check database connection
+  const checkDatabaseConnection = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cached_employees')
+        .select('count(*)');
+      
+      if (error) {
+        toast({
+          title: "Database Connection Error",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Database Connection Successful",
+          description: "Successfully connected to the database.",
+          variant: "default",
+          className: "bg-green-50 border-green-200 text-green-800"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Database Connection Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Format time since last refresh
+  const timeSinceRefresh = React.useMemo(() => {
+    return formatDistanceToNow(lastRefreshTime, { addSuffix: true });
+  }, [lastRefreshTime]);
   
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl">BambooHR Data Sync</CardTitle>
+        <CardTitle className="text-xl flex justify-between items-center">
+          <span>BambooHR Data Sync</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isSyncStatusLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncStatusLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </CardTitle>
         <CardDescription>
           Employee data is synced automatically every 6 hours
         </CardDescription>
@@ -156,11 +231,19 @@ export function BambooHRSyncStatus() {
                 </div>
               )}
               
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Last refreshed:</span>
+                <span>{timeSinceRefresh}</span>
+              </div>
+              
               {syncStatus?.error && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                  <p className="font-medium">Error message:</p>
-                  <p className="mt-1">{syncStatus.error}</p>
-                </div>
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Sync Error</AlertTitle>
+                  <AlertDescription className="mt-1 font-mono text-xs break-all">
+                    {syncStatus.error}
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
             
@@ -217,7 +300,8 @@ export function BambooHRSyncStatus() {
                     <span className="text-muted-foreground">Recent completions:</span>
                     <span className="font-mono">
                       {completions.filter(c => {
-                        const date = new Date(c.completionDate);
+                        const date = c.completion_date ? new Date(c.completion_date) : null;
+                        if (!date) return false;
                         const now = new Date();
                         const oneMonthAgo = new Date();
                         oneMonthAgo.setMonth(now.getMonth() - 1);
@@ -228,14 +312,56 @@ export function BambooHRSyncStatus() {
                 </div>
               )}
             </div>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+            >
+              {showDebugInfo ? "Hide Troubleshooting Info" : "Show Troubleshooting Info"}
+            </Button>
+            
+            {showDebugInfo && (
+              <div className="space-y-2 border rounded p-3 text-xs bg-slate-50">
+                <h3 className="font-medium">Troubleshooting Tools</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={checkDatabaseConnection}
+                  >
+                    <Database className="h-3 w-3 mr-1" />
+                    Test DB Connection
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={handleRefresh}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Refresh Cache Status
+                  </Button>
+                </div>
+                
+                <div className="mt-2">
+                  <h4 className="font-medium text-xs text-gray-700">Supabase Config</h4>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Make sure BAMBOOHR_API_KEY and BAMBOOHR_SUBDOMAIN are set in your Supabase edge function secrets.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col gap-2">
         <Button 
           onClick={handleSync} 
           disabled={isSyncStatusLoading || isSyncing || syncStatus?.status === 'running'}
-          className="w-full"
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
           {isSyncing 
@@ -244,6 +370,10 @@ export function BambooHRSyncStatus() {
               : "Syncing..." 
             : "Sync Now"}
         </Button>
+        
+        <div className="text-xs text-muted-foreground text-center w-full">
+          {syncStatus?.status === 'running' && <span className="animate-pulse">Sync in progress, please wait...</span>}
+        </div>
       </CardFooter>
     </Card>
   );

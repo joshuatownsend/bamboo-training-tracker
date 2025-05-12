@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -37,7 +38,7 @@ serve(async (req) => {
     console.log(`BambooHR configuration: subdomain=${subdomain ? 'set' : 'missing'}, apiKey=${apiKey ? 'set' : 'missing'}`);
     
     if (!subdomain || !apiKey) {
-      await updateSyncStatus(supabase, 'error', 'Missing BambooHR credentials');
+      await updateSyncStatus(supabase, 'error', 'Missing BambooHR credentials. Check that BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY are set in Supabase edge function secrets.');
       return new Response(JSON.stringify({ error: 'Missing BambooHR credentials' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -47,10 +48,11 @@ serve(async (req) => {
     await updateSyncStatus(supabase, 'running', null);
 
     // Fetch employees, trainings, and completions from BambooHR
+    console.log("Fetching data from BambooHR API...");
     const bambooData = await fetchBambooHRData(subdomain, apiKey);
     
     if (!bambooData) {
-      await updateSyncStatus(supabase, 'error', 'Failed to fetch data from BambooHR');
+      await updateSyncStatus(supabase, 'error', 'Failed to fetch data from BambooHR API. Check credentials and API connectivity.');
       return new Response(JSON.stringify({ error: 'Failed to fetch data from BambooHR' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -90,7 +92,7 @@ serve(async (req) => {
       if (authHeader) {
         const supabaseKey = authHeader.replace('Bearer ', '');
         const supabase = createClient(SUPABASE_URL, supabaseKey);
-        await updateSyncStatus(supabase, 'error', error.message);
+        await updateSyncStatus(supabase, 'error', error.message || 'Unknown error during sync process');
       }
     } catch (updateError) {
       console.error('Failed to update sync status:', updateError);
@@ -321,15 +323,19 @@ async function syncEmployees(supabase: any, employees: any[]) {
   
   for (let i = 0; i < mappedEmployees.length; i += batchSize) {
     const batch = mappedEmployees.slice(i, i + batchSize);
-    const { error, count } = await supabase
-      .from('cached_employees')
-      .upsert(batch, { onConflict: 'id' });
-    
-    if (error) {
-      console.error('Error upserting employees batch:', error);
-    } else {
-      totalUpserted += count || batch.length;
-      console.log(`Successfully upserted batch of ${batch.length} employees`);
+    try {
+      const { error, count } = await supabase
+        .from('cached_employees')
+        .upsert(batch, { onConflict: 'id' });
+      
+      if (error) {
+        console.error('Error upserting employees batch:', error);
+      } else {
+        totalUpserted += count || batch.length;
+        console.log(`Successfully upserted batch of ${batch.length} employees`);
+      }
+    } catch (error) {
+      console.error(`Error upserting batch ${i/batchSize + 1}:`, error);
     }
   }
   
@@ -370,19 +376,24 @@ async function syncTrainings(supabase: any, trainings: any[]) {
     console.log(`First training mapped: ${JSON.stringify(mappedTrainings[0])}`);
   }
   
-  // Upsert all trainings
-  const { error, count } = await supabase
-    .from('cached_trainings')
-    .upsert(mappedTrainings, { onConflict: 'id' });
-  
-  if (error) {
-    console.error('Error upserting trainings:', error);
+  try {
+    // Upsert all trainings
+    const { error, count } = await supabase
+      .from('cached_trainings')
+      .upsert(mappedTrainings, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error upserting trainings:', error);
+      throw error;
+    }
+    
+    console.log(`Successfully upserted ${count || mappedTrainings.length} trainings`);
+    
+    return { upserted: count || mappedTrainings.length };
+  } catch (error) {
+    console.error("Error in syncTrainings:", error);
     throw error;
   }
-  
-  console.log(`Successfully upserted ${count || mappedTrainings.length} trainings`);
-  
-  return { upserted: count || mappedTrainings.length };
 }
 
 // Sync completions to Supabase
@@ -424,15 +435,19 @@ async function syncCompletions(supabase: any, completions: any[]) {
   
   for (let i = 0; i < mappedCompletions.length; i += batchSize) {
     const batch = mappedCompletions.slice(i, i + batchSize);
-    const { error, count } = await supabase
-      .from('cached_training_completions')
-      .upsert(batch, { onConflict: ['employee_id', 'training_id'] });
-    
-    if (error) {
-      console.error('Error upserting completions batch:', error, batch[0]);
-    } else {
-      totalUpserted += count || batch.length;
-      console.log(`Successfully upserted batch of ${batch.length} completions`);
+    try {
+      const { error, count } = await supabase
+        .from('cached_training_completions')
+        .upsert(batch, { onConflict: ['employee_id', 'training_id'] });
+      
+      if (error) {
+        console.error('Error upserting completions batch:', error, batch[0]);
+      } else {
+        totalUpserted += count || batch.length;
+        console.log(`Successfully upserted batch of ${batch.length} completions`);
+      }
+    } catch (error) {
+      console.error(`Error upserting batch ${i/batchSize + 1}:`, error);
     }
   }
   

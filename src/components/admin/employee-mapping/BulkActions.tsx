@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
@@ -5,6 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import useBambooHR from '@/hooks/useBambooHR';
 import useEmployeeMapping from '@/hooks/useEmployeeMapping';
 import { useUser } from "@/contexts/user";
+import { useBambooSync } from '@/hooks/cache/useBambooSync';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface BulkActionsProps {
   onRefresh: () => void;
@@ -13,10 +17,13 @@ interface BulkActionsProps {
 export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
   const [syncingEmployees, setSyncingEmployees] = useState(false);
   const [manualSyncLoading, setManualSyncLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{ success: boolean; message: string } | null>(null);
   const { toast } = useToast();
   const { refreshEmployeeId } = useUser();
   const { saveBulkEmployeeMappings } = useEmployeeMapping();
   const bambooHR = useBambooHR();
+  const { triggerSync } = useBambooSync();
 
   // Handle auto-mapping by email
   const handleAutoMap = async () => {
@@ -124,31 +131,20 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     try {
       // Use a different approach - call the edge function directly instead of the RPC
       // This avoids the TypeScript issue with the RPC call
-      const { data, error } = await supabase.functions.invoke('sync-employee-mappings');
+      const result = await triggerSync();
       
-      if (error) {
-        console.error("Error manually running sync job:", error);
+      if (result) {
         toast({
-          title: "Manual Sync Failed",
-          description: error.message || "Failed to manually run sync job",
-          variant: "destructive"
+          title: "Manual Sync Initiated",
+          description: "The sync job has been manually triggered. Check status in the Sync Status panel.",
         });
-        return;
+        
+        // Reload the data after a short delay to allow the sync to complete
+        setTimeout(() => {
+          onRefresh();
+          refreshEmployeeId(); // Refresh the current user's employee ID if relevant
+        }, 3000);
       }
-      
-      console.log("Manual sync response:", data);
-      
-      toast({
-        title: "Manual Sync Initiated",
-        description: "The sync job has been manually triggered. Check logs for results.",
-      });
-      
-      // Reload the data after a short delay to allow the sync to complete
-      setTimeout(() => {
-        onRefresh();
-        refreshEmployeeId(); // Refresh the current user's employee ID if relevant
-      }, 3000);
-      
     } catch (error) {
       console.error("Exception during manual sync:", error);
       toast({
@@ -161,32 +157,112 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     }
   };
 
+  // Test BambooHR connection
+  const testBambooHRConnection = async () => {
+    setTestingConnection(true);
+    setConnectionStatus(null);
+    
+    try {
+      // Check if the BambooHR service is properly instantiated
+      const isConfigured = bambooHR.isConfigured();
+      
+      if (!isConfigured) {
+        setConnectionStatus({
+          success: false,
+          message: "BambooHR is not properly configured. Check API credentials in Supabase."
+        });
+        return;
+      }
+      
+      // Test the actual connection
+      const connected = await bambooHR.getBambooService().testConnection();
+      
+      if (connected) {
+        setConnectionStatus({
+          success: true,
+          message: "Successfully connected to BambooHR API"
+        });
+        
+        // Try to fetch a small sample of data
+        try {
+          const testData = await bambooHR.getBambooService().fetchAllData(true);
+          if (testData) {
+            setConnectionStatus({
+              success: true,
+              message: `Connected to BambooHR API and retrieved sample data: ${testData.employees.length} employees, ${testData.trainings.length} trainings`
+            });
+          }
+        } catch (fetchError) {
+          console.error("Error fetching test data:", fetchError);
+          // Still consider it a success if we connected but couldn't fetch data
+        }
+      } else {
+        setConnectionStatus({
+          success: false,
+          message: "Failed to connect to BambooHR API. Check credentials and API access."
+        });
+      }
+    } catch (error) {
+      console.error("Error testing BambooHR connection:", error);
+      setConnectionStatus({
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error while testing connection"
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">Bulk Actions</h3>
-      <div className="flex flex-wrap gap-2">
+      
+      {connectionStatus && (
+        <Alert variant={connectionStatus.success ? "default" : "destructive"} className={connectionStatus.success ? "bg-green-50 border-green-200" : ""}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{connectionStatus.success ? "Connection Successful" : "Connection Failed"}</AlertTitle>
+          <AlertDescription>
+            {connectionStatus.message}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          onClick={testBambooHRConnection}
+          disabled={testingConnection}
+          className="w-full"
+        >
+          {testingConnection ? "Testing..." : "Test BambooHR Connection"}
+        </Button>
+        
         <Button
           variant="secondary"
           onClick={handleAutoMap}
-          className="w-full sm:w-auto"
+          className="w-full"
         >
           Map from Local Cache
         </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Button
           variant="default"
           onClick={handleSyncFromBambooHR}
           disabled={syncingEmployees}
-          className="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 text-black"
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
         >
           {syncingEmployees ? "Syncing..." : "Sync from BambooHR"}
         </Button>
+        
         <Button
           variant="outline"
           onClick={handleManualSync}
           disabled={manualSyncLoading}
-          className="w-full sm:w-auto"
+          className="w-full"
         >
-          {manualSyncLoading ? "Running..." : "Run Sync Job Now"}
+          {manualSyncLoading ? "Running..." : "Run Full Sync Job Now"}
         </Button>
       </div>
     </div>
