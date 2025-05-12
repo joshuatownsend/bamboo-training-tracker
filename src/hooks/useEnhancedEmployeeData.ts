@@ -115,37 +115,19 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
     try {
       setIsLoading(true);
       
-      // Get the auth session for the bearer token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "You must be logged in to trigger a sync",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Call the edge function to sync employee data
-      const response = await fetch('https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-employee-mappings', {
+      // Use the Supabase functions.invoke method instead of fetch
+      const { data, error } = await supabase.functions.invoke('sync-employee-mappings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({})
+        body: {}
       });
 
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.message || result.error || 'Sync failed');
+      if (error) {
+        throw new Error(error.message || 'Sync failed');
       }
-
-      const result = await response.json();
 
       toast({
         title: "Sync complete",
-        description: `Successfully synced ${result.count || 'unknown'} employee records`,
+        description: `Successfully synced ${data?.count || 'unknown'} employee records`,
       });
 
       // Refetch the data to show the latest

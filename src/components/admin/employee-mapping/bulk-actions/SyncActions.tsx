@@ -15,7 +15,7 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const { toast } = useToast();
-  const { currentUser } = useUser();
+  const { currentUser, isAdmin } = useUser();
 
   const handleEnhancedSync = async () => {
     try {
@@ -37,28 +37,21 @@ export const SyncActions = ({ onRefresh }: SyncActionsProps) => {
       console.log("Authenticated user found, triggering sync with token");
       
       // Call the enhanced sync edge function
-      const response = await fetch('https://fvpbkkmnzlxbcxokxkce.supabase.co/functions/v1/sync-employee-mappings', {
+      const response = await supabase.functions.invoke('sync-employee-mappings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({})
+        body: {}
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || `Error ${response.status}`);
+      
+      if (response.error) {
+        throw new Error(response.error.message || 'Unknown error occurred');
       }
 
-      const result = await response.json();
-      
       // Store the last sync time
       setLastSyncTime(new Date().toISOString());
       
       toast({
         title: "Employee sync successful",
-        description: `Synced ${result.count || 0} employees from BambooHR`,
+        description: `Synced ${response.data?.count || 0} employees from BambooHR`,
       });
       
       // Refresh the mappings list

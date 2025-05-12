@@ -1,8 +1,10 @@
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +56,7 @@ serve(async (req) => {
       );
     }
     
-    // Check if this is an authorized request
+    // Check if this is an authorized request by getting the JWT from the Authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       logWithTimestamp("Missing or invalid authorization header");
@@ -66,6 +68,37 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
+    
+    // Extract the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Initialize Supabase client with admin role to verify the token
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+    
+    // Verify the JWT token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      logWithTimestamp(`Auth error: ${authError?.message || 'Invalid token'}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Unauthorized", 
+          message: "Invalid authentication token. Please log in again."
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+    
+    logWithTimestamp(`Authenticated request from user: ${user.email}`);
     
     // Rate limiting - check if we've run this too recently
     const now = Date.now();
@@ -102,8 +135,8 @@ serve(async (req) => {
     }
     
     // Create Supabase client with the service role key for admin operations
-    const supabaseUrl = "https://fvpbkkmnzlxbcxokxkce.supabase.co";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     
     if (!supabaseKey) {
       return new Response(
@@ -188,95 +221,58 @@ serve(async (req) => {
     
     logWithTimestamp(`Prepared ${mappings.length} employee mappings for database update`);
     
-    // Try updating records using upsert (insert if not exists, update if exists)
-    const insertResults = await fetch(`${supabaseUrl}/rest/v1/employee_mappings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
-        "Prefer": "resolution=merge-duplicates"
-      },
-      body: JSON.stringify(mappings)
-    });
+    // Initialize Supabase client for database operations
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
-    if (!insertResults.ok) {
-      const errorText = await insertResults.text();
-      logWithTimestamp(`Supabase Error (${insertResults.status}): ${errorText}`);
+    // Try updating records using upsert
+    const { data, error: upsertError } = await supabase
+      .from('employee_mappings')
+      .upsert(mappings, { 
+        onConflict: 'email',
+        ignoreDuplicates: false 
+      });
+
+    if (upsertError) {
+      logWithTimestamp(`Supabase upsert error: ${upsertError.message}`);
       
-      // If we got a conflict error, try a different approach
-      if (insertResults.status === 409) {
-        logWithTimestamp("Received 409 conflict error, trying individual upserts...");
-        
-        // Try updating records one by one to handle the conflicts
-        let successCount = 0;
-        const errors = [];
-        
-        for (const mapping of mappings) {
-          try {
-            const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/employee_mappings?email=eq.${encodeURIComponent(mapping.email)}`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                "apikey": supabaseKey,
-                "Authorization": `Bearer ${supabaseKey}`,
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                bamboo_employee_id: mapping.bamboo_employee_id,
-                name: mapping.name,
-                display_name: mapping.display_name,
-                first_name: mapping.first_name,
-                last_name: mapping.last_name,
-                position: mapping.position,
-                job_title: mapping.job_title,
-                department: mapping.department,
-                division: mapping.division,
-                work_email: mapping.work_email,
-                avatar: mapping.avatar,
-                hire_date: mapping.hire_date,
-                status: mapping.status,
-                updated_at: mapping.updated_at,
-                last_sync: mapping.last_sync
-              })
+      // Try individual updates as a fallback
+      let successCount = 0;
+      const errors = [];
+      
+      for (const mapping of mappings) {
+        try {
+          const { error: individualError } = await supabase
+            .from('employee_mappings')
+            .upsert([mapping], { 
+              onConflict: 'email',
+              ignoreDuplicates: false 
             });
-            
-            if (upsertResponse.ok) {
-              successCount++;
-            } else {
-              const errorDetail = await upsertResponse.text();
-              errors.push({
-                email: mapping.email,
-                error: errorDetail
-              });
-            }
-          } catch (err) {
+          
+          if (!individualError) {
+            successCount++;
+          } else {
             errors.push({
               email: mapping.email,
-              error: err.message || "Unknown error"
+              error: individualError.message
             });
           }
+        } catch (err) {
+          errors.push({
+            email: mapping.email,
+            error: err instanceof Error ? err.message : "Unknown error"
+          });
         }
-        
-        return new Response(
-          JSON.stringify({
-            success: successCount > 0,
-            message: `Updated ${successCount} of ${mappings.length} employee mappings individually`,
-            count: successCount,
-            errors: errors.length > 0 ? errors.slice(0, 5) : [],
-            timestamp: new Date().toISOString()
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-        );
       }
       
       return new Response(
-        JSON.stringify({ 
-          error: "Database update failed", 
-          status: insertResults.status,
-          details: errorText
+        JSON.stringify({
+          success: successCount > 0,
+          message: `Updated ${successCount} of ${mappings.length} employee mappings individually`,
+          count: successCount,
+          errors: errors.length > 0 ? errors.slice(0, 5) : [],
+          timestamp: new Date().toISOString()
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
     
