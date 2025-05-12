@@ -12,11 +12,15 @@ import { msalConfig } from '../lib/authConfig';
 // Create the MSAL instance
 const msalInstance = new PublicClientApplication(msalConfig);
 
+// Track initialization status
+let isMsalInitialized = false;
+
 // Initialize MSAL immediately as a self-invoking async function
 (async () => {
   try {
     await msalInstance.initialize();
     console.log("MSAL initialized successfully");
+    isMsalInitialized = true;
     
     // Handle the redirect promise in case this page loads after a redirect
     await msalInstance.handleRedirectPromise();
@@ -49,6 +53,7 @@ type MsalContextType = {
   currentAccount: AccountInfo | null;
   inProgress: boolean;
   error: Error | null;
+  isInitialized: boolean;
 };
 
 // Create the context with default values
@@ -59,6 +64,7 @@ const MsalContext = createContext<MsalContextType>({
   currentAccount: null,
   inProgress: true,
   error: null,
+  isInitialized: false,
 });
 
 // Hook for consuming the context
@@ -77,15 +83,17 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [inProgress, setInProgress] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(isMsalInitialized);
 
   useEffect(() => {
     // Ensure MSAL is initialized before using it
     const checkMsalInitialized = () => {
-      if (!msalInstance.initialized) {
+      if (!isMsalInitialized) {
         console.log("MSAL not fully initialized yet, waiting...");
         setTimeout(checkMsalInitialized, 100);
         return false;
       }
+      setIsInitialized(true);
       return true;
     };
 
@@ -147,6 +155,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentAccount,
     inProgress,
     error,
+    isInitialized,
   };
 
   return (

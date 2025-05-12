@@ -11,7 +11,7 @@ import { mapAccountToUser } from "../helpers/userMappingHelper";
 import { UserContext } from "./UserContext";
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { instance, currentAccount, isAuthenticated } = useMsal();
+  const { instance, currentAccount, isAuthenticated, isInitialized } = useMsal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authAttempted, setAuthAttempted] = useState(false);
@@ -124,13 +124,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     // Only attempt to fetch data if MSAL instance is initialized
-    if (instance.initialized) {
+    if (isInitialized) {
       fetchUserData();
     } else {
       console.log("MSAL instance not initialized yet, waiting...");
       // Set a short timeout to check again
       const checkInterval = setInterval(() => {
-        if (instance.initialized) {
+        if (isInitialized) {
           clearInterval(checkInterval);
           fetchUserData();
         }
@@ -139,21 +139,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear interval after a reasonable timeout (5 seconds)
       setTimeout(() => {
         clearInterval(checkInterval);
-        if (!instance.initialized) {
+        if (!isInitialized) {
           console.error("MSAL initialization timed out");
           setIsLoading(false);
           setAuthAttempted(true);
         }
       }, 5000);
     }
-  }, [instance, currentAccount, adminSettings, getEmployeeIdByEmail]);
+  }, [instance, currentAccount, adminSettings, getEmployeeIdByEmail, isInitialized]);
 
   // Interactive login - use popup for better iframe compatibility
   const login = async () => {
     setIsLoading(true);
     try {
       // Check if MSAL is initialized
-      if (!instance.initialized) {
+      if (!isInitialized) {
         throw new Error("MSAL not initialized. Please wait and try again.");
       }
 
