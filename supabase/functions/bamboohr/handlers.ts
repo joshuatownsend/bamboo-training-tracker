@@ -48,24 +48,20 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
       );
     }
     
-    // Fix: Fix the URL parameter handling to avoid double-encoding issues
     // Remove subdomain from params as we'll use it directly in the URL
     params.delete('subdomain');
     
+    // Log query parameters for debugging
+    logWithTimestamp(`Query parameters: ?${params.toString()}`);
+    
     // Construct the BambooHR API URL
-    // Important: Build query string manually instead of appending params to avoid encoding issues
     let bambooUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}`;
     
     // Add any remaining query parameters
-    const queryParams: string[] = [];
-    params.forEach((value, key) => {
-      queryParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-    });
-    
-    if (queryParams.length > 0) {
+    if (params.size > 0) {
       // If the path already contains a query parameter, append with &, otherwise use ?
       const separator = path.includes('?') ? '&' : '?';
-      bambooUrl += separator + queryParams.join('&');
+      bambooUrl += separator + params.toString();
     }
     
     logWithTimestamp(`Forwarding request to BambooHR: ${req.method} ${bambooUrl}`);
