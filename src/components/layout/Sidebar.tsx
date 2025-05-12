@@ -2,7 +2,7 @@
 import React from 'react';
 import { Separator } from "@/components/ui/separator";
 
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { navigationSections } from './sidebar/navigationSections';
 import { NavSection } from './sidebar/NavSection';
 import { UserMenu } from './sidebar/UserMenu';

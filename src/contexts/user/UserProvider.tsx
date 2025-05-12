@@ -1,24 +1,14 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { useMsal } from "./MsalContext";
-import { loginRequest } from "../lib/authConfig";
-import { AccountInfo } from "@azure/msal-browser";
+import React, { useState, useEffect } from "react";
+import { useMsal } from "../MsalContext";
+import { loginRequest } from "../../lib/authConfig";
 import { User } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
 import useEmployeeMapping from "@/hooks/useEmployeeMapping";
-import { UserContextType, AdminSettings } from "./types/userTypes";
-import { LOCAL_STORAGE_KEY, DEFAULT_ADMIN_CONFIGURATION, loadAdminSettings } from "./config/adminSettings";
-import { mapAccountToUser } from "./helpers/userMappingHelper";
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
-
-export const useUser = () => {
-  const context = useContext(UserContext);
-  if (context === undefined) {
-    throw new Error("useUser must be used within a UserProvider");
-  }
-  return context;
-};
+import { AdminSettings } from "../types/userTypes";
+import { LOCAL_STORAGE_KEY, DEFAULT_ADMIN_CONFIGURATION, loadAdminSettings } from "../config/adminSettings";
+import { mapAccountToUser } from "../helpers/userMappingHelper";
+import { UserContext } from "./UserContext";
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { instance, activeAccount } = useMsal();

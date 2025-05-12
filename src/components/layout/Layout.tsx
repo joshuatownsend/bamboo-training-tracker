@@ -3,7 +3,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { Outlet } from "react-router-dom";
 import { useMobile } from "@/hooks/useMobile";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function Layout() {

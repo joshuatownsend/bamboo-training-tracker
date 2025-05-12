@@ -1,7 +1,7 @@
 
 import { BellIcon, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/user";
 import { useMobile } from "@/hooks/useMobile";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { 

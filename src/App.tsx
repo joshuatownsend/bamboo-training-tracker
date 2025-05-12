@@ -9,7 +9,7 @@ import MyTrainings from './pages/MyTrainings';
 import RequiredTrainings from './pages/RequiredTrainings';
 import AdminSettings from './pages/AdminSettings';
 import Login from './pages/Login';
-import UserProvider from './contexts/UserContext';
+import UserProvider from './contexts/user';
 import { WelcomeMessagesProvider } from './contexts/WelcomeMessagesContext';
 import AuthGuard from './components/auth/AuthGuard';
 import BambooTest from './pages/BambooTest';
