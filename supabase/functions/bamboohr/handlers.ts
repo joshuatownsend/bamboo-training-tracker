@@ -59,7 +59,7 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
     // Add any remaining query parameters
     const queryParams: string[] = [];
     params.forEach((value, key) => {
-      queryParams.push(`${key}=${value}`);
+      queryParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
     });
     
     if (queryParams.length > 0) {
@@ -82,6 +82,22 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
     // Get the response content
     let responseBody;
     const contentType = bambooResponse.headers.get('content-type');
+    
+    if (bambooResponse.status === 404) {
+      logWithTimestamp(`BambooHR returned 404 for URL: ${bambooUrl}`);
+      return new Response(
+        JSON.stringify({
+          error: "Resource not found",
+          message: "The requested BambooHR resource was not found",
+          status: 404,
+          url: bambooUrl
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 404 
+        }
+      );
+    }
     
     if (contentType && contentType.includes('application/json')) {
       responseBody = await bambooResponse.json();

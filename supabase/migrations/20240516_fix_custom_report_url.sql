@@ -1,5 +1,4 @@
 
-
 -- Fix the custom report URL handling in the sync-bamboohr-data edge function
 -- This migration simply serves as documentation of the changes we made to the edge function
 
@@ -12,4 +11,3 @@ Updates from May 16, 2024:
 - Added better error handling for 404 responses from BambooHR API
 - Improved handling of custom report URLs to prevent double-encoding of parameters
 $$;
-
