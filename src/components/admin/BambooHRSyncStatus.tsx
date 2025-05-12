@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,17 +95,28 @@ export function BambooHRSyncStatus() {
     });
     
     try {
-      const success = await triggerSync();
+      const { data, error } = await supabase.rpc('trigger_bamboohr_sync');
       
-      if (success) {
-        toast({
-          title: "Sync Request Successful",
-          description: "Sync process has started. Data will be available shortly.",
-        });
-        
-        // Poll for status updates
-        await refetchAll();
+      if (error) {
+        console.error("RPC error triggering sync:", error);
+        throw new Error(`Database function error: ${error.message}`);
       }
+      
+      // Check if the response contains an error
+      if (data && typeof data === 'object' && 'error' in data && data.error) {
+        console.error("Sync returned error in data:", data.error);
+        throw new Error(`Sync returned error: ${data.error}`);
+      }
+      
+      console.log("Sync triggered successfully, response:", data);
+      
+      toast({
+        title: "Sync Request Successful",
+        description: "Sync process has started. Data will be available shortly.",
+      });
+      
+      // Poll for status updates
+      await refetchAll();
       
       // Poll for status updates every few seconds
       const pollInterval = setInterval(async () => {
@@ -148,8 +158,9 @@ export function BambooHRSyncStatus() {
       
     } catch (error) {
       setSyncStartTime(null);
+      console.error("Error in handleSync:", error);
       toast({
-        title: "Sync Error",
+        title: "Sync Failed",
         description: error instanceof Error ? error.message : "Failed to start synchronization",
         variant: "destructive"
       });

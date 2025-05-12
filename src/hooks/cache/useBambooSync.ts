@@ -43,18 +43,23 @@ export function useBambooSync() {
       console.log("Triggering BambooHR sync...");
       
       // First update the sync status to indicate it's in progress
-      const { error: updateError } = await supabase
-        .from('sync_status')
-        .update({ 
-          status: 'running',
-          error: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', 'bamboohr');
-      
-      if (updateError) {
-        console.error("Error updating sync status:", updateError);
-        throw new Error(`Failed to update sync status: ${updateError.message}`);
+      try {
+        const { error: updateError } = await supabase
+          .from('sync_status')
+          .update({ 
+            status: 'running',
+            error: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', 'bamboohr');
+        
+        if (updateError) {
+          console.error("Error updating sync status:", updateError);
+          throw new Error(`Failed to update sync status: ${updateError.message}`);
+        }
+      } catch (updateErr) {
+        console.error("Exception updating sync status:", updateErr);
+        // Continue even if status update fails
       }
       
       // Then call the database function that triggers the sync
@@ -70,6 +75,7 @@ export function useBambooSync() {
       
       // Check if the response contains an error
       if (data && typeof data === 'object' && 'error' in data && data.error) {
+        console.error("Sync returned error in data:", data.error);
         throw new Error(`Sync returned error: ${data.error}`);
       }
       
