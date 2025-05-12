@@ -129,8 +129,8 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     setManualSyncLoading(true);
     
     try {
-      // Use a different approach - call the edge function directly instead of the RPC
-      // This avoids the TypeScript issue with the RPC call
+      // Fix: Don't treat the result as a callable function
+      // Call triggerSync and just check its return value
       const result = await triggerSync();
       
       if (result) {
