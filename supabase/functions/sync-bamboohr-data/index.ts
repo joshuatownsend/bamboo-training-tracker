@@ -1,266 +1,512 @@
 
-// Improved BambooHR data sync function with better error handling
-// This function syncs employee data from BambooHR to our database
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Console log with timestamp for better debugging
-function logWithTimestamp(message: string) {
-  const now = new Date();
-  console.log(`[${now.toISOString()}] ${message}`);
-}
+const SUPABASE_URL = "https://fvpbkkmnzlxbcxokxkce.supabase.co";
 
-// CORS headers for cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // Handle OPTIONS request for CORS
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    logWithTimestamp("BambooHR data sync function started");
+    console.log("Starting BambooHR data sync process...");
     
-    // Get credentials from environment
-    const subdomain = Deno.env.get('BAMBOOHR_SUBDOMAIN');
-    const apiKey = Deno.env.get('BAMBOOHR_API_KEY');
-    
-    // Check if credentials are available
-    if (!subdomain || !apiKey) {
-      logWithTimestamp("Missing BambooHR credentials");
-      throw new Error("BambooHR credentials not properly configured");
+    // Get the authorization header from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("No authorization header provided");
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Get Supabase credentials from environment
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseKey = authHeader.replace('Bearer ', '');
+    const supabase = createClient(SUPABASE_URL, supabaseKey);
+
+    // Get BambooHR credentials from env variables
+    const subdomain = Deno.env.get('BAMBOOHR_SUBDOMAIN');
+    const apiKey = Deno.env.get('BAMBOOHR_API_KEY');
+
+    console.log(`BambooHR configuration: subdomain=${subdomain ? 'set' : 'missing'}, apiKey=${apiKey ? 'set' : 'missing'}`);
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      logWithTimestamp("Missing Supabase credentials");
-      throw new Error("Supabase credentials not properly configured");
+    if (!subdomain || !apiKey) {
+      await updateSyncStatus(supabase, 'error', 'Missing BambooHR credentials. Check that BAMBOOHR_SUBDOMAIN and BAMBOOHR_API_KEY are set in Supabase edge function secrets.');
+      return new Response(JSON.stringify({ error: 'Missing BambooHR credentials' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    await updateSyncStatus(supabase, 'running', null);
+
+    // Fetch employees, trainings, and completions from BambooHR
+    console.log("Fetching data from BambooHR API...");
+    const bambooData = await fetchBambooHRData(subdomain, apiKey);
     
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (!bambooData) {
+      await updateSyncStatus(supabase, 'error', 'Failed to fetch data from BambooHR API. Check credentials and API connectivity.');
+      return new Response(JSON.stringify({ error: 'Failed to fetch data from BambooHR' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Store the fetched data in Supabase
+    console.log(`Syncing data: ${bambooData.employees.length} employees, ${bambooData.trainings.length} trainings, ${bambooData.completions.length} completions`);
     
-    // Fetch employee data from BambooHR
-    logWithTimestamp("Fetching employee data from BambooHR");
-    
-    // Construct the BambooHR API URLs
-    const baseUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1`;
-    
-    // Fields to fetch from BambooHR
-    const fields = [
-      'id', 'firstName', 'lastName', 'workEmail', 'jobTitle', 
-      'department', 'division', 'hireDate', 'photoUrl'
-    ];
-    
-    // Construct directory endpoint
-    const directoryUrl = `${baseUrl}/employees/directory`;
-    
-    // Build custom report URL properly
-    let customReportUrl = `${baseUrl}/reports/custom?format=json`;
-    customReportUrl += `&fields=${encodeURIComponent(JSON.stringify(fields))}`;
-    
-    logWithTimestamp(`Fetching employee directory from: ${directoryUrl}`);
-    logWithTimestamp(`Fetching custom report from: ${customReportUrl}`);
-    
-    // Authentication headers
-    const authHeader = `Basic ${btoa(apiKey + ':x')}`;
-    const headers = {
-      'Accept': 'application/json',
-      'Authorization': authHeader
+    const results = {
+      employees: await syncEmployees(supabase, bambooData.employees),
+      trainings: await syncTrainings(supabase, bambooData.trainings),
+      completions: await syncCompletions(supabase, bambooData.completions),
     };
-    
-    // Function to handle fetch requests with retries
-    async function fetchWithRetry(url: string, retries = 3, delay = 1000) {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          const response = await fetch(url, { headers });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            logWithTimestamp(`BambooHR API error (${response.status}): ${errorText}`);
-            
-            // Special handling for 404 errors
-            if (response.status === 404) {
-              logWithTimestamp(`Resource not found at URL: ${url}`);
-              return null; // Return null for 404s instead of retrying
-            }
-            
-            throw new Error(`BambooHR API error (${response.status}): ${errorText}`);
-          }
-          
-          return await response.json();
-        } catch (error) {
-          if (attempt === retries) throw error;
-          logWithTimestamp(`Retry ${attempt + 1}/${retries} after error: ${error.message}`);
-          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
-        }
-      }
-      return null;
-    }
-    
-    // Fetch data in parallel for efficiency
-    const [directoryData, customReportData] = await Promise.all([
-      fetchWithRetry(directoryUrl),
-      fetchWithRetry(customReportUrl)
-    ]);
-    
-    // Process and merge the data
-    const employees = [];
-    
-    if (!directoryData || !directoryData.employees || directoryData.employees.length === 0) {
-      logWithTimestamp("No employees found in directory");
-    } else {
-      logWithTimestamp(`Found ${directoryData.employees.length} employees in directory`);
-      
-      // Map directory data
-      for (const emp of directoryData.employees) {
-        employees.push({
-          id: emp.id,
-          first_name: emp.firstName,
-          last_name: emp.lastName,
-          name: `${emp.firstName} ${emp.lastName}`,
-          email: emp.workEmail || '',
-          work_email: emp.workEmail || '',
-          job_title: emp.jobTitle || '',
-          department: emp.department || '',
-          division: emp.division || '',
-          display_name: `${emp.firstName} ${emp.lastName}`,
-          position: emp.jobTitle || '',
-          avatar: emp.photoUrl || ''
-        });
-      }
-    }
-    
-    // Add any additional details from custom report
-    if (customReportData && Array.isArray(customReportData.employees)) {
-      logWithTimestamp(`Found ${customReportData.employees.length} employees in custom report`);
-      
-      // Update employees with additional data from custom report
-      for (const reportEmp of customReportData.employees) {
-        const existingEmp = employees.find(e => e.id === reportEmp.id);
-        if (existingEmp) {
-          // Update with custom report data
-          existingEmp.hire_date = reportEmp.hireDate || existingEmp.hire_date;
-          // Add other fields as needed
-        } else {
-          // Add employee if not in directory
-          employees.push({
-            id: reportEmp.id,
-            first_name: reportEmp.firstName,
-            last_name: reportEmp.lastName,
-            name: `${reportEmp.firstName} ${reportEmp.lastName}`,
-            email: reportEmp.workEmail || '',
-            work_email: reportEmp.workEmail || '',
-            job_title: reportEmp.jobTitle || '',
-            department: reportEmp.department || '',
-            division: reportEmp.division || '',
-            display_name: `${reportEmp.firstName} ${reportEmp.lastName}`,
-            position: reportEmp.jobTitle || '',
-            hire_date: reportEmp.hireDate || '',
-            avatar: reportEmp.photoUrl || ''
-          });
-        }
-      }
-    }
-    
-    // Store the data in the database
-    if (employees.length > 0) {
-      // Clear existing cached employees
-      logWithTimestamp("Clearing existing cached employees");
-      const { error: clearError } = await supabase
-        .from('cached_employees')
-        .delete()
-        .neq('id', '0'); // Dummy condition to delete all
-      
-      if (clearError) {
-        logWithTimestamp(`Error clearing cached employees: ${clearError.message}`);
-        throw new Error(`Error clearing cached employees: ${clearError.message}`);
-      }
-      
-      // Insert new cached employees
-      logWithTimestamp(`Inserting ${employees.length} cached employees`);
-      const { error: insertError } = await supabase
-        .from('cached_employees')
-        .insert(employees);
-      
-      if (insertError) {
-        logWithTimestamp(`Error inserting cached employees: ${insertError.message}`);
-        throw new Error(`Error inserting cached employees: ${insertError.message}`);
-      }
-    }
-    
-    // Update sync status
-    const { error: updateError } = await supabase
-      .from('sync_status')
-      .update({ 
-        status: 'success', 
-        error: null,
-        last_sync: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', 'bamboohr');
-    
-    if (updateError) {
-      logWithTimestamp(`Error updating sync status: ${updateError.message}`);
-      // Continue even if status update fails
-    }
-    
-    logWithTimestamp("BambooHR data sync completed successfully");
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "BambooHR data sync completed successfully",
-        employeesCount: employees.length
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
-      }
-    );
-  } catch (error) {
-    logWithTimestamp(`Error in BambooHR data sync: ${error.message}`);
-    
+
+    // Right before returning a successful response, update the sync status
     try {
-      // Get Supabase credentials 
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      if (supabaseUrl && supabaseServiceKey) {
-        // Create Supabase client
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        
-        // Update sync status to show error
-        await supabase
-          .from('sync_status')
-          .update({ 
-            status: 'error', 
-            error: error.message,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', 'bamboohr');
+      await updateSyncStatus(supabase, 'success', null);
+    } catch (statusError) {
+      console.error("Failed to update final sync status:", statusError);
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'BambooHR data synced successfully',
+      results
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error syncing BambooHR data:', error);
+    
+    // Try to update sync status if possible
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        const supabaseKey = authHeader.replace('Bearer ', '');
+        const supabase = createClient(SUPABASE_URL, supabaseKey);
+        await updateSyncStatus(supabase, 'error', error.message || 'Unknown error during sync process');
       }
-    } catch (dbError) {
-      logWithTimestamp(`Failed to update error status: ${dbError.message}`);
+    } catch (updateError) {
+      console.error('Failed to update sync status:', updateError);
     }
     
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      }
-    );
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Error syncing BambooHR data'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
+
+// Helper function to update sync status
+async function updateSyncStatus(supabase: any, status: string, error: string | null) {
+  const updateData: any = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  
+  if (status === 'success') {
+    updateData.last_sync = new Date().toISOString();
+  }
+  
+  if (error) {
+    updateData.error = error;
+  } else {
+    updateData.error = null;  // Clear any previous error
+  }
+  
+  try {
+    const { error: updateError } = await supabase
+      .from('sync_status')
+      .update(updateData)
+      .eq('id', 'bamboohr');
+      
+    if (updateError) {
+      console.error('Failed to update sync status:', updateError);
+    } else {
+      console.log(`Updated sync status: ${status}`);
+    }
+  } catch (error) {
+    console.error('Failed to update sync status:', error);
+  }
+}
+
+// Fetch data from BambooHR
+async function fetchBambooHRData(subdomain: string, apiKey: string) {
+  const baseUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1`;
+  const auth = btoa(`${apiKey}:x`);
+  
+  try {
+    console.log("Fetching employees directory...");
+    
+    // Fetch employees
+    const employeesResponse = await fetch(`${baseUrl}/employees/directory`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Basic ${auth}`
+      }
+    });
+    
+    if (!employeesResponse.ok) {
+      console.error(`Failed to fetch employees: ${employeesResponse.status} ${await employeesResponse.text()}`);
+      throw new Error(`Failed to fetch employees: ${employeesResponse.status}`);
+    }
+    
+    const employeesData = await employeesResponse.json();
+    const employees = employeesData.employees || [];
+    
+    console.log(`Fetched ${employees.length} employees`);
+    
+    // Sample first employee for debugging
+    if (employees.length > 0) {
+      console.log("Sample employee:", JSON.stringify(employees[0]));
+    }
+    
+    // Fetch training types
+    console.log("Fetching training types...");
+    const trainingsResponse = await fetch(`${baseUrl}/training/type`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Basic ${auth}`
+      }
+    });
+    
+    if (!trainingsResponse.ok) {
+      console.error(`Failed to fetch trainings: ${trainingsResponse.status} ${await trainingsResponse.text()}`);
+      throw new Error(`Failed to fetch trainings: ${trainingsResponse.status}`);
+    }
+    
+    let trainings = await trainingsResponse.json();
+    
+    // Handle different response formats
+    if (!Array.isArray(trainings)) {
+      console.log("Training response is not an array, converting to array");
+      if (typeof trainings === 'object') {
+        trainings = Object.values(trainings);
+      } else {
+        trainings = [];
+      }
+    }
+    
+    console.log(`Fetched ${trainings.length} trainings`);
+    
+    if (trainings.length > 0) {
+      console.log("Sample training:", JSON.stringify(trainings[0]));
+    }
+    
+    // Process employees to get completions
+    console.log("Fetching training completions for employees...");
+    const sampleSize = 20; // Increased from 10 to get more data
+    const sampleEmployees = employees.slice(0, Math.min(sampleSize, employees.length));
+    
+    let allCompletions: any[] = [];
+    
+    // Try to get completions from a custom report first (more efficient)
+    try {
+      console.log("Attempting to fetch completions from custom report...");
+      // Fix: URL format for custom reports
+      const customReportUrl = `${baseUrl}/custom_reports/report?id=41`;
+      console.log(`Fetching custom report from: ${customReportUrl}`);
+      
+      const customReportResponse = await fetch(customReportUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Basic ${auth}`
+        }
+      });
+      
+      if (customReportResponse.ok) {
+        const reportData = await customReportResponse.json();
+        if (Array.isArray(reportData) && reportData.length > 0) {
+          console.log(`Found ${reportData.length} training completions in custom report`);
+          allCompletions = reportData.map(record => ({
+            id: `${record.employeeId}-${record.trainingId}`,
+            employee_id: record.employeeId,
+            training_id: record.trainingId,
+            completion_date: record.completedDate,
+            status: 'completed',
+          }));
+          
+          console.log(`Processed ${allCompletions.length} completions from custom report`);
+          return {
+            employees,
+            trainings,
+            completions: allCompletions
+          };
+        } else {
+          console.log("Custom report returned no data or invalid format, falling back to individual requests");
+        }
+      } else {
+        console.log(`Custom report request failed with status ${customReportResponse.status}, falling back to individual requests`);
+      }
+    } catch (reportError) {
+      console.warn("Error fetching custom report:", reportError);
+      console.log("Falling back to individual employee training records...");
+    }
+    
+    // Fallback: Process employees in batches to avoid overwhelming the API
+    const batchSize = 5;
+    for (let i = 0; i < sampleEmployees.length; i += batchSize) {
+      const batch = sampleEmployees.slice(i, i + batchSize);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(sampleEmployees.length/batchSize)}`);
+      
+      const batchPromises = batch.map(async (employee: any) => {
+        try {
+          const completionsResponse = await fetch(`${baseUrl}/training/record/employee/${employee.id}`, {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Basic ${auth}`
+            },
+          });
+          
+          // Handle 404 errors gracefully - this is expected for employees with no training records
+          if (completionsResponse.status === 404) {
+            console.log(`No training records found for employee ${employee.id} (404 response)`);
+            return [];
+          }
+          
+          if (!completionsResponse.ok) {
+            console.warn(`Failed to fetch completions for employee ${employee.id}: ${completionsResponse.status}`);
+            return [];
+          }
+          
+          const completionsData = await completionsResponse.json();
+          
+          // Handle empty responses or API specific error responses
+          if (!completionsData || (typeof completionsData === 'object' && 'error' in completionsData)) {
+            console.warn(`Invalid or error response for employee ${employee.id}:`, completionsData);
+            return [];
+          }
+          
+          // Convert object to array if needed
+          let completionsArray = completionsData;
+          if (!Array.isArray(completionsData)) {
+            completionsArray = Object.values(completionsData);
+          }
+          
+          console.log(`Employee ${employee.id} has ${completionsArray.length} training completions`);
+          
+          // Map to standardized format
+          return completionsArray.map((c: any) => ({
+            id: `${employee.id}-${c.type}`,
+            employee_id: employee.id,
+            training_id: c.type,
+            completion_date: c.completed,
+            status: 'completed',
+            // Include additional fields as needed
+          }));
+        } catch (error) {
+          console.warn(`Error fetching completions for employee ${employee.id}:`, error);
+          return [];
+        }
+      });
+      
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      batchResults.forEach(result => {
+        if (result.status === 'fulfilled') {
+          allCompletions = [...allCompletions, ...result.value];
+        }
+      });
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.log(`Fetched ${allCompletions.length} total completions`);
+    
+    return {
+      employees,
+      trainings,
+      completions: allCompletions
+    };
+  } catch (error) {
+    console.error('Error fetching BambooHR data:', error);
+    throw error;
+  }
+}
+
+// Sync employees to Supabase
+async function syncEmployees(supabase: any, employees: any[]) {
+  if (!employees || employees.length === 0) {
+    return { inserted: 0, updated: 0 };
+  }
+
+  console.log(`Syncing ${employees.length} employees to database...`);
+  
+  // First clear the existing cached_employees table
+  try {
+    await supabase.from('cached_employees').delete().neq('id', '0');
+    console.log("Cleared existing cached_employees data");
+  } catch (error) {
+    console.error("Error clearing cached_employees table:", error);
+  }
+  
+  // Transform employees to match our cached_employees schema
+  const mappedEmployees = employees.map(emp => ({
+    id: emp.id,
+    name: emp.displayName || emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
+    position: emp.jobTitle?.name || emp.jobTitle || null,
+    department: emp.department?.name || emp.department || null,
+    division: emp.division || emp.department?.name || emp.department || null,
+    email: emp.email || emp.workEmail || null,
+    work_email: emp.workEmail || emp.email || null,
+    display_name: emp.displayName || emp.name || null,
+    first_name: emp.firstName || null,
+    last_name: emp.lastName || null,
+    job_title: emp.jobTitle?.name || emp.jobTitle || null,
+    avatar: emp.photoUrl || null,
+    hire_date: emp.hireDate || null,
+    cached_at: new Date().toISOString()
+  }));
+  
+  console.log(`First employee mapped: ${JSON.stringify(mappedEmployees[0])}`);
+  
+  // Insert all employees in batches of 100
+  const batchSize = 100;
+  let totalUpserted = 0;
+  
+  for (let i = 0; i < mappedEmployees.length; i += batchSize) {
+    const batch = mappedEmployees.slice(i, i + batchSize);
+    try {
+      const { error, count } = await supabase
+        .from('cached_employees')
+        .upsert(batch, { onConflict: 'id' });
+      
+      if (error) {
+        console.error('Error upserting employees batch:', error);
+      } else {
+        totalUpserted += count || batch.length;
+        console.log(`Successfully upserted batch of ${batch.length} employees`);
+      }
+    } catch (error) {
+      console.error(`Error upserting batch ${i/batchSize + 1}:`, error);
+    }
+  }
+  
+  console.log(`Successfully upserted ${totalUpserted} employees total`);
+  
+  return { upserted: totalUpserted };
+}
+
+// Sync trainings to Supabase
+async function syncTrainings(supabase: any, trainings: any[]) {
+  if (!trainings || trainings.length === 0) {
+    return { inserted: 0, updated: 0 };
+  }
+
+  console.log(`Syncing ${trainings.length} trainings to database...`);
+  
+  // First clear the existing cached_trainings table
+  try {
+    await supabase.from('cached_trainings').delete().neq('id', '0');
+    console.log("Cleared existing cached_trainings data");
+  } catch (error) {
+    console.error("Error clearing cached_trainings table:", error);
+  }
+  
+  // Transform trainings to match our cached_trainings schema
+  const mappedTrainings = trainings.map(training => ({
+    id: training.id?.toString() || training.type?.toString(),
+    title: training.name || `Training ${training.id || training.type}`,
+    type: training.type || training.id?.toString() || null,
+    category: training.category || 'General',
+    description: training.description || null,
+    duration_hours: parseFloat(training.hours) || 0,
+    required_for: training.required ? ['Required'] : [],
+    cached_at: new Date().toISOString()
+  }));
+  
+  if (mappedTrainings.length > 0) {
+    console.log(`First training mapped: ${JSON.stringify(mappedTrainings[0])}`);
+  }
+  
+  try {
+    // Upsert all trainings
+    const { error, count } = await supabase
+      .from('cached_trainings')
+      .upsert(mappedTrainings, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error upserting trainings:', error);
+      throw error;
+    }
+    
+    console.log(`Successfully upserted ${count || mappedTrainings.length} trainings`);
+    
+    return { upserted: count || mappedTrainings.length };
+  } catch (error) {
+    console.error("Error in syncTrainings:", error);
+    throw error;
+  }
+}
+
+// Sync completions to Supabase
+async function syncCompletions(supabase: any, completions: any[]) {
+  if (!completions || completions.length === 0) {
+    return { inserted: 0, updated: 0 };
+  }
+
+  console.log(`Syncing ${completions.length} completions to database...`);
+  
+  // First clear the existing cached_training_completions table
+  try {
+    await supabase.from('cached_training_completions').delete().neq('id', '0');
+    console.log("Cleared existing cached_training_completions data");
+  } catch (error) {
+    console.error("Error clearing cached_training_completions table:", error);
+  }
+  
+  // Transform completions to match our cached_training_completions schema
+  const mappedCompletions = completions.map(completion => ({
+    id: completion.id || `${completion.employee_id}-${completion.training_id}`,
+    employee_id: completion.employee_id,
+    training_id: completion.training_id,
+    completion_date: completion.completion_date || completion.completedDate || completion.completed || null,
+    expiration_date: completion.expiration_date || completion.expirationDate || null,
+    status: completion.status || 'completed',
+    score: completion.score ? parseFloat(completion.score) : null,
+    certificate_url: completion.certificate_url || completion.certificateUrl || null,
+    cached_at: new Date().toISOString()
+  }));
+  
+  if (mappedCompletions.length > 0) {
+    console.log(`First completion mapped: ${JSON.stringify(mappedCompletions[0])}`);
+  }
+  
+  // Insert completions in batches to avoid payload size limits
+  const batchSize = 100;
+  let totalUpserted = 0;
+  
+  for (let i = 0; i < mappedCompletions.length; i += batchSize) {
+    const batch = mappedCompletions.slice(i, i + batchSize);
+    try {
+      const { error, count } = await supabase
+        .from('cached_training_completions')
+        .upsert(batch, { onConflict: ['employee_id', 'training_id'] });
+      
+      if (error) {
+        console.error('Error upserting completions batch:', error, batch[0]);
+      } else {
+        totalUpserted += count || batch.length;
+        console.log(`Successfully upserted batch of ${batch.length} completions`);
+      }
+    } catch (error) {
+      console.error(`Error upserting batch ${i/batchSize + 1}:`, error);
+    }
+  }
+  
+  console.log(`Successfully upserted ${totalUpserted} completions total`);
+  
+  return { upserted: totalUpserted };
+}

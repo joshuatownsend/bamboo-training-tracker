@@ -11,7 +11,7 @@ import { mapAccountToUser } from "../helpers/userMappingHelper";
 import { UserContext } from "./UserContext";
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { instance, currentAccount, isAuthenticated, isInitialized } = useMsal();
+  const { instance, activeAccount } = useMsal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authAttempted, setAuthAttempted] = useState(false);
@@ -31,11 +31,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           setAdminSettings(JSON.parse(event.newValue));
           // If user is already logged in, update their role based on new settings
-          if (currentAccount) {
+          if (activeAccount) {
             // Use async/await with an immediate function execution
             (async () => {
               const updatedUser = await mapAccountToUser(
-                currentAccount, 
+                activeAccount, 
                 JSON.parse(event.newValue), 
                 getEmployeeIdByEmail
               );
@@ -52,7 +52,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [currentAccount, getEmployeeIdByEmail]);
+  }, [activeAccount, getEmployeeIdByEmail]);
 
   // Refresh the employee ID mapping for the current user
   const refreshEmployeeId = async (): Promise<string | null> => {
@@ -78,9 +78,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        if (currentAccount) {
+        if (activeAccount) {
           // We already have an account, convert it to our User type
-          const user = await mapAccountToUser(currentAccount, adminSettings, getEmployeeIdByEmail);
+          const user = await mapAccountToUser(activeAccount, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
           
           // Notify the user of their role (just for demonstration)
@@ -123,40 +123,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Only attempt to fetch data if MSAL instance is initialized
-    if (isInitialized) {
-      fetchUserData();
-    } else {
-      console.log("MSAL instance not initialized yet, waiting...");
-      // Set a short timeout to check again
-      const checkInterval = setInterval(() => {
-        if (isInitialized) {
-          clearInterval(checkInterval);
-          fetchUserData();
-        }
-      }, 100);
-      
-      // Clear interval after a reasonable timeout (5 seconds)
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        if (!isInitialized) {
-          console.error("MSAL initialization timed out");
-          setIsLoading(false);
-          setAuthAttempted(true);
-        }
-      }, 5000);
-    }
-  }, [instance, currentAccount, adminSettings, getEmployeeIdByEmail, isInitialized]);
+    fetchUserData();
+  }, [instance, activeAccount, adminSettings, getEmployeeIdByEmail]);
 
   // Interactive login - use popup for better iframe compatibility
   const login = async () => {
     setIsLoading(true);
     try {
-      // Check if MSAL is initialized
-      if (!isInitialized) {
-        throw new Error("MSAL not initialized. Please wait and try again.");
-      }
-
       // Try silent authentication first
       const accounts = instance.getAllAccounts();
       if (accounts.length > 0) {
@@ -168,7 +141,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           const user = await mapAccountToUser(response.account, adminSettings, getEmployeeIdByEmail);
           setCurrentUser(user);
-          setIsLoading(false);
           return;
         } catch (error) {
           // Silent acquisition failed, fallback to popup

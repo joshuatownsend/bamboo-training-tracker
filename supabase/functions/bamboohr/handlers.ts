@@ -48,20 +48,24 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
       );
     }
     
+    // Fix: Fix the URL parameter handling to avoid double-encoding issues
     // Remove subdomain from params as we'll use it directly in the URL
     params.delete('subdomain');
     
-    // Log query parameters for debugging
-    logWithTimestamp(`Query parameters: ?${params.toString()}`);
-    
     // Construct the BambooHR API URL
+    // Important: Build query string manually instead of appending params to avoid encoding issues
     let bambooUrl = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1${path}`;
     
     // Add any remaining query parameters
-    if (params.size > 0) {
+    const queryParams: string[] = [];
+    params.forEach((value, key) => {
+      queryParams.push(`${key}=${value}`);
+    });
+    
+    if (queryParams.length > 0) {
       // If the path already contains a query parameter, append with &, otherwise use ?
       const separator = path.includes('?') ? '&' : '?';
-      bambooUrl += separator + params.toString();
+      bambooUrl += separator + queryParams.join('&');
     }
     
     logWithTimestamp(`Forwarding request to BambooHR: ${req.method} ${bambooUrl}`);
@@ -78,22 +82,6 @@ export async function handleBambooHRRequest(req: Request, path: string, params: 
     // Get the response content
     let responseBody;
     const contentType = bambooResponse.headers.get('content-type');
-    
-    if (bambooResponse.status === 404) {
-      logWithTimestamp(`BambooHR returned 404 for URL: ${bambooUrl}`);
-      return new Response(
-        JSON.stringify({
-          error: "Resource not found",
-          message: "The requested BambooHR resource was not found",
-          status: 404,
-          url: bambooUrl
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-          status: 404 
-        }
-      );
-    }
     
     if (contentType && contentType.includes('application/json')) {
       responseBody = await bambooResponse.json();

@@ -1,168 +1,69 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  PublicClientApplication, 
-  EventType,
-  EventMessage, 
-  AuthenticationResult,
-  AccountInfo
-} from '@azure/msal-browser';
+import React, { createContext, useContext, useEffect } from 'react';
+import { PublicClientApplication, EventType, AuthenticationResult, AccountInfo } from '@azure/msal-browser';
+import { MsalProvider } from '@azure/msal-react';
 import { msalConfig } from '../lib/authConfig';
 
-// Create the MSAL instance
+// Initialize MSAL instance
 const msalInstance = new PublicClientApplication(msalConfig);
 
-// Track initialization status
-let isMsalInitialized = false;
-
-// Initialize MSAL immediately as a self-invoking async function
-(async () => {
-  try {
-    await msalInstance.initialize();
-    console.log("MSAL initialized successfully");
-    isMsalInitialized = true;
-    
-    // Handle the redirect promise in case this page loads after a redirect
-    await msalInstance.handleRedirectPromise();
-  } catch (error) {
-    console.error("Error initializing MSAL:", error);
-  }
-})();
-
-// Register event callbacks
+// Default account selection
 msalInstance.addEventCallback((event) => {
-  if (event.eventType === EventType.LOGIN_SUCCESS) {
-    console.log("Login successful");
-  }
-  if (event.eventType === EventType.LOGIN_FAILURE) {
-    console.error("Login failed:", event.error);
-  }
-  if (event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS) {
-    console.log("Token acquired successfully");
-  }
-  if (event.eventType === EventType.ACQUIRE_TOKEN_FAILURE) {
-    console.error("Failed to acquire token:", event.error);
+  if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
+    const result = event.payload as AuthenticationResult;
+    msalInstance.setActiveAccount(result.account);
   }
 });
 
-// Define context type
-type MsalContextType = {
+// Custom MSAL context for easier access to common functions
+export interface MsalContextType {
   instance: PublicClientApplication;
-  accounts: AccountInfo[];
-  isAuthenticated: boolean;
-  currentAccount: AccountInfo | null;
-  inProgress: boolean;
-  error: Error | null;
-  isInitialized: boolean;
-};
+  activeAccount: AccountInfo | null;
+}
 
-// Create the context with default values
-const MsalContext = createContext<MsalContextType>({
-  instance: msalInstance,
-  accounts: [],
-  isAuthenticated: false,
-  currentAccount: null,
-  inProgress: true,
-  error: null,
-  isInitialized: false,
-});
+export const MsalCustomContext = createContext<MsalContextType | null>(null);
 
-// Hook for consuming the context
 export const useMsal = () => {
-  const context = useContext(MsalContext);
+  const context = useContext(MsalCustomContext);
   if (!context) {
-    throw new Error('useMsal must be used within MsalProvider');
+    throw new Error('useMsal must be used within a MsalContextProvider');
   }
   return context;
 };
 
-// Provider component
-export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const [currentAccount, setCurrentAccount] = useState<AccountInfo | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [inProgress, setInProgress] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [isInitialized, setIsInitialized] = useState<boolean>(isMsalInitialized);
+interface MsalContextProviderProps {
+  children: React.ReactNode;
+}
 
+export const MsalContextProvider: React.FC<MsalContextProviderProps> = ({ children }) => {
+  // Handle redirect response as soon as component mounts
   useEffect(() => {
-    // Ensure MSAL is initialized before using it
-    const checkMsalInitialized = () => {
-      if (!isMsalInitialized) {
-        console.log("MSAL not fully initialized yet, waiting...");
-        setTimeout(checkMsalInitialized, 100);
-        return false;
-      }
-      setIsInitialized(true);
-      return true;
-    };
-
-    const initializeAuth = async () => {
+    const handleRedirectPromise = async () => {
       try {
-        if (!checkMsalInitialized()) {
-          return; // Wait for initialization
+        const response = await msalInstance.handleRedirectPromise();
+        if (response) {
+          // If we have a response, a redirect was just handled
+          console.log("Redirect response handled successfully", response);
+          msalInstance.setActiveAccount(response.account);
         }
-
-        // Check if we have accounts
-        const currentAccounts = msalInstance.getAllAccounts();
-        setAccounts(currentAccounts);
-        
-        if (currentAccounts.length > 0) {
-          msalInstance.setActiveAccount(currentAccounts[0]);
-          setCurrentAccount(currentAccounts[0]);
-          setIsAuthenticated(true);
-        }
-
-        setInProgress(false);
-      } catch (err) {
-        console.error("Error during MSAL initialization in provider:", err);
-        setError(err instanceof Error ? err : new Error('Unknown authentication error'));
-        setInProgress(false);
+      } catch (error) {
+        console.error("Error handling redirect:", error);
       }
     };
-
-    initializeAuth();
-
-    // Set up event callbacks for account changes
-    const callbackId = msalInstance.addEventCallback((event: EventMessage) => {
-      if (
-        event.eventType === EventType.LOGIN_SUCCESS ||
-        event.eventType === EventType.ACQUIRE_TOKEN_SUCCESS || 
-        event.eventType === EventType.SSO_SILENT_SUCCESS
-      ) {
-        const currentAccounts = msalInstance.getAllAccounts();
-        setAccounts(currentAccounts);
-        
-        if (currentAccounts.length > 0) {
-          msalInstance.setActiveAccount(currentAccounts[0]);
-          setCurrentAccount(currentAccounts[0]);
-          setIsAuthenticated(true);
-        }
-      }
-    });
-
-    return () => {
-      if (callbackId) {
-        msalInstance.removeEventCallback(callbackId);
-      }
-    };
+    
+    handleRedirectPromise();
   }, []);
 
-  const contextValue: MsalContextType = {
-    instance: msalInstance,
-    accounts,
-    isAuthenticated,
-    currentAccount,
-    inProgress,
-    error,
-    isInitialized,
-  };
+  // Check if there's already an active account
+  const activeAccount = msalInstance.getActiveAccount();
 
   return (
-    <MsalContext.Provider value={contextValue}>
-      {children}
-    </MsalContext.Provider>
+    <MsalProvider instance={msalInstance}>
+      <MsalCustomContext.Provider value={{ instance: msalInstance, activeAccount }}>
+        {children}
+      </MsalCustomContext.Provider>
+    </MsalProvider>
   );
 };
 
-export default MsalProvider;
+export default MsalContextProvider;
