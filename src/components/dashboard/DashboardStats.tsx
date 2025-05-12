@@ -15,6 +15,15 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
   const expiredTrainings = stats?.expiredTrainings ?? 0;
   const completionRate = stats?.completionRate ?? 0;
   
+  // Add console log for debugging
+  console.log("Dashboard Stats rendering with:", {
+    employeeCount,
+    totalTrainings,
+    completedTrainings,
+    expiredTrainings,
+    completionRate
+  });
+  
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       <StatCard

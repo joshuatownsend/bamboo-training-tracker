@@ -19,12 +19,24 @@ export function calculateStatisticsAsync(
     completionsCount: completions?.length || 0
   });
   
+  // Log some sample data for debugging
+  if (completions && completions.length > 0) {
+    console.log("Sample completion data for statistics:", completions.slice(0, 3));
+  } else {
+    console.log("No completion data available for statistics calculation");
+  }
+  
   // Calculate synchronously for now since Web Workers are more complex to set up
   const startTime = performance.now();
   const stats = calculateTrainingStatistics(employees, trainings, completions);
   const endTime = performance.now();
   
-  console.log(`Statistics calculation completed in ${Math.round(endTime - startTime)}ms`);
+  console.log(`Statistics calculation completed in ${Math.round(endTime - startTime)}ms`, {
+    totalTrainings: stats.totalTrainings,
+    completedTrainings: stats.completedTrainings,
+    expiredTrainings: stats.expiredTrainings,
+    completionRate: stats.completionRate
+  });
   return stats;
 }
 
@@ -40,6 +52,11 @@ export function calculateStatisticsWithPerf(
   const result = calculateTrainingStatistics(employees, trainings, completions);
   const endTime = performance.now();
   
-  console.log(`Statistics calculation completed in ${Math.round(endTime - startTime)}ms`);
+  console.log(`Statistics calculation completed in ${Math.round(endTime - startTime)}ms`, {
+    totalTrainings: result.totalTrainings,
+    completedTrainings: result.completedTrainings,
+    expiredTrainings: result.expiredTrainings,
+    completionRate: result.completionRate
+  });
   return result;
 }

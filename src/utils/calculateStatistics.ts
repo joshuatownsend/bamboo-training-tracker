@@ -25,7 +25,12 @@ export const calculateTrainingStatistics = (
   
   // Calculate basic statistics
   const totalTrainings = safeTrainings.length || 0;
+  
+  // Count all completions as completed trainings, regardless of status
+  // This is the key fix - we're counting all records in the completions array
   const completedTrainings = safeCompletions.length || 0;
+  
+  // Then separately count specific status types
   const expiredTrainings = safeCompletions.filter(c => c.status === "expired").length || 0;
   const upcomingTrainings = safeCompletions.filter(c => c.status === "due").length || 0;
 
@@ -83,7 +88,7 @@ export const calculateDivisionStats = (
     // Count total required trainings
     const totalRequired = divisionEmployees.length * requiredTrainings.length || 1; // Avoid division by zero
     
-    // Count completed trainings
+    // Count completed trainings - count all completions for employees in this division
     const completedCount = completions.filter(c => 
       divisionEmployees.some(e => e.id === c.employeeId) &&
       requiredTrainings.some(t => t.id === c.trainingId)

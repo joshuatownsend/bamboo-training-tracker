@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +74,16 @@ export function useDashboardData() {
     console.log("No trainings or training types available");
     return [];
   }, [trainings, trainingTypes]);
+
+  // Log completion data for debugging
+  useMemo(() => {
+    if (completions && completions.length > 0) {
+      console.log(`Dashboard has ${completions.length} completion records available`);
+      console.log("Sample completion data:", completions.slice(0, 3));
+    } else {
+      console.log("No completion data available for Dashboard");
+    }
+  }, [completions]);
   
   // Calculate statistics only when data is available and not loading
   // Use memoization to avoid recalculating unnecessarily
