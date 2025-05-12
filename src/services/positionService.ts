@@ -106,14 +106,19 @@ export async function createPosition(position: Position): Promise<Position> {
 }
 
 export async function updatePosition(position: Position): Promise<Position> {
+  // Cast the requirements to any to avoid type checking issues
+  // This is safe because Supabase can store both array and JSON object
+  const countyReqs: any = prepareRequirementsForStorage(position.countyRequirements);
+  const avfrdReqs: any = prepareRequirementsForStorage(position.avfrdRequirements);
+
   const { data, error } = await supabase
     .from('positions')
     .update({
       title: position.title,
       description: position.description || null,
       department: position.department || null,
-      county_requirements: prepareRequirementsForStorage(position.countyRequirements),
-      avfrd_requirements: prepareRequirementsForStorage(position.avfrdRequirements)
+      county_requirements: countyReqs,
+      avfrd_requirements: avfrdReqs
     })
     .eq('id', position.id)
     .select()

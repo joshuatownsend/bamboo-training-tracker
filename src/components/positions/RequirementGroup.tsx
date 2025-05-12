@@ -9,13 +9,14 @@ import {
   ToggleRight,
   Check
 } from "lucide-react";
-import { RequirementGroup, Training } from "@/lib/types";
+import { Training } from "@/lib/types";
+import { type RequirementGroup as RequirementGroupType } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 interface RequirementGroupProps {
-  group: RequirementGroup;
+  group: RequirementGroupType;
   trainings: Training[];
   groupPath: number[];
   type: "county" | "avfrd";

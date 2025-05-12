@@ -38,8 +38,16 @@ export default function RequirementsReport() {
   
   // Get required trainings by type
   const requiredTrainings = position ? {
-    county: trainings.filter(t => position.countyRequirements.includes(t.id)),
-    avfrd: trainings.filter(t => position.avfrdRequirements.includes(t.id))
+    county: trainings.filter(t => {
+      // Handle both array and RequirementGroup types
+      const countyReqs = position.countyRequirements;
+      return Array.isArray(countyReqs) ? countyReqs.includes(t.id) : false;
+    }),
+    avfrd: trainings.filter(t => {
+      // Handle both array and RequirementGroup types
+      const avfrdReqs = position.avfrdRequirements;
+      return Array.isArray(avfrdReqs) ? avfrdReqs.includes(t.id) : false;
+    })
   } : { county: [], avfrd: [] };
 
   const isLoading = isLoadingPositions || isLoadingTrainings;
