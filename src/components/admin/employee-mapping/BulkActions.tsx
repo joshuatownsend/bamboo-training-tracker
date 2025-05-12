@@ -129,10 +129,10 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     setManualSyncLoading(true);
     
     try {
-      // Fix: Don't treat the result as a callable function
-      // Simply use the boolean value returned by triggerSync
+      // Get the result directly as a boolean value
       const result = await triggerSync();
       
+      // Just check if result is true (success) without trying to call it
       if (result) {
         toast({
           title: "Manual Sync Initiated",

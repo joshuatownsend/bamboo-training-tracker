@@ -15,8 +15,9 @@ export function useBambooSync() {
   
   /**
    * Function to manually trigger a sync
+   * @returns Promise<boolean> - Returns true if sync was successfully triggered, false otherwise
    */
-  const triggerSync = async () => {
+  const triggerSync = async (): Promise<boolean> => {
     try {
       // Check if user is authenticated and has admin privileges
       if (!currentUser) {
