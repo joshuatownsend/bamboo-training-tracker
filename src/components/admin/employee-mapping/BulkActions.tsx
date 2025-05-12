@@ -130,7 +130,7 @@ export const BulkActions = ({ onRefresh }: BulkActionsProps) => {
     
     try {
       // Fix: Don't treat the result as a callable function
-      // Call triggerSync and just check its return value
+      // Simply use the boolean value returned by triggerSync
       const result = await triggerSync();
       
       if (result) {
