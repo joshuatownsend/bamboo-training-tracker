@@ -1,4 +1,5 @@
 
+
 -- Create a migration to document our improvements to the BambooHR sync process
 -- This is for documentation purposes only since we updated the function directly
 
