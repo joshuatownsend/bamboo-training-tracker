@@ -12,25 +12,20 @@ export function calculateStatisticsAsync(
   employees: Employee[],
   trainings: Training[],
   completions: TrainingCompletion[]
-): Promise<TrainingStatistics> {
-  // For small data sets, calculate synchronously
-  if (employees.length < 100 && trainings.length < 50) {
-    return Promise.resolve(calculateTrainingStatistics(employees, trainings, completions));
-  }
-  
-  // For larger data sets, use a timeout to allow UI to update
-  return new Promise((resolve) => {
-    // Use setTimeout to move calculation off the main thread
-    setTimeout(() => {
-      try {
-        const stats = calculateTrainingStatistics(employees, trainings, completions);
-        resolve(stats);
-      } catch (error) {
-        console.error("Error calculating statistics in worker:", error);
-        throw error;
-      }
-    }, 10);
+): TrainingStatistics {
+  console.log("Starting async statistics calculation", {
+    employeesCount: employees.length,
+    trainingsCount: trainings.length,
+    completionsCount: completions?.length || 0
   });
+  
+  // Calculate synchronously for now since Web Workers are more complex to set up
+  const startTime = performance.now();
+  const stats = calculateTrainingStatistics(employees, trainings, completions);
+  const endTime = performance.now();
+  
+  console.log(`Statistics calculation completed in ${Math.round(endTime - startTime)}ms`);
+  return stats;
 }
 
 // Export modified calculation function that logs performance

@@ -15,35 +15,27 @@ export const calculateTrainingStatistics = (
     completions: completions?.length || 0
   });
   
-  console.log("First few completions:", completions?.slice(0, 3));
+  // Ensure we have valid arrays to work with
+  const safeEmployees = Array.isArray(employees) ? employees : [];
+  const safeTrainings = Array.isArray(trainings) ? trainings : [];
+  const safeCompletions = Array.isArray(completions) ? completions : [];
+  
+  console.log("First few completions:", safeCompletions.slice(0, 3));
   
   // Calculate basic statistics
-  const totalTrainings = trainings.length;
-  
-  // Count completed trainings - this is the value that's showing as 0
-  const completedTrainings = Array.isArray(completions) 
-    ? completions.length 
-    : 0;
-    
-  const expiredTrainings = Array.isArray(completions)
-    ? completions.filter(c => c.status === "expired").length
-    : 0;
-    
-  const upcomingTrainings = Array.isArray(completions)
-    ? completions.filter(c => c.status === "due").length
-    : 0;
+  const totalTrainings = safeTrainings.length;
+  const completedTrainings = safeCompletions.length;
+  const expiredTrainings = safeCompletions.filter(c => c.status === "expired").length;
+  const upcomingTrainings = safeCompletions.filter(c => c.status === "due").length;
 
   // Calculate completion rate based on total possible completions (employees × trainings)
-  // We're changing this calculation to reflect actual completion rate against all possible completions
-  const totalPossibleCompletions = employees.length * trainings.length;
-  const completionRate = totalPossibleCompletions > 0 
-    ? (completedTrainings / totalPossibleCompletions) * 100 
-    : 0;
+  const totalPossibleCompletions = safeEmployees.length * safeTrainings.length || 1; // Avoid division by zero
+  const completionRate = (completedTrainings / totalPossibleCompletions) * 100;
 
   console.log(`Calculated statistics - Trainings: ${totalTrainings}, Completed: ${completedTrainings}, Rate: ${completionRate.toFixed(2)}%`);
   
   // Calculate division statistics 
-  const departmentStats = calculateDivisionStats(employees, trainings, completions);
+  const departmentStats = calculateDivisionStats(safeEmployees, safeTrainings, safeCompletions);
   
   return {
     totalTrainings,
@@ -64,35 +56,40 @@ export const calculateDivisionStats = (
   completions: TrainingCompletion[]
 ): DepartmentStats[] => {
   // Get unique divisions
-  const divisions = [...new Set(employees.map(e => e.division))].filter(Boolean);
+  const divisions = [...new Set(employees.map(e => e.division || e.department || 'Unknown'))].filter(Boolean);
+  
+  if (divisions.length === 0) {
+    console.log("No divisions found in employee data, adding default division");
+    divisions.push('General');
+  }
   
   return divisions.map(division => {
     // Get employees in division
-    const divisionEmployees = employees.filter(e => e.division === division);
+    const divisionEmployees = employees.filter(e => 
+      (e.division === division) || 
+      (e.department === division) || 
+      (!e.division && !e.department && division === 'General')
+    );
     
     // Get trainings that might be required for this division
-    // Note: We're still using department in requiredFor as that's how the data is structured
-    // In a future update, you might want to update the Training model to include division requirements
     const requiredTrainings = trainings.filter(t => 
-      t.requiredFor?.includes(division) || t.requiredFor?.includes('Required')
+      t.requiredFor?.includes(division) || 
+      t.requiredFor?.includes('Required') || 
+      !t.requiredFor || 
+      t.requiredFor.length === 0
     );
     
     // Count total required trainings
-    const totalRequired = divisionEmployees.length * requiredTrainings.length;
-    
-    // Make sure completions is an array before filtering
-    const completionsArray = Array.isArray(completions) ? completions : [];
+    const totalRequired = divisionEmployees.length * requiredTrainings.length || 1; // Avoid division by zero
     
     // Count completed trainings
-    const completedCount = completionsArray.filter(c => 
+    const completedCount = completions.filter(c => 
       divisionEmployees.some(e => e.id === c.employeeId) &&
       requiredTrainings.some(t => t.id === c.trainingId)
     ).length;
     
     // Calculate compliance rate
-    const complianceRate = totalRequired > 0 
-      ? Math.round((completedCount / totalRequired) * 100) 
-      : 100;
+    const complianceRate = Math.round((completedCount / totalRequired) * 100);
     
     return {
       department: division, // We'll still use the department field in the model

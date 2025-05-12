@@ -20,6 +20,16 @@ const Dashboard = () => {
   } = useDashboardData();
   const { toast } = useToast();
 
+  // Log data for debugging
+  useEffect(() => {
+    console.log("Dashboard data:", { 
+      hasEmployees: Boolean(employees?.length), 
+      hasTrainings: Boolean(trainings?.length),
+      hasCompletions: Boolean(completions?.length),
+      hasStatistics: Boolean(statistics)
+    });
+  }, [employees, trainings, completions, statistics]);
+
   // Show performance warning one time if dashboard loads slowly
   useEffect(() => {
     const startTime = performance.now();
@@ -33,7 +43,7 @@ const Dashboard = () => {
   }, []);
 
   // If loading, show skeleton UI
-  if (isLoading) {
+  if (isLoading || !statistics) {
     return <DashboardSkeleton />;
   }
   

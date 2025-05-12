@@ -1,8 +1,8 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { calculateTrainingStatistics } from "@/utils/calculateStatistics";
+import { calculateStatisticsAsync } from "@/utils/StatisticsWorker";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
 import type { TrainingStatistics } from "@/lib/types";
 
@@ -12,6 +12,8 @@ import type { TrainingStatistics } from "@/lib/types";
  */
 export function useDashboardData() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const { 
     employees, 
     trainings, 
@@ -30,11 +32,25 @@ export function useDashboardData() {
       return null;
     }
 
+    if (!employees?.length || !trainings?.length) {
+      console.log("Missing required data for statistics calculation:", {
+        employeesCount: employees?.length || 0,
+        trainingsCount: trainings?.length || 0,
+        completionsCount: completions?.length || 0
+      });
+      return null;
+    }
+
     try {
-      console.log("Calculating dashboard statistics from cache...");
-      return calculateTrainingStatistics(
-        employees || [], 
-        trainings || [], 
+      console.log("Calculating dashboard statistics from cache...", {
+        employeesCount: employees.length,
+        trainingsCount: trainings.length,
+        completionsCount: completions?.length || 0
+      });
+      
+      return calculateStatisticsAsync(
+        employees, 
+        trainings, 
         completions || []
       );
     } catch (err) {
@@ -49,30 +65,16 @@ export function useDashboardData() {
   }, [employees, trainings, completions, isEmployeesLoading, isTrainingsLoading, isCompletionsLoading, toast]);
 
   // Single loading state derived from all data sources
-  const isLoading = isEmployeesLoading || isTrainingsLoading || isCompletionsLoading;
-
-  // Prefetch data on mount (if not already in cache)
-  const prefetchQuery = useQuery({
-    queryKey: ['dashboard', 'prefetch'],
-    queryFn: async () => {
-      try {
-        await import('@/services/dataCacheService').then(({ prefetchBambooHRData }) => {
-          prefetchBambooHRData();
-        });
-        return true;
-      } catch (error) {
-        console.error("Error prefetching data:", error);
-        return false;
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const isLoading = isEmployeesLoading || isTrainingsLoading || isCompletionsLoading || !statistics;
 
   // Function to manually trigger refresh
   const refreshDashboard = async () => {
     try {
       console.log("Manually refreshing dashboard data...");
       await refetchAll();
+      
+      // Invalidate any prefetch query to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'prefetch'] });
     } catch (error) {
       console.error("Error refreshing dashboard data:", error);
       toast({
@@ -93,7 +95,6 @@ export function useDashboardData() {
     
     // Loading states
     isLoading,
-    isPrefetching: prefetchQuery.isLoading,
     
     // Actions
     refreshDashboard
