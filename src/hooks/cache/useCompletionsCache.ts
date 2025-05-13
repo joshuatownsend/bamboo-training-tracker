@@ -27,9 +27,9 @@ export function useCompletionsCache() {
       return data.map((completion): TrainingCompletion => ({
         id: completion.id,
         employeeId: completion.employee_id,
-        trainingId: completion.type,
-        completionDate: completion.completed,
-        expirationDate: completion.expirationDate,
+        trainingId: completion.type, // Updated to match the new schema
+        completionDate: completion.completed, // Updated to match the new schema
+        expirationDate: completion.expiration_date,
         status: completion.status as any,
         instructor: completion.instructor,
         notes: completion.notes

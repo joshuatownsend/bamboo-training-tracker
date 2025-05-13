@@ -101,12 +101,12 @@ export function BambooHRSyncStatus() {
     return completions.map(comp => ({
       id: comp.id,
       employee_id: comp.employeeId,
-      training_id: comp.trainingId,
-      completionDate: comp.completionDate,
-      expirationDate: comp.expirationDate,
+      type: comp.trainingId, // Updated to match our new schema
+      completed: comp.completionDate, // Updated to match our new schema
+      expiration_date: comp.expirationDate, // Updated to match our new schema
       status: comp.status as string,
-      score: comp.score,
-      certificateUrl: comp.certificateUrl
+      instructor: comp.instructor,
+      notes: comp.notes
     }));
   }, [completions]);
   

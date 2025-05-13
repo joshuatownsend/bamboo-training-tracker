@@ -17,39 +17,47 @@ export interface UserQualification extends QualificationStatus {
 }
 
 export const useQualifications = () => {
-  const { trainings, completions, isLoading, error } = useTrainingData();
+  const { trainings, completions, isTrainingsLoading, isCompletionsLoading } = useTrainingData();
   const [qualifications, setQualifications] = useState<QualificationStatus[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
   const { currentUser } = useUser();
   const { activeTab, setActiveTab } = useQualificationTabs();
 
   // Map trainings and completions to qualifications
   useEffect(() => {
-    if (!isLoading && trainings.length > 0 && completions.length > 0) {
-      // Create a mapping of training IDs to names for easy lookup
-      const trainingMap = new Map<string, string>();
-      trainings.forEach((training) => {
-        trainingMap.set(training.id, training.title);
-      });
+    setIsLoading(isTrainingsLoading || isCompletionsLoading);
+    
+    try {
+      if (!isTrainingsLoading && !isCompletionsLoading && trainings.length > 0 && completions.length > 0) {
+        // Create a mapping of training IDs to names for easy lookup
+        const trainingMap = new Map<string, string>();
+        trainings.forEach((training) => {
+          trainingMap.set(training.id, training.title);
+        });
 
-      // Filter completions for the current user
-      const userCompletions = currentUser ? 
-        completions.filter(c => c.employeeId === currentUser.id) : 
-        completions;
+        // Filter completions for the current user
+        const userCompletions = currentUser ? 
+          completions.filter(c => c.employeeId === currentUser.id) : 
+          completions;
 
-      // Map completions to qualifications
-      const mappedQualifications = userCompletions.map((completion): QualificationStatus => ({
-        positionId: 'default',
-        positionTitle: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
-        isQualifiedCounty: true,
-        isQualifiedAVFRD: false,
-        missingCountyTrainings: [],
-        missingAVFRDTrainings: [],
-        completedTrainings: []
-      }));
+        // Map completions to qualifications
+        const mappedQualifications = userCompletions.map((completion): QualificationStatus => ({
+          positionId: 'default',
+          positionTitle: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
+          isQualifiedCounty: true,
+          isQualifiedAVFRD: false,
+          missingCountyTrainings: [],
+          missingAVFRDTrainings: [],
+          completedTrainings: []
+        }));
 
-      setQualifications(mappedQualifications);
+        setQualifications(mappedQualifications);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error occurred'));
     }
-  }, [trainings, completions, isLoading, currentUser]);
+  }, [trainings, completions, isTrainingsLoading, isCompletionsLoading, currentUser]);
 
   // Mock function for position qualifications - this would be replaced with actual logic
   const getPositionQualifications = (): QualificationStatus[] => {

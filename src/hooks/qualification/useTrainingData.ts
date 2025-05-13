@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
 import { supabase } from "@/integrations/supabase/client";
 import { Training, TrainingCompletion } from "@/lib/types";
@@ -13,6 +13,7 @@ export function useTrainingData(employeeId?: string) {
     isCompletionsLoading
   } = useEmployeeCache();
   
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
   // Filter completions for specific employee if employeeId is provided
@@ -58,6 +59,8 @@ export function useTrainingData(employeeId?: string) {
     employeeCompletions,
     completedTrainings,
     completedTrainingIds,
-    getTrainingById
+    getTrainingById,
+    isLoading: isTrainingsLoading || isCompletionsLoading,
+    error
   };
 }

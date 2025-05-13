@@ -43,7 +43,7 @@ export default function MyQualifications() {
       <QualificationsSummaryCards qualifications={qualifications} />
       <QualificationsTabs 
         qualifications={qualifications}
-        activeTab={activeTab}
+        activeTab={activeTab as "county" | "avfrd"} // Cast to ensure compatibility
         setActiveTab={setActiveTab}
       />
     </div>

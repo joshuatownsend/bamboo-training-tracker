@@ -1,60 +1,63 @@
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Position } from "@/lib/types";
 
 export function usePositionData() {
   const [positions, setPositions] = useState<Position[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
-  // Function to fetch positions from database
   const fetchPositions = async () => {
+    setIsLoading(true);
+    setError("");
+    
     try {
-      setIsLoading(true);
-      setError(null);
-      
       const { data, error } = await supabase
         .from('positions')
         .select('*')
-        .order('title');
-        
-      if (error) throw error;
+        .order('title', { ascending: true });
       
-      // Map the database records to Position type
-      setPositions(data.map(position => ({
-        id: position.id,
-        title: position.title,
-        description: position.description || '',
-        department: position.department || '',
-        countyRequirements: position.county_requirements || [],
-        avfrdRequirements: position.avfrd_requirements || []
-      })));
+      if (error) {
+        throw new Error(`Error fetching positions: ${error.message}`);
+      }
+      
+      // Map to Position type
+      const mappedPositions: Position[] = data.map(pos => ({
+        id: pos.id,
+        title: pos.title,
+        description: pos.description || "",
+        department: pos.department || "Operations",
+        countyRequirements: pos.county_requirements || [],
+        avfrdRequirements: pos.avfrd_requirements || [],
+        created_at: pos.created_at,
+        updated_at: pos.updated_at
+      }));
+      
+      setPositions(mappedPositions);
     } catch (err) {
-      console.error('Error fetching positions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch positions');
-      
-      toast({
-        title: "Error loading positions",
-        description: "Could not load position data from the database",
-        variant: "destructive"
-      });
+      console.error("Error in fetchPositions:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Fetch positions on component mount
+
   useEffect(() => {
     fetchPositions();
   }, []);
-  
-  return {
-    positions,
-    isLoading,
-    error,
-    refetchPositions: fetchPositions
+
+  const refetchPositions = async () => {
+    await fetchPositions();
+  };
+
+  // For backward compatibility, alias isLoading as isLoadingPositions and error as positionsError
+  return { 
+    positions, 
+    isLoading, 
+    isLoadingPositions: isLoading,
+    error, 
+    positionsError: error,
+    refetchPositions 
   };
 }

@@ -51,10 +51,11 @@ export interface CachedTraining {
 export interface CachedCompletion {
   id?: string;
   employee_id: string;
-  type: string;
-  completed?: string;
-  expirationDate?: string; 
+  type: string; // This is the training ID/type in BambooHR API
+  completed?: string; // Changed from completionDate to match API
+  expiration_date?: string; // Using snake_case to match DB column
   status?: string;
   instructor?: string;
   notes?: string;
+  // Removed score and certificateUrl as they are not in the API
 }

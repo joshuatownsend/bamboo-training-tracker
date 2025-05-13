@@ -79,7 +79,7 @@ export const CachedDataSummary: React.FC<CachedDataSummaryProps> = ({
             <span className="text-muted-foreground">Recent completions:</span>
             <span className="font-mono">
               {completions.filter(c => {
-                const date = c.completionDate ? new Date(c.completionDate) : null;
+                const date = c.completed ? new Date(c.completed) : null;
                 if (!date) return false;
                 const now = new Date();
                 const oneMonthAgo = new Date();
