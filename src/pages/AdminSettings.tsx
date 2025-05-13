@@ -4,6 +4,7 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import BambooHRConfig from "@/components/admin/BambooHRConfig";
 import EmployeeMappingManager from "@/components/admin/EmployeeMappingManager";
 import WelcomeMessageManager from "@/components/admin/WelcomeMessageManager";
+import { TrainingCompletionsSync } from "@/components/admin/bamboo-sync/TrainingCompletionsSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -33,7 +34,7 @@ export default function AdminSettingsPage() {
           </p>
           <AdminSettings />
         </TabsContent>
-        <TabsContent value="integrations" className="space-y-4">
+        <TabsContent value="integrations" className="space-y-6">
           <p className="text-muted-foreground">
             Configure integrations with external systems like BambooHR to import data.
           </p>
@@ -48,6 +49,8 @@ export default function AdminSettingsPage() {
           </div>
           
           <BambooHRConfig />
+          
+          <TrainingCompletionsSync />
           
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md mt-6">
             <h3 className="text-sm font-medium text-yellow-800">About Data Synchronization</h3>
