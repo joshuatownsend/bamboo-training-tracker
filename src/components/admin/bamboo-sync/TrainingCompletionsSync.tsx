@@ -11,6 +11,7 @@ import {
 import { useSyncStatus } from "@/hooks/cache/useSyncStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { SyncStatus, SyncStatusDetails } from "@/types/bamboo";
 
 // Version of this component - helps track which version is deployed
 const COMPONENT_VERSION = "1.1.0";
@@ -187,6 +188,10 @@ export const TrainingCompletionsSync: React.FC = () => {
         </div>
       );
     } else if (syncStatus.status === 'error') {
+      // Safely access details with optional chaining and type assertions
+      const details = syncStatus.details as SyncStatusDetails | undefined;
+      const errorDetails = details?.error_details;
+
       return (
         <div className="flex flex-col text-red-600 text-sm mt-2">
           <div className="flex items-center">
@@ -198,22 +203,26 @@ export const TrainingCompletionsSync: React.FC = () => {
               <span className="font-medium">Error:</span> {syncStatus.error}
             </div>
           )}
-          {syncStatus.details && syncStatus.details.error_details && (
+          {errorDetails && (
             <div className="mt-1 pl-6 text-xs max-w-full overflow-x-auto">
-              <span className="font-medium">Details:</span> {syncStatus.details.error_details}
+              <span className="font-medium">Details:</span> {errorDetails}
             </div>
           )}
         </div>
       );
     } else if (syncStatus.status === 'running') {
+      // Safely access details with optional chaining and type assertions
+      const details = syncStatus.details as SyncStatusDetails | undefined;
+      const startTime = details?.start_time;
+      
       return (
         <div className="flex items-center text-yellow-600 text-sm mt-2">
           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           <span>
             Sync in progress...
-            {syncStatus.details && syncStatus.details.start_time && (
+            {startTime && (
               <span className="ml-2 text-xs">
-                (Started {new Date(syncStatus.details.start_time).toLocaleString()})
+                (Started {new Date(startTime).toLocaleString()})
               </span>
             )}
           </span>

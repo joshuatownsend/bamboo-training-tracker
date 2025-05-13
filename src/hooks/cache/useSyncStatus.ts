@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { toast } from "@/components/ui/use-toast";
+import { SyncStatus } from "@/types/bamboo";
 
 /**
  * Hook to fetch the sync status for a specific sync operation
@@ -38,7 +39,7 @@ export function useSyncStatus(syncId = 'bamboohr') {
           return null;
         }
         
-        return data;
+        return data as SyncStatus;
       } catch (error) {
         console.error(`Exception fetching sync status for ${syncId}:`, error);
         return null;

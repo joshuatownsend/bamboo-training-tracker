@@ -5,7 +5,19 @@ export interface SyncStatus {
   updated_at: string;
   last_sync?: string;
   error?: string | null;
-  details?: any; // Added this field to match the database schema
+  details?: SyncStatusDetails; // Now we're using a specific type for details
+}
+
+// Add a proper type for the details property
+export interface SyncStatusDetails {
+  version?: string;
+  deploymentId?: string;
+  error_details?: string;
+  start_time?: string;
+  errors?: string[];
+  failedEmployees?: Array<{ id: string; error: string }>;
+  employeeResults?: Record<string, { success: boolean; count?: number; error?: string }>;
+  [key: string]: any; // For any other properties that might be present
 }
 
 export interface CachedEmployee {
