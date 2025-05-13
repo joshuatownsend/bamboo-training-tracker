@@ -55,11 +55,11 @@ export function useQualifications() {
     id: completion.id || '',
     employeeId: completion.employee_id,
     trainingId: completion.training_id,
-    completionDate: completion.completion_date || '',
-    expirationDate: completion.expiration_date,
+    completionDate: completion.completionDate || '',
+    expirationDate: completion.expirationDate,
     status: completion.status as 'completed' | 'expired' | 'due' || 'completed',
     score: completion.score,
-    certificateUrl: completion.certificate_url
+    certificateUrl: completion.certificateUrl
   }));
 
   // Calculate qualifications once we have all required data
