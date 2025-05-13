@@ -231,6 +231,39 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_training_completions: {
+        Row: {
+          completion_date: string
+          created_at: string
+          employee_id: number
+          id: string
+          instructor: string | null
+          notes: string | null
+          training_id: number
+          updated_at: string
+        }
+        Insert: {
+          completion_date: string
+          created_at?: string
+          employee_id: number
+          id?: string
+          instructor?: string | null
+          notes?: string | null
+          training_id: number
+          updated_at?: string
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          employee_id?: number
+          id?: string
+          instructor?: string | null
+          notes?: string | null
+          training_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           avfrd_requirements: string[]
@@ -351,6 +384,10 @@ export type Database = {
         Returns: Json
       }
       trigger_bamboohr_sync: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      trigger_training_completions_sync: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }

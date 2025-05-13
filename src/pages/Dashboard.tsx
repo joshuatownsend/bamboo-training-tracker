@@ -19,7 +19,7 @@ const Dashboard = () => {
     statistics, 
     isLoading, 
     refreshDashboard,
-    triggerBambooSync,
+    triggerTrainingSync,
     syncStatus
   } = useDashboardData();
   const { toast } = useToast();
@@ -78,13 +78,13 @@ const Dashboard = () => {
           {isAdmin && (
             <Button 
               onClick={() => {
-                triggerBambooSync();
+                triggerTrainingSync();
               }} 
               variant="outline" 
               size="sm"
               className="gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
             >
-              <Database className="h-4 w-4" /> Sync BambooHR Data
+              <Database className="h-4 w-4" /> Sync Training Data
             </Button>
           )}
           <Button 

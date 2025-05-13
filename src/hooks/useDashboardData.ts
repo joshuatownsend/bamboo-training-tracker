@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculateStatisticsAsync } from "@/utils/StatisticsWorker";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
+import useTrainingCompletions from "@/hooks/cache/useTrainingCompletions";
 import { supabase } from "@/integrations/supabase/client";
 import type { TrainingStatistics, Training, TrainingCompletion } from "@/lib/types";
 import useBambooHR from "@/hooks/useBambooHR";
@@ -17,16 +18,37 @@ export function useDashboardData() {
   const queryClient = useQueryClient();
   const bambooClient = useBambooHR();
   
+  // Get cached employees and trainings
   const { 
     employees, 
     trainings, 
-    completions, 
     isEmployeesLoading, 
-    isTrainingsLoading, 
-    isCompletionsLoading,
+    isTrainingsLoading,
     refetchAll,
-    syncStatus
+    syncStatus: bambooSyncStatus
   } = useEmployeeCache();
+
+  // Get training completions from the new database table
+  const { data: trainingCompletions, isLoading: isTrainingCompletionsLoading, refetch: refetchCompletions } = useTrainingCompletions();
+
+  // Get sync status for training completions
+  const { data: trainingSyncStatus, isLoading: isTrainingSyncStatusLoading, refetch: refetchSyncStatus } = useQuery({
+    queryKey: ['sync-status', 'training_completions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sync_status')
+        .select('*')
+        .eq('id', 'training_completions')
+        .single();
+      
+      if (error) {
+        console.error("Error fetching training sync status:", error);
+        return null;
+      }
+      
+      return data;
+    },
+  });
 
   // Fetch training types directly from bamboo_training_types table as a backup
   const { data: trainingTypes, isLoading: isTrainingTypesLoading } = useQuery({
@@ -63,7 +85,7 @@ export function useDashboardData() {
     queryKey: ['bamboohr', 'direct_completions'],
     queryFn: async () => {
       // Only execute if cached completions are empty and BambooHR client is configured
-      if ((completions && completions.length > 0) || !bambooClient.isConfigured) {
+      if ((trainingCompletions && trainingCompletions.length > 0) || !bambooClient.isConfigured) {
         return null;
       }
       
@@ -114,7 +136,7 @@ export function useDashboardData() {
       }
     },
     // Only execute this query if the cached completions are empty
-    enabled: (!completions || completions.length === 0) && bambooClient.isConfigured,
+    enabled: (!trainingCompletions || trainingCompletions.length === 0) && bambooClient.isConfigured,
   });
 
   // Combine trainings from cache and training types
@@ -136,11 +158,11 @@ export function useDashboardData() {
     return [];
   }, [trainings, trainingTypes]);
 
-  // Combine completions from cache and direct BambooHR fetch
+  // Combine completions from database and direct BambooHR fetch
   const combinedCompletions = useMemo(() => {
-    if (completions && completions.length > 0) {
-      console.log(`Using ${completions.length} completions from cache`);
-      return completions;
+    if (trainingCompletions && trainingCompletions.length > 0) {
+      console.log(`Using ${trainingCompletions.length} completions from database`);
+      return trainingCompletions;
     }
     
     if (directCompletions && directCompletions.length > 0) {
@@ -150,7 +172,7 @@ export function useDashboardData() {
     
     console.log("No completion data available from any source");
     return [];
-  }, [completions, directCompletions]);
+  }, [trainingCompletions, directCompletions]);
 
   // Log completion data for debugging
   useMemo(() => {
@@ -165,7 +187,7 @@ export function useDashboardData() {
   // Calculate statistics only when data is available and not loading
   // Use memoization to avoid recalculating unnecessarily
   const statistics = useMemo(() => {
-    const isLoading = isEmployeesLoading || isTrainingsLoading || isCompletionsLoading || 
+    const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
                      isTrainingTypesLoading || isDirectCompletionsLoading;
                      
     if (isLoading) {
@@ -216,14 +238,17 @@ export function useDashboardData() {
     trainingTypes,
     isEmployeesLoading, 
     isTrainingsLoading, 
-    isCompletionsLoading, 
+    isTrainingCompletionsLoading, 
     isTrainingTypesLoading, 
     isDirectCompletionsLoading,
     toast
   ]);
 
+  // Use the training completions sync status if available, otherwise use the bamboo sync status
+  const syncStatus = trainingSyncStatus || bambooSyncStatus;
+
   // Single loading state derived from all data sources
-  const isLoading = isEmployeesLoading || isTrainingsLoading || isCompletionsLoading || 
+  const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
                    isTrainingTypesLoading || isDirectCompletionsLoading || !statistics;
 
   // Function to manually trigger a full data refresh
@@ -231,6 +256,8 @@ export function useDashboardData() {
     try {
       console.log("Manually refreshing dashboard data...");
       await refetchAll();
+      await refetchCompletions();
+      await refetchSyncStatus();
       
       // Invalidate any prefetch query to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'prefetch'] });
@@ -251,12 +278,12 @@ export function useDashboardData() {
     }
   };
 
-  // Function to trigger a full BambooHR sync
-  const triggerBambooSync = async () => {
+  // Function to trigger a full training completions sync
+  const triggerTrainingSync = async () => {
     try {
-      console.log("Triggering full BambooHR sync...");
+      console.log("Triggering training completions sync...");
       
-      const { data, error } = await supabase.rpc('trigger_bamboohr_sync');
+      const { data, error } = await supabase.rpc('trigger_training_completions_sync');
       
       if (error) {
         throw new Error(`Failed to trigger sync: ${error.message}`);
@@ -264,12 +291,12 @@ export function useDashboardData() {
       
       toast({
         title: "Sync started",
-        description: "BambooHR data sync has been initiated. This may take several minutes.",
+        description: "Training completions sync has been initiated. This may take several minutes.",
       });
       
       // Start polling for sync status
       const intervalId = setInterval(async () => {
-        await refetchAll();
+        await refetchSyncStatus();
       }, 5000); // Check every 5 seconds
       
       // Stop polling after 2 minutes
@@ -280,10 +307,10 @@ export function useDashboardData() {
       
       return true;
     } catch (error) {
-      console.error("Error triggering BambooHR sync:", error);
+      console.error("Error triggering training sync:", error);
       toast({
         title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to start BambooHR sync",
+        description: error instanceof Error ? error.message : "Failed to start training sync",
         variant: "destructive"
       });
       return false;
@@ -303,7 +330,7 @@ export function useDashboardData() {
     
     // Actions
     refreshDashboard,
-    triggerBambooSync
+    triggerTrainingSync
   };
 }
 

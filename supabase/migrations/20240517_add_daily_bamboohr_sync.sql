@@ -8,11 +8,11 @@ SELECT cron.schedule(
   'sync-bamboohr-daily',
   '0 3 * * *', -- Run at 3:00 AM every day 
   $$
-  SELECT public.trigger_bamboohr_sync();
+  SELECT public.trigger_training_completions_sync();
   $$
 );
 
--- Create a function to check the last sync time
+-- Create a function to check the last sync info
 CREATE OR REPLACE FUNCTION public.get_last_sync_info()
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -25,7 +25,7 @@ BEGIN
   -- Get the latest sync information
   SELECT * INTO last_sync_record 
   FROM public.sync_status
-  WHERE id = 'bamboohr';
+  WHERE id = 'training_completions';
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object(
