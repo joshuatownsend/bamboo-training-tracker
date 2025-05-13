@@ -61,7 +61,7 @@ export const TrainingCompletionsSync: React.FC = () => {
         </p>
       </div>
       
-      <Alert variant="outline" className="bg-white border-yellow-200">
+      <Alert className="bg-white border-yellow-200">
         <AlertTitle>About Training Completions Sync</AlertTitle>
         <AlertDescription className="text-sm">
           <p className="mb-2">
