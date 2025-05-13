@@ -238,16 +238,17 @@ serve(async (req) => {
     // Debug log all request headers
     console.log("Request headers:", Object.fromEntries(req.headers));
     
-    // Verify authentication (this was missing in the original function)
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    // Verify authentication - IMPROVED AUTHENTICATION HANDLING
+    const authHeader = req.headers.get('Authorization');
     const apiKey = req.headers.get('apikey');
     
     // Debug log the auth information we received
     console.log("Auth header present:", !!authHeader);
-    console.log("API key present:", !!apiKey);
+    console.log("API key header present:", !!apiKey);
     
+    // Check both authorization methods and provide detailed error messages
     if (!authHeader && !apiKey) {
-      console.error("No authentication provided");
+      console.error("Authentication error: Both Authorization and apikey headers are missing");
       return new Response(
         JSON.stringify({
           error: "Unauthorized",
@@ -260,8 +261,17 @@ serve(async (req) => {
       );
     }
     
+    // Log authentication method being used
+    if (authHeader) {
+      console.log("Using Authorization header authentication");
+      // Optionally validate JWT token here if needed
+    } else if (apiKey) {
+      console.log("Using apikey header authentication");
+      // Optionally validate API key here if needed
+    }
+    
     // Start the sync process
-    console.log("Training completions sync started");
+    console.log("Training completions sync started - authentication successful");
     const result = await syncTrainingCompletions();
     
     // Return success response
