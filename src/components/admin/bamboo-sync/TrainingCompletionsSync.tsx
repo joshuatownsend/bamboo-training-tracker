@@ -29,7 +29,7 @@ export const TrainingCompletionsSync: React.FC = () => {
           clearInterval(interval);
           
           // Show appropriate notification
-          if (syncStatus.status === 'success') {
+          if (syncStatus?.status === 'success') {
             toast({
               title: "Sync Completed",
               description: "Training completions data has been successfully synchronized.",
@@ -39,7 +39,7 @@ export const TrainingCompletionsSync: React.FC = () => {
             
             // Refresh related data
             queryClient.invalidateQueries({ queryKey: ['training_completions'] });
-          } else if (syncStatus.status === 'error') {
+          } else if (syncStatus?.status === 'error') {
             toast({
               title: "Sync Failed",
               description: syncStatus.error || "An error occurred during synchronization.",
@@ -163,13 +163,20 @@ export const TrainingCompletionsSync: React.FC = () => {
         disabled={isSyncing || isLoading}
         className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
       >
-        <Database className="h-4 w-4 mr-2" />
-        <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-        {isSyncing 
-          ? syncStartTime 
-            ? `Syncing... (${((performance.now() - syncStartTime) / 1000).toFixed(1)}s)` 
-            : "Syncing..." 
-          : "Sync Training Completions Data"}
+        {isSyncing ? (
+          <>
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            {syncStartTime 
+              ? `Syncing... (${((performance.now() - syncStartTime) / 1000).toFixed(1)}s)` 
+              : "Syncing..."}
+          </>
+        ) : (
+          <>
+            <Database className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Sync Training Completions Data
+          </>
+        )}
       </Button>
       
       {isSyncing && (
