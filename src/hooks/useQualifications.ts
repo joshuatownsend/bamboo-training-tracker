@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useTrainingData } from './qualification';
 import { useUser } from '@/contexts/user';
-import { Training, TrainingCompletion } from '@/lib/types';
+import { Training, TrainingCompletion, QualificationStatus } from '@/lib/types';
 import { CachedTraining, CachedCompletion } from '@/types/bamboo';
 import { useQualificationTabs } from './qualification';
 
-// Interface for UserQualification object
+// Interface for UserQualification object - updated to match QualificationStatus properties
 export interface UserQualification {
   id: string;
   name: string;
@@ -14,11 +14,7 @@ export interface UserQualification {
   employeeId: string;
   status: 'completed' | 'pending' | 'expired';
   completionDate: string;
-}
-
-// Interface for QualificationStatus object
-export interface QualificationStatus {
-  id: string;
+  // Add missing properties to match QualificationStatus
   positionId: string;
   positionTitle: string;
   isQualifiedCounty: boolean;
@@ -29,7 +25,7 @@ export interface QualificationStatus {
 
 export const useQualifications = () => {
   const { trainings, completions, isLoading, error } = useTrainingData();
-  const [qualifications, setQualifications] = useState<UserQualification[]>([]);
+  const [qualifications, setQualifications] = useState<QualificationStatus[]>([]);
   const { currentUser } = useUser();
   const { activeTab, setActiveTab } = useQualificationTabs();
 
@@ -48,13 +44,23 @@ export const useQualifications = () => {
         completions;
 
       // Map completions to qualifications
-      const mappedQualifications = userCompletions.map((completion): UserQualification => ({
+      const mappedQualifications = userCompletions.map((completion): QualificationStatus => ({
         id: completion.id,
         name: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
         trainingId: completion.trainingId,
         employeeId: completion.employeeId,
         status: 'completed',
         completionDate: completion.completionDate || '',
+        // Add required QualificationStatus properties
+        positionId: 'default',
+        positionTitle: trainingMap.get(completion.trainingId) || 'Unknown Position',
+        isQualifiedCounty: true,
+        isQualifiedAVFRD: false,
+        missingCountyRequirements: [],
+        missingAVFRDRequirements: [],
+        missingCountyTrainings: [],
+        missingAVFRDTrainings: [],
+        completedTrainings: []
       }));
 
       setQualifications(mappedQualifications);
@@ -73,6 +79,15 @@ export const useQualifications = () => {
       isQualifiedAVFRD: false,
       missingCountyRequirements: ['EVOC', 'Engine Operations'],
       missingAVFRDRequirements: ['EVOC', 'Engine Operations', 'Pump Operations'],
+      missingCountyTrainings: [],
+      missingAVFRDTrainings: [],
+      completedTrainings: [],
+      // Add these properties to make it work with UserQualification
+      name: 'Engine Driver Qualification',
+      trainingId: 'driver-training',
+      employeeId: currentUser?.id || '',
+      status: 'completed',
+      completionDate: new Date().toISOString().split('T')[0]
     }];
   };
 

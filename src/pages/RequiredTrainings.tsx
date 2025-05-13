@@ -10,6 +10,7 @@ import { PositionSelector } from "@/components/required-trainings/PositionSelect
 import { RequiredTrainingDetails } from "@/components/required-trainings/RequiredTrainingDetails";
 import { LoadingState } from "@/components/required-trainings/LoadingState";
 import { EmptyState } from "@/components/required-trainings/EmptyState";
+import { QualificationStatus } from "@/lib/types";
 
 export default function RequiredTrainings() {
   const { currentUser } = useUser();

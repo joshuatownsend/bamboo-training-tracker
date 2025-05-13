@@ -9,6 +9,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
+// Define types for the API responses
+interface AuthKeysTestResponse {
+  service_role_key_exists: boolean;
+  anon_key_exists: boolean;
+  timestamp?: string;
+}
+
+interface VersionCheckResponse {
+  success: boolean;
+  function?: string;
+  version_info?: {
+    version: string;
+    timestamp?: string;
+  };
+  error?: string;
+}
+
 export function DiagnosticTools() {
   const [isRunningDiagnostic, setIsRunningDiagnostic] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
@@ -80,10 +97,13 @@ export function DiagnosticTools() {
       }
       
       console.log("Auth keys test result:", data);
+      // Cast the data to the proper type
+      const authTestResult = data as AuthKeysTestResponse;
+      
       toast({
         title: "Auth keys test complete",
-        description: `Service role key: ${data.service_role_key_exists ? 'Available' : 'Missing'}, Anon key: ${data.anon_key_exists ? 'Available' : 'Missing'}`,
-        variant: data.service_role_key_exists && data.anon_key_exists ? "default" : "destructive",
+        description: `Service role key: ${authTestResult.service_role_key_exists ? 'Available' : 'Missing'}, Anon key: ${authTestResult.anon_key_exists ? 'Available' : 'Missing'}`,
+        variant: authTestResult.service_role_key_exists && authTestResult.anon_key_exists ? "default" : "destructive",
       });
     } catch (error) {
       console.error("Exception testing auth keys:", error);
@@ -123,17 +143,19 @@ export function DiagnosticTools() {
       }
       
       console.log("Edge function version check result:", data);
+      // Cast the data to the proper type
+      const versionResult = data as VersionCheckResponse;
       
-      if (data.success) {
+      if (versionResult.success) {
         toast({
           title: "Version check complete",
-          description: `Edge function found: ${data.version_info?.version || 'Unknown'}`,
+          description: `Edge function found: ${versionResult.version_info?.version || 'Unknown'}`,
           variant: "default",
         });
       } else {
         toast({
           title: "Version check failed",
-          description: data.error || "Unknown error",
+          description: versionResult.error || "Unknown error",
           variant: "destructive",
         });
       }
@@ -230,7 +252,8 @@ function DiagnosticResultDisplay({ result }: { result: any }) {
   
   const syncStatus = result.sync_status || {};
   const stats = result.training_completions_stats || {};
-  const authTest = result.auth_test || {};
+  // Type the auth_test object
+  const authTest = result.auth_test as AuthKeysTestResponse || {};
   
   return (
     <div className="space-y-3 text-xs">
