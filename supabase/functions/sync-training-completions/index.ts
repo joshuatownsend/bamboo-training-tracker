@@ -212,7 +212,7 @@ async function saveTrainingCompletions(completions: any[], requestId: string) {
         }
       }
       
-      // Now insert the new records
+      // Now insert the new records - Fix: removing the onConflict method that doesn't exist in v2
       console.log(`[${batchId}] Inserting ${batch.length} new completion records`);
       const { data, error } = await supabase
         .from('employee_training_completions')
