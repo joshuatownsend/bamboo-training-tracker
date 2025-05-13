@@ -6,21 +6,14 @@ import { Training, TrainingCompletion, QualificationStatus } from '@/lib/types';
 import { CachedTraining, CachedCompletion } from '@/types/bamboo';
 import { useQualificationTabs } from './qualification';
 
-// Interface for UserQualification object - updated to match QualificationStatus properties
-export interface UserQualification {
-  id: string;
+// Update UserQualification interface to match QualificationStatus properties
+export interface UserQualification extends QualificationStatus {
+  // Add any additional properties specific to UserQualification
   name: string;
-  trainingId: string;
   employeeId: string;
   status: 'completed' | 'pending' | 'expired';
   completionDate: string;
-  // Add missing properties to match QualificationStatus
-  positionId: string;
-  positionTitle: string;
-  isQualifiedCounty: boolean;
-  isQualifiedAVFRD: boolean;
-  missingCountyRequirements: string[];
-  missingAVFRDRequirements: string[];
+  trainingId: string;
 }
 
 export const useQualifications = () => {
@@ -45,15 +38,8 @@ export const useQualifications = () => {
 
       // Map completions to qualifications
       const mappedQualifications = userCompletions.map((completion): QualificationStatus => ({
-        id: completion.id,
-        name: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
-        trainingId: completion.trainingId,
-        employeeId: completion.employeeId,
-        status: 'completed',
-        completionDate: completion.completionDate || '',
-        // Add required QualificationStatus properties
         positionId: 'default',
-        positionTitle: trainingMap.get(completion.trainingId) || 'Unknown Position',
+        positionTitle: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
         isQualifiedCounty: true,
         isQualifiedAVFRD: false,
         missingCountyRequirements: [],
@@ -72,7 +58,6 @@ export const useQualifications = () => {
     // This is a placeholder - in a real implementation, this would assess the user's
     // completions against position requirements from the database
     return [{
-      id: '1',
       positionId: 'driver',
       positionTitle: 'Engine Driver',
       isQualifiedCounty: false,
@@ -81,13 +66,7 @@ export const useQualifications = () => {
       missingAVFRDRequirements: ['EVOC', 'Engine Operations', 'Pump Operations'],
       missingCountyTrainings: [],
       missingAVFRDTrainings: [],
-      completedTrainings: [],
-      // Add these properties to make it work with UserQualification
-      name: 'Engine Driver Qualification',
-      trainingId: 'driver-training',
-      employeeId: currentUser?.id || '',
-      status: 'completed',
-      completionDate: new Date().toISOString().split('T')[0]
+      completedTrainings: []
     }];
   };
 

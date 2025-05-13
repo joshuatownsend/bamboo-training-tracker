@@ -97,14 +97,22 @@ export function DiagnosticTools() {
       }
       
       console.log("Auth keys test result:", data);
-      // Cast the data to the proper type
-      const authTestResult = data as AuthKeysTestResponse;
-      
-      toast({
-        title: "Auth keys test complete",
-        description: `Service role key: ${authTestResult.service_role_key_exists ? 'Available' : 'Missing'}, Anon key: ${authTestResult.anon_key_exists ? 'Available' : 'Missing'}`,
-        variant: authTestResult.service_role_key_exists && authTestResult.anon_key_exists ? "default" : "destructive",
-      });
+      // Cast the data properly with type checking
+      if (data && typeof data === 'object') {
+        const authTestResult = data as unknown as AuthKeysTestResponse;
+        
+        toast({
+          title: "Auth keys test complete",
+          description: `Service role key: ${authTestResult.service_role_key_exists ? 'Available' : 'Missing'}, Anon key: ${authTestResult.anon_key_exists ? 'Available' : 'Missing'}`,
+          variant: authTestResult.service_role_key_exists && authTestResult.anon_key_exists ? "default" : "destructive",
+        });
+      } else {
+        toast({
+          title: "Auth test error",
+          description: "Unexpected response format from auth keys test",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Exception testing auth keys:", error);
       toast({
@@ -143,19 +151,27 @@ export function DiagnosticTools() {
       }
       
       console.log("Edge function version check result:", data);
-      // Cast the data to the proper type
-      const versionResult = data as VersionCheckResponse;
-      
-      if (versionResult.success) {
-        toast({
-          title: "Version check complete",
-          description: `Edge function found: ${versionResult.version_info?.version || 'Unknown'}`,
-          variant: "default",
-        });
+      // Cast data properly with type safety
+      if (data && typeof data === 'object' && 'success' in data) {
+        const versionResult = data as unknown as VersionCheckResponse;
+        
+        if (versionResult.success) {
+          toast({
+            title: "Version check complete",
+            description: `Edge function found: ${versionResult.version_info?.version || 'Unknown'}`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Version check failed",
+            description: versionResult.error || "Unknown error",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
-          title: "Version check failed",
-          description: versionResult.error || "Unknown error",
+          title: "Version check error",
+          description: "Unexpected response format from version check",
           variant: "destructive",
         });
       }
@@ -252,8 +268,10 @@ function DiagnosticResultDisplay({ result }: { result: any }) {
   
   const syncStatus = result.sync_status || {};
   const stats = result.training_completions_stats || {};
-  // Type the auth_test object
-  const authTest = result.auth_test as AuthKeysTestResponse || {};
+  // Safely access auth_test with proper type checking
+  const authTest = result.auth_test && typeof result.auth_test === 'object' ? 
+    result.auth_test as unknown as AuthKeysTestResponse : 
+    { service_role_key_exists: false, anon_key_exists: false };
   
   return (
     <div className="space-y-3 text-xs">
