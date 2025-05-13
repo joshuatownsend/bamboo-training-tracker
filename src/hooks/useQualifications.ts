@@ -1,211 +1,87 @@
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { useTrainingData } from './qualification';
 import { useUser } from '@/contexts/user';
-import { Training, QualificationStatus } from '@/lib/types';
-import type { CachedCompletion, CachedTraining } from '@/types/bamboo';
+import { Training, TrainingCompletion } from '@/lib/types';
+import { CachedTraining, CachedCompletion } from '@/types/bamboo';
 import { useQualificationTabs } from './qualification';
 
-// Define the interface for our qualification
-interface UserQualification {
+// Interface for UserQualification object
+export interface UserQualification {
   id: string;
   name: string;
   trainingId: string;
   employeeId: string;
-  status: 'completed' | 'not-started' | 'in-progress' | 'expired';
-  completionDate: string | null;
+  status: 'completed' | 'pending' | 'expired';
+  completionDate: string;
 }
 
-export function useQualifications() {
+// Interface for QualificationStatus object
+export interface QualificationStatus {
+  id: string;
+  positionId: string;
+  positionTitle: string;
+  isQualifiedCounty: boolean;
+  isQualifiedAVFRD: boolean;
+  missingCountyRequirements: string[];
+  missingAVFRDRequirements: string[];
+}
+
+export const useQualifications = () => {
+  const { trainings, completions, isLoading, error } = useTrainingData();
+  const [qualifications, setQualifications] = useState<UserQualification[]>([]);
   const { currentUser } = useUser();
   const { activeTab, setActiveTab } = useQualificationTabs();
 
-  // Fetch cached training data
-  const { data: trainingsData = [], isLoading: isTrainingsLoading } = useQuery({
-    queryKey: ['cached-trainings'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cached_trainings')
-        .select('*');
+  // Map trainings and completions to qualifications
+  useEffect(() => {
+    if (!isLoading && trainings.length > 0 && completions.length > 0) {
+      // Create a mapping of training IDs to names for easy lookup
+      const trainingMap = new Map<string, string>();
+      trainings.forEach((training) => {
+        trainingMap.set(training.id, training.title);
+      });
 
-      if (error) {
-        console.error('Error fetching cached trainings:', error);
-        return [];
-      }
-      
-      // Map database fields to needed types
-      return data.map(item => ({
-        id: item.id,
-        title: item.title,
-        name: item.title, // Add name property for CachedTraining compatibility
-        type: item.type || '',
-        category: item.category || '',
-        description: item.description || '',
-        duration_hours: item.duration_hours || 0,
-        required_for: item.required_for || []
+      // Filter completions for the current user
+      const userCompletions = currentUser ? 
+        completions.filter(c => c.employeeId === currentUser.id) : 
+        completions;
+
+      // Map completions to qualifications
+      const mappedQualifications = userCompletions.map((completion): UserQualification => ({
+        id: completion.id,
+        name: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
+        trainingId: completion.trainingId,
+        employeeId: completion.employeeId,
+        status: 'completed',
+        completionDate: completion.completionDate || '',
       }));
-    },
-  });
 
-  // Fetch cached training completions for the current user
-  const { data: completions = [], isLoading: isCompletionsLoading, error: completionsError } = useQuery({
-    queryKey: ['cached-completions', currentUser?.bambooEmployeeId],
-    queryFn: async () => {
-      if (!currentUser?.bambooEmployeeId) return [];
-
-      const { data, error } = await supabase
-        .from('cached_training_completions')
-        .select('*')
-        .eq('employee_id', currentUser.bambooEmployeeId);
-
-      if (error) {
-        console.error('Error fetching cached training completions:', error);
-        return [];
-      }
-      return data as CachedCompletion[];
-    },
-    enabled: !!currentUser?.bambooEmployeeId,
-  });
-
-  // Map CachedCompletion objects to TrainingCompletion format
-  const mapCompletions = useMemo(() => completions.map(completion => ({
-    id: completion.id || '',
-    employeeId: completion.employee_id,
-    trainingId: completion.training_id,
-    completionDate: completion.completionDate || '',
-    expirationDate: completion.expirationDate,
-    status: completion.status as 'completed' | 'expired' | 'due' || 'completed',
-    score: completion.score,
-    certificateUrl: completion.certificateUrl
-  })), [completions]);
-
-  // Calculate qualifications once we have all required data
-  const qualifications = useMemo(() => {
-    if (!trainingsData.length) {
-      return [];
+      setQualifications(mappedQualifications);
     }
+  }, [trainings, completions, isLoading, currentUser]);
 
-    // Transform into UserQualification objects
-    return trainingsData.map(training => {
-      const completed = mapCompletions.find(
-        completion => completion.trainingId === training.id
-      );
-
-      let status: UserQualification['status'] = 'not-started';
-      if (completed) {
-        status = 'completed';
-      }
-
-      return {
-        id: training.id,
-        name: training.title,
-        trainingId: training.id,
-        employeeId: currentUser?.bambooEmployeeId || '',
-        status: status,
-        completionDate: completed?.completionDate || null,
-      };
-    });
-  }, [trainingsData, mapCompletions, currentUser?.bambooEmployeeId]);
-
-  // Transform qualifications into QualificationStatus objects for component compatibility
-  const qualificationStatuses = useMemo(() => {
-    // Mock data for position qualifications
-    // In a real implementation, this would be fetched from a database
-    const mockPositions = [
-      {
-        id: 'pos1',
-        title: 'Engine Driver',
-        countyRequirements: ['training1', 'training2'],
-        avfrdRequirements: ['training1', 'training2', 'training3']
-      },
-      {
-        id: 'pos2',
-        title: 'Firefighter',
-        countyRequirements: ['training4', 'training5'],
-        avfrdRequirements: ['training4', 'training5', 'training6']
-      }
-    ];
-    
-    return mockPositions.map(position => {
-      // Check county qualifications
-      const hasAllCountyReqs = position.countyRequirements.every(reqId => 
-        qualifications.some(q => q.trainingId === reqId && q.status === 'completed')
-      );
-      
-      // Check AVFRD qualifications
-      const hasAllAVFRDReqs = position.avfrdRequirements.every(reqId => 
-        qualifications.some(q => q.trainingId === reqId && q.status === 'completed')
-      );
-      
-      // Get missing county trainings
-      const missingCountyTrainings = position.countyRequirements
-        .filter(reqId => !qualifications.some(q => q.trainingId === reqId && q.status === 'completed'))
-        .map(reqId => {
-          const training = trainingsData.find(t => t.id === reqId);
-          return {
-            id: reqId,
-            title: training?.title || 'Unknown Training',
-            type: training?.type || '',
-            category: training?.category || '',
-            description: training?.description || '',
-            durationHours: training?.duration_hours || 0,
-            requiredFor: training?.required_for || []
-          } as Training;
-        });
-      
-      // Get missing AVFRD trainings
-      const missingAVFRDTrainings = position.avfrdRequirements
-        .filter(reqId => !qualifications.some(q => q.trainingId === reqId && q.status === 'completed'))
-        .map(reqId => {
-          const training = trainingsData.find(t => t.id === reqId);
-          return {
-            id: reqId,
-            title: training?.title || 'Unknown Training',
-            type: training?.type || '',
-            category: training?.category || '',
-            description: training?.description || '',
-            durationHours: training?.duration_hours || 0,
-            requiredFor: training?.required_for || []
-          } as Training;
-        });
-      
-      // Get completed trainings
-      const completedTrainings = qualifications
-        .filter(q => q.status === 'completed')
-        .map(q => {
-          const training = trainingsData.find(t => t.id === q.trainingId);
-          return {
-            id: q.trainingId,
-            title: training?.title || 'Unknown Training',
-            type: training?.type || '',
-            category: training?.category || '',
-            description: training?.description || '',
-            durationHours: training?.duration_hours || 0,
-            requiredFor: training?.required_for || []
-          } as Training;
-        });
-      
-      return {
-        positionId: position.id,
-        positionTitle: position.title,
-        isQualifiedCounty: hasAllCountyReqs,
-        isQualifiedAVFRD: hasAllAVFRDReqs,
-        missingCountyTrainings,
-        missingAVFRDTrainings,
-        completedTrainings
-      } as QualificationStatus;
-    });
-  }, [qualifications, trainingsData]);
-
-  const isLoading = isTrainingsLoading || isCompletionsLoading;
-  const error = completionsError;
+  // Mock function for position qualifications - this would be replaced with actual logic
+  const getPositionQualifications = (): QualificationStatus[] => {
+    // This is a placeholder - in a real implementation, this would assess the user's
+    // completions against position requirements from the database
+    return [{
+      id: '1',
+      positionId: 'driver',
+      positionTitle: 'Engine Driver',
+      isQualifiedCounty: false,
+      isQualifiedAVFRD: false,
+      missingCountyRequirements: ['EVOC', 'Engine Operations'],
+      missingAVFRDRequirements: ['EVOC', 'Engine Operations', 'Pump Operations'],
+    }];
+  };
 
   return {
-    qualifications: qualificationStatuses, // Return QualificationStatus[] for component compatibility
+    qualifications,
     isLoading,
     error,
     activeTab,
-    setActiveTab
+    setActiveTab,
+    getPositionQualifications,
   };
-}
+};

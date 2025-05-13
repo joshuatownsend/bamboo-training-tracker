@@ -3,9 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // VERSION TRACKING - DO NOT MODIFY THIS SECTION MANUALLY
 // These constants help identify which version is actually running
-const FUNCTION_VERSION = "1.2.0";
-const DEPLOYMENT_TIMESTAMP = "2025-05-13T14:30:00Z";
-const DEPLOYMENT_ID = "v1_2_0_enhanced_logging";
+const FUNCTION_VERSION = "2.0.0";
+const DEPLOYMENT_TIMESTAMP = "2025-05-13T19:30:00Z";
+const DEPLOYMENT_ID = "v2_0_0_rate_limiting_fix";
 
 // CORS Headers for browser requests
 const corsHeaders = {
@@ -22,13 +22,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const bambooSubdomain = Deno.env.get("BAMBOOHR_SUBDOMAIN") || "avfrd";
 const bambooApiKey = Deno.env.get("BAMBOOHR_API_KEY") || "";
 
-// Helper function to add delay between API requests
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper function to add delay between API requests (enhanced with random jitter)
+const delay = (ms: number) => new Promise(resolve => {
+  // Add some jitter (±20%) to avoid synchronized requests
+  const jitter = ms * (0.8 + Math.random() * 0.4);
+  setTimeout(resolve, jitter);
+});
 
 // Log function startup with version information
-console.log(`[${DEPLOYMENT_TIMESTAMP}] Starting sync-training-completions edge function - Version ${FUNCTION_VERSION} (${DEPLOYMENT_ID})`);
+console.log(`[${new Date().toISOString()}] Starting sync-training-completions edge function - Version ${FUNCTION_VERSION} (${DEPLOYMENT_ID})`);
 console.log(`API Configuration - Supabase URL: ${supabaseUrl ? "Set" : "Missing"}, BambooHR Subdomain: ${bambooSubdomain ? "Set" : "Missing"}`);
-console.log(`API Keys - Supabase: ${supabaseKey ? "Set" : "Missing"}, BambooHR: ${bambooApiKey ? "Set (Masked)" : "Missing"}`);
+console.log(`API Keys - Supabase: ${supabaseKey ? "Set (Masked)" : "Missing"}, BambooHR: ${bambooApiKey ? "Set (Masked)" : "Missing"}`);
 
 /**
  * Helper to securely log auth headers by masking sensitive parts
@@ -69,6 +73,9 @@ function generateRequestId(): string {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 }
 
+/**
+ * Fetch employees with optimized error handling and retries
+ */
 async function fetchEmployees() {
   const requestId = generateRequestId();
   console.log(`[${requestId}] Fetching employees from BambooHR`);
@@ -99,7 +106,13 @@ async function fetchEmployees() {
   }
 }
 
-// Improved fetchTrainingRecords with retry logic and better error handling
+/**
+ * Fetch training records with improved rate limiting and retry logic
+ * @param employeeId Employee ID
+ * @param requestId Request ID for tracking
+ * @param maxRetries Max retry attempts
+ * @returns Object with records and metadata
+ */
 async function fetchTrainingRecords(employeeId: string, requestId: string, maxRetries = 3) {
   console.log(`[${requestId}] Fetching training records for employee ${employeeId} (attempt 1/${maxRetries + 1})`);
   
@@ -111,9 +124,10 @@ async function fetchTrainingRecords(employeeId: string, requestId: string, maxRe
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // On retry attempts, add exponential backoff
+      // On retry attempts, add exponential backoff with increased base time
       if (attempt > 0) {
-        const backoffTime = Math.pow(2, attempt) * 500; // 1s, 2s, 4s backoff
+        // Increased backoff time: 1.5s, 3s, 6s
+        const backoffTime = Math.pow(2, attempt) * 750; 
         console.log(`[${requestId}] Retry attempt ${attempt + 1}/${maxRetries + 1} for employee ${employeeId}, waiting ${backoffTime}ms`);
         await delay(backoffTime);
       }
@@ -130,7 +144,10 @@ async function fetchTrainingRecords(employeeId: string, requestId: string, maxRe
       // Handle rate limiting (503 Service Unavailable)
       if (response.status === 503) {
         console.log(`[${requestId}] Rate limiting detected (503) for employee ${employeeId}`);
+        // More aggressive backoff when 503 detected
         if (attempt < maxRetries) {
+          // Use a longer delay for 503s: 3s, 6s, 12s
+          await delay(3000 * Math.pow(2, attempt));
           continue; // Retry with backoff
         } else {
           console.log(`[${requestId}] Max retries reached for employee ${employeeId}, skipping`);
@@ -172,6 +189,10 @@ async function fetchTrainingRecords(employeeId: string, requestId: string, maxRe
   };
 }
 
+/**
+ * Save training completions to database with delete-then-insert pattern 
+ * to avoid onConflict issues with v2 client
+ */
 async function saveTrainingCompletions(completions: any[], requestId: string) {
   if (!completions.length) {
     console.log(`[${requestId}] No completions to save`);
@@ -184,8 +205,8 @@ async function saveTrainingCompletions(completions: any[], requestId: string) {
   let errors = 0;
   let errorDetails: string[] = [];
   
-  // Process in batches to avoid overwhelming the database
-  const batchSize = 50;
+  // Process in smaller batches to avoid overwhelming the database
+  const batchSize = 25; // Reduced from 50 to 25
   for (let i = 0; i < completions.length; i += batchSize) {
     const batch = completions.slice(i, i + batchSize);
     const batchId = `${requestId}_batch_${Math.floor(i / batchSize)}`;
@@ -210,9 +231,12 @@ async function saveTrainingCompletions(completions: any[], requestId: string) {
           console.error(`[${batchId}] Error deleting existing completions:`, deleteError);
           errorDetails.push(`Batch ${Math.floor(i / batchSize) + 1} delete error: ${deleteError.message}`);
         }
+        
+        // Add a small delay after delete to ensure database consistency
+        await delay(300);
       }
       
-      // Now insert the new records - Fix: removing the onConflict method that doesn't exist in v2
+      // Now insert the new records
       console.log(`[${batchId}] Inserting ${batch.length} new completion records`);
       const { data, error } = await supabase
         .from('employee_training_completions')
@@ -226,6 +250,11 @@ async function saveTrainingCompletions(completions: any[], requestId: string) {
         inserted += batch.length;
         console.log(`[${batchId}] Successfully inserted ${batch.length} records`);
       }
+      
+      // Add delay between batches to reduce database pressure
+      if (i + batchSize < completions.length) {
+        await delay(500);
+      }
     } catch (error) {
       console.error(`[${batchId}] Error processing batch:`, error);
       errors += batch.length;
@@ -236,7 +265,16 @@ async function saveTrainingCompletions(completions: any[], requestId: string) {
   return { inserted, errors, errorDetails, requestId };
 }
 
+/**
+ * Main sync function with enhanced rate limiting and error handling
+ */
 async function syncTrainingCompletions(requestId: string) {
+  let syncDetails: Record<string, any> = {
+    start_time: new Date().toISOString(),
+    version: FUNCTION_VERSION,
+    deployment_id: DEPLOYMENT_ID,
+  };
+  
   try {
     console.log(`[${requestId}] Starting training completions synchronization`);
     
@@ -246,12 +284,18 @@ async function syncTrainingCompletions(requestId: string) {
       .update({ 
         status: 'running', 
         error: null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        details: {
+          start_time: new Date().toISOString(),
+          triggered_by: 'Edge function',
+          version: FUNCTION_VERSION
+        }
       })
       .eq('id', 'training_completions');
     
     if (statusUpdateError) {
       console.error(`[${requestId}] Error updating sync status:`, statusUpdateError);
+      syncDetails.status_update_error = statusUpdateError.message;
     }
     
     // Insert a record if it doesn't exist
@@ -260,18 +304,21 @@ async function syncTrainingCompletions(requestId: string) {
       .insert({ 
         id: 'training_completions', 
         status: 'running', 
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString(),
+        details: syncDetails
       })
-      .onConflict('id')
-      .ignore();
+      .select()
+      .single();
     
-    if (insertError) {
+    if (insertError && !insertError.message.includes('duplicate')) {
       console.error(`[${requestId}] Error inserting sync status:`, insertError);
+      syncDetails.status_insert_error = insertError.message;
     }
     
     // 1. Fetch all employees
     const { employees, requestId: employeeRequestId } = await fetchEmployees();
     console.log(`[${requestId}] Processing ${employees.length} employees`);
+    syncDetails.total_employees = employees.length;
     
     // 2. For each employee, fetch and process their training records
     const allCompletions = [];
@@ -282,259 +329,282 @@ async function syncTrainingCompletions(requestId: string) {
     let consecutiveFailures = 0;
     const maxConsecutiveFailures = 5;
     
-    // Process employees sequentially rather than in parallel to avoid rate limiting
-    // This is slower but more reliable
-    for (let i = 0; i < employees.length; i++) {
-      const employee = employees[i];
-      const employeeId = employee.id;
-      console.log(`[${requestId}] Processing employee ${i + 1}/${employees.length}: ID ${employeeId}`);
+    // Process employees in smaller batches to avoid overwhelming the API
+    const employeeBatchSize = 5;
+    
+    for (let batchIndex = 0; batchIndex < employees.length; batchIndex += employeeBatchSize) {
+      // Get the current batch of employees
+      const employeeBatch = employees.slice(batchIndex, batchIndex + employeeBatchSize);
+      console.log(`[${requestId}] Processing employee batch ${Math.floor(batchIndex/employeeBatchSize) + 1}/${Math.ceil(employees.length/employeeBatchSize)}`);
       
-      try {
-        // Add a small delay between employee processing to avoid rate limiting
-        if (i > 0) {
-          await delay(300); // 300ms delay between employee processing
-        }
+      // Process this batch sequentially
+      for (let i = 0; i < employeeBatch.length; i++) {
+        const employee = employeeBatch[i];
+        const employeeId = employee.id;
+        console.log(`[${requestId}] Processing employee ${batchIndex + i + 1}/${employees.length}: ID ${employeeId}`);
         
-        const { records, error: fetchError } = await fetchTrainingRecords(employeeId, requestId);
-        
-        if (fetchError) {
-          console.warn(`[${requestId}] Error fetching training records for employee ${employeeId}: ${fetchError}`);
-          failedEmployees.push({ id: employeeId, error: fetchError });
-          employeeResults[employeeId] = { success: false, error: fetchError };
-          consecutiveFailures++;
-        } else {
+        try {
+          // Add a delay between employee processing to avoid rate limiting
+          // Increasing delay to 750ms between employees
+          if (i > 0 || batchIndex > 0) {
+            await delay(750);
+          }
+          
+          // Fetch training records for this employee
+          const { records, error } = await fetchTrainingRecords(employeeId, requestId);
+          
+          if (error) {
+            console.error(`[${requestId}] Error fetching training records for employee ${employeeId}:`, error);
+            failedEmployees.push({ id: employeeId, error });
+            employeeResults[employeeId] = { status: 'error', error };
+            consecutiveFailures++;
+            
+            // Circuit breaker: if too many consecutive failures, slow down
+            if (consecutiveFailures >= maxConsecutiveFailures) {
+              console.warn(`[${requestId}] Circuit breaker triggered: ${consecutiveFailures} consecutive failures. Slowing down...`);
+              await delay(5000); // 5 second pause
+              consecutiveFailures = 0; // Reset counter after pause
+            }
+            
+            continue;
+          }
+          
+          // Process the training records
+          const trainingRecords = Array.isArray(records) ? records : Object.values(records);
+          
+          if (trainingRecords.length === 0) {
+            console.log(`[${requestId}] No training records found for employee ${employeeId}`);
+            employeeResults[employeeId] = { status: 'skipped', reason: 'no_records' };
+            continue;
+          }
+          
           // Reset consecutive failures counter on success
           consecutiveFailures = 0;
           
-          // Map records to our database format
-          if (Array.isArray(records)) {
-            const employeeCompletions = records.map((record: any) => ({
-              employee_id: parseInt(employeeId, 10),
-              training_id: parseInt(record.typeId, 10),
-              completion_date: record.completed,
-              notes: record.notes || null,
+          // Map the training records to our database format
+          const completions = trainingRecords
+            .filter(record => record.completed) // Only include completed trainings
+            .map(record => ({
+              employee_id: parseInt(employeeId),
+              training_id: parseInt(record.type) || 0,
+              completion_date: record.completed || new Date().toISOString().split('T')[0], // Use current date if no completion date
               instructor: record.instructor || null,
+              notes: record.notes || null
             }));
-            
-            allCompletions.push(...employeeCompletions);
-            employeeResults[employeeId] = { success: true, count: employeeCompletions.length };
-          } else if (records && typeof records === 'object') {
-            // Handle case where records is an object, not an array
-            const recordsArray = Object.values(records);
-            const employeeCompletions = recordsArray.map((record: any) => ({
-              employee_id: parseInt(employeeId, 10),
-              training_id: parseInt(record.typeId, 10),
-              completion_date: record.completed,
-              notes: record.notes || null,
-              instructor: record.instructor || null,
-            }));
-            
-            allCompletions.push(...employeeCompletions);
-            employeeResults[employeeId] = { success: true, count: employeeCompletions.length };
+          
+          if (completions.length > 0) {
+            console.log(`[${requestId}] Mapped ${completions.length} completions for employee ${employeeId}`);
+            allCompletions.push(...completions);
+            employeeResults[employeeId] = { 
+              status: 'success', 
+              records_found: trainingRecords.length,
+              completions_mapped: completions.length
+            };
           } else {
-            // No records or format can't be processed
-            employeeResults[employeeId] = { success: true, count: 0, message: "No records or unrecognized format" };
+            console.log(`[${requestId}] No completed trainings found for employee ${employeeId}`);
+            employeeResults[employeeId] = { status: 'skipped', reason: 'no_completions' };
           }
+        } catch (error) {
+          console.error(`[${requestId}] Error processing employee ${employeeId}:`, error);
+          failedEmployees.push({ id: employeeId, error: error instanceof Error ? error.message : String(error) });
+          employeeResults[employeeId] = { status: 'error', error: error instanceof Error ? error.message : String(error) };
+          consecutiveFailures++;
         }
-        
-        // Implement circuit breaker pattern
-        if (consecutiveFailures >= maxConsecutiveFailures) {
-          console.error(`[${requestId}] Circuit breaker triggered after ${consecutiveFailures} consecutive failures. Stopping sync.`);
-          throw new Error(`Too many consecutive failures (${consecutiveFailures}). Sync aborted to prevent further issues.`);
-        }
-        
-        // Periodically log progress
-        if (i % 10 === 0 || i === employees.length - 1) {
-          console.log(`[${requestId}] Progress: ${i + 1}/${employees.length} employees processed, found ${allCompletions.length} total completions so far`);
-        }
-      } catch (error) {
-        console.error(`[${requestId}] Error processing employee ${employeeId}:`, error);
-        failedEmployees.push({ id: employeeId, error: error instanceof Error ? error.message : String(error) });
-        employeeResults[employeeId] = { success: false, error: error instanceof Error ? error.message : String(error) };
-        // Continue with next employee on error
+      }
+      
+      // Add a larger delay between batches
+      if (batchIndex + employeeBatchSize < employees.length) {
+        const batchDelay = 2000; // 2 second delay between employee batches
+        console.log(`[${requestId}] Completed batch ${Math.floor(batchIndex/employeeBatchSize) + 1}/${Math.ceil(employees.length/employeeBatchSize)}, pausing for ${batchDelay}ms before next batch`);
+        await delay(batchDelay);
       }
     }
     
-    console.log(`[${requestId}] Found ${allCompletions.length} total training completions`);
-    console.log(`[${requestId}] Failed to process ${failedEmployees.length} employees`);
+    // Save the progress so far in sync details
+    syncDetails.employees_processed = employees.length;
+    syncDetails.employees_with_errors = failedEmployees.length;
+    syncDetails.total_completions_found = allCompletions.length;
     
-    // 3. Save the completions to the database
-    const { inserted, errors, errorDetails } = await saveTrainingCompletions(allCompletions, requestId);
+    // Update the sync status with progress information
+    await supabase
+      .from('sync_status')
+      .update({
+        details: {
+          ...syncDetails,
+          progress: 'completions_processed',
+          completions_count: allCompletions.length,
+          failed_employees: failedEmployees.length
+        }
+      })
+      .eq('id', 'training_completions');
     
-    // 4. Update sync status to success
-    const finalStatus = errors > 0 ? 'partial_success' : 'success';
-    const errorMessage = errors > 0 
-      ? `Completed with errors: ${errors} failures out of ${inserted + errors} records. Failed employees: ${failedEmployees.length}`
-      : null;
+    // 3. Save all completions to the database
+    let saveResult;
+    if (allCompletions.length > 0) {
+      console.log(`[${requestId}] Saving ${allCompletions.length} completions to database`);
+      saveResult = await saveTrainingCompletions(allCompletions, requestId);
       
-    const { error: updateError } = await supabase
+      // Update sync details with save results
+      syncDetails.inserted = saveResult.inserted;
+      syncDetails.errors = saveResult.errors;
+      syncDetails.error_details = saveResult.errorDetails;
+    } else {
+      console.log(`[${requestId}] No completions to save`);
+      saveResult = { inserted: 0, errors: 0, requestId };
+      syncDetails.inserted = 0;
+      syncDetails.errors = 0;
+      syncDetails.reason = "No completions found";
+    }
+    
+    // 4. Update the sync status to reflect completion
+    const finalStatus = saveResult.errors > 0 && saveResult.inserted > 0 
+      ? 'partial_success'
+      : saveResult.errors > 0 && saveResult.inserted === 0
+        ? 'error' 
+        : 'success';
+    
+    const finalError = saveResult.errors > 0 
+      ? `Failed to save ${saveResult.errors} out of ${allCompletions.length} completions` 
+      : null;
+    
+    // Final sync status update
+    syncDetails.end_time = new Date().toISOString();
+    syncDetails.duration_seconds = (new Date().getTime() - new Date(syncDetails.start_time).getTime()) / 1000;
+    syncDetails.final_status = finalStatus;
+    syncDetails.employee_results = employeeResults;
+    
+    // Update the final status
+    const { error: finalUpdateError } = await supabase
       .from('sync_status')
       .update({ 
         status: finalStatus, 
-        last_sync: new Date().toISOString(),
-        error: errorMessage,
+        error: finalError,
         updated_at: new Date().toISOString(),
-        details: {
-          version: FUNCTION_VERSION,
-          deploymentId: DEPLOYMENT_ID,
-          errors: errorDetails,
-          failedEmployees: failedEmployees.slice(0, 50), // Limit to first 50 to avoid overflow
-          employeeResults: Object.keys(employeeResults).length > 100 ? 
-            { message: "Too many results to display", count: Object.keys(employeeResults).length } : 
-            employeeResults
-        }
+        last_sync: new Date().toISOString(),
+        details: syncDetails
       })
       .eq('id', 'training_completions');
     
-    if (updateError) {
-      console.error(`[${requestId}] Error updating final sync status:`, updateError);
+    if (finalUpdateError) {
+      console.error(`[${requestId}] Error updating final sync status:`, finalUpdateError);
     }
     
-    return {
-      success: true,
+    console.log(`[${requestId}] Sync completed with status: ${finalStatus}`);
+    console.log(`[${requestId}] Results: ${saveResult.inserted} inserted, ${saveResult.errors} errors`);
+    
+    return { 
       status: finalStatus,
-      message: `Sync completed: ${inserted} completions inserted, ${errors} errors, ${failedEmployees.length} failed employees`,
+      inserted: saveResult.inserted,
+      errors: saveResult.errors,
       total_completions: allCompletions.length,
-      inserted,
-      errors,
-      function_version: FUNCTION_VERSION,
-      deployment_id: DEPLOYMENT_ID
+      failed_employees: failedEmployees.length,
+      duration_seconds: syncDetails.duration_seconds
     };
   } catch (error) {
-    console.error(`[${requestId}] Error syncing training completions:`, error);
+    console.error(`[${requestId}] Unhandled error in sync process:`, error);
     
-    // Update sync status to error
-    const { error: updateError } = await supabase
+    // Update sync status to reflect the error
+    syncDetails.end_time = new Date().toISOString();
+    syncDetails.duration_seconds = (new Date().getTime() - new Date(syncDetails.start_time).getTime()) / 1000;
+    syncDetails.error = error instanceof Error ? error.message : String(error);
+    syncDetails.error_stack = error instanceof Error ? error.stack : undefined;
+    
+    await supabase
       .from('sync_status')
       .update({ 
         status: 'error', 
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : String(error),
         updated_at: new Date().toISOString(),
-        details: {
-          version: FUNCTION_VERSION,
-          deploymentId: DEPLOYMENT_ID,
-          error: error instanceof Error ? error.stack : "No stack trace available"
-        }
+        details: syncDetails
       })
       .eq('id', 'training_completions');
     
-    if (updateError) {
-      console.error(`[${requestId}] Error updating error sync status:`, updateError);
-    }
-    
-    return {
-      success: false,
-      message: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      error: error instanceof Error ? error.message : "Unknown error",
-      function_version: FUNCTION_VERSION,
-      deployment_id: DEPLOYMENT_ID
+    return { 
+      status: 'error', 
+      error: error instanceof Error ? error.message : String(error),
+      duration_seconds: syncDetails.duration_seconds
     };
   }
 }
 
-async function getVersionInfo() {
-  return {
-    function_name: "sync-training-completions",
-    version: FUNCTION_VERSION,
-    deployment_timestamp: DEPLOYMENT_TIMESTAMP,
-    deployment_id: DEPLOYMENT_ID,
-    environment: {
-      supabase_url: supabaseUrl ? "configured" : "missing",
-      bamboo_subdomain: bambooSubdomain ? "configured" : "missing",
-      supabase_key: supabaseKey ? "configured" : "missing",
-      bamboo_api_key: bambooApiKey ? "configured" : "missing"
+// Version endpoint to check the deployed function version
+async function handleVersionRequest() {
+  return new Response(
+    JSON.stringify({
+      version: FUNCTION_VERSION,
+      deployed_at: DEPLOYMENT_TIMESTAMP,
+      deployment_id: DEPLOYMENT_ID
+    }),
+    {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
     }
-  };
+  );
 }
 
+// Main serve function
 serve(async (req) => {
+  // Generate a unique request ID
   const requestId = generateRequestId();
-  console.log(`[${requestId}] Received request: ${req.method} ${req.url}`);
+  
+  // Log incoming request
+  console.log(`[${requestId}] Edge function received ${req.method} request: ${req.url}`);
   
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log(`[${requestId}] Handling CORS preflight request`);
     return new Response(null, {
-      headers: corsHeaders,
-      status: 204,
+      headers: corsHeaders
     });
   }
   
-  // Version check endpoint - use this to verify which version is deployed
+  // Version check endpoint
   const url = new URL(req.url);
   if (url.pathname.endsWith('/version')) {
-    console.log(`[${requestId}] Version information requested`);
-    return new Response(JSON.stringify(await getVersionInfo()), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return handleVersionRequest();
   }
   
   try {
-    // Log request details for debugging
-    console.log(`[${requestId}] Request URL: ${req.url}`);
-    console.log(`[${requestId}] Request headers:`, logAuthHeaders(req.headers));
-    
-    // Verify authentication - comprehensive approach
-    const authHeader = req.headers.get('Authorization');
-    const apiKey = req.headers.get('apikey');
-    
-    // Debug log the auth information we received
-    console.log(`[${requestId}] Auth header present: ${!!authHeader}`);
-    console.log(`[${requestId}] API key header present: ${!!apiKey}`);
-    
-    // Check both authorization methods and provide detailed error messages
-    if (!authHeader && !apiKey) {
-      console.error(`[${requestId}] Authentication error: Both Authorization and apikey headers are missing`);
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          message: "Missing authentication. Both Authorization header and apikey are missing.",
-          version: FUNCTION_VERSION,
-          deployment_id: DEPLOYMENT_ID
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401 
-        }
-      );
-    }
-    
-    // Log authentication method being used
-    if (authHeader) {
-      console.log(`[${requestId}] Using Authorization header authentication`);
-    } else if (apiKey) {
-      console.log(`[${requestId}] Using apikey header authentication`);
-    }
-    
     // Start the sync process
-    console.log(`[${requestId}] Training completions sync started - authentication successful`);
+    console.log(`[${requestId}] Starting sync process`);
     const result = await syncTrainingCompletions(requestId);
     
-    // Return success response
-    return new Response(JSON.stringify({
-      ...result,
-      request_id: requestId,
-      version: FUNCTION_VERSION,
-      deployment_id: DEPLOYMENT_ID
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+    return new Response(JSON.stringify(result), {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      },
+      status: 200
     });
   } catch (error) {
     console.error(`[${requestId}] Unhandled error in edge function:`, error);
     
-    // Return error response
+    // Update sync status to reflect the error
+    await supabase
+      .from('sync_status')
+      .update({ 
+        status: 'error', 
+        error: error instanceof Error ? error.message : String(error),
+        updated_at: new Date().toISOString(),
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+          error_stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        }
+      })
+      .eq('id', 'training_completions');
+    
     return new Response(JSON.stringify({
-      success: false,
-      message: "Internal server error",
-      error: error instanceof Error ? error.message : "Unknown error",
-      request_id: requestId,
-      version: FUNCTION_VERSION,
-      deployment_id: DEPLOYMENT_ID
+      status: "error",
+      message: "An error occurred during the sync process",
+      error: error instanceof Error ? error.message : String(error)
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      },
+      status: 500
     });
   }
 });

@@ -1,75 +1,65 @@
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { Training, TrainingCompletion } from '@/lib/types';
-import { useUser } from '@/contexts/user';
-import type { CachedCompletion } from '@/types/bamboo';
+import { Training, TrainingCompletion } from '@/lib/types';
+import { CachedTraining, CachedCompletion } from '@/types/bamboo';
 
-export function useTrainingData() {
-  const { currentUser } = useUser();
-
-  // Fetch trainings from cached_trainings table
-  const { data: cachedTrainings = [], isLoading: isTrainingsLoading } = useQuery({
-    queryKey: ['cached-trainings'],
+export const useTrainingData = () => {
+  const {
+    data: trainings = [],
+    isLoading: isTrainingsLoading,
+    error: trainingsError
+  } = useQuery({
+    queryKey: ['cached_trainings'],
     queryFn: async () => {
       const { data, error } = await supabase.from('cached_trainings').select('*');
-      if (error) {
-        console.error('Error fetching trainings:', error);
-        return [];
-      }
+      if (error) throw error;
       
-      // Map database fields to Training type
-      return data.map(item => ({
-        id: item.id,
-        title: item.title,
-        type: item.type || '',
-        category: item.category || '',
-        description: item.description || '',
-        durationHours: item.duration_hours || 0,
-        requiredFor: item.required_for || []
-      })) as Training[];
-    }
-  });
-
-  // Fetch user's training completions
-  const { data: cachedCompletions = [], isLoading: isCompletionsLoading } = useQuery({
-    queryKey: ['cached-completions', currentUser?.id],
-    queryFn: async () => {
-      if (!currentUser?.bambooEmployeeId) return [];
-      
-      const { data, error } = await supabase
-        .from('cached_training_completions')
-        .select('*')
-        .eq('employee_id', currentUser.bambooEmployeeId);
-      
-      if (error) {
-        console.error('Error fetching completions:', error);
-        return [];
-      }
-      
-      return data as CachedCompletion[];
+      // Map database columns to Training type
+      return data.map((training): Training => ({
+        id: training.id,
+        title: training.title,
+        type: training.type || '',
+        category: training.category || '',
+        description: training.description || '',
+        durationHours: parseFloat(training.duration_hours?.toString() || '0'),
+        requiredFor: training.required_for || [],
+      }));
     },
-    enabled: !!currentUser?.bambooEmployeeId
   });
 
-  // Convert cached completions to the expected TrainingCompletion format
-  const mappedCompletions = useMemo(() => {
-    return cachedCompletions.map((completion): TrainingCompletion => ({
-      id: completion.id || '',
-      employeeId: completion.employee_id,
-      trainingId: completion.training_id,
-      completionDate: completion.completionDate || '',
-      status: 'completed',
-      score: completion.score
-    }));
-  }, [cachedCompletions]);
+  const {
+    data: completions = [],
+    isLoading: isCompletionsLoading,
+    error: completionsError
+  } = useQuery({
+    queryKey: ['cached_training_completions'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('cached_training_completions').select('*');
+      if (error) throw error;
+      
+      // Map database columns to TrainingCompletion type
+      return data.map((completion): TrainingCompletion => ({
+        id: completion.id || `${completion.employee_id}-${completion.training_id}`,
+        employeeId: completion.employee_id,
+        trainingId: completion.training_id,
+        completionDate: completion.completion_date || '',
+        expirationDate: completion.expiration_date || undefined,
+        status: completion.status as 'completed' || 'completed',
+        score: completion.score ? parseFloat(completion.score?.toString() || '0') : undefined,
+        certificateUrl: completion.certificate_url,
+      }));
+    },
+  });
+
+  const isLoading = isTrainingsLoading || isCompletionsLoading;
+  const error = trainingsError || completionsError;
 
   return {
-    trainings: cachedTrainings,
-    completions: mappedCompletions,
-    isTrainingsLoading,
-    isCompletionsLoading,
-    isLoading: isTrainingsLoading || isCompletionsLoading
+    trainings,
+    completions,
+    isLoading,
+    error,
   };
-}
+};
