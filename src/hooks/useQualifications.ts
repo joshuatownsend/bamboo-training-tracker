@@ -42,8 +42,6 @@ export const useQualifications = () => {
         positionTitle: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
         isQualifiedCounty: true,
         isQualifiedAVFRD: false,
-        missingCountyRequirements: [],
-        missingAVFRDRequirements: [],
         missingCountyTrainings: [],
         missingAVFRDTrainings: [],
         completedTrainings: []
@@ -62,8 +60,6 @@ export const useQualifications = () => {
       positionTitle: 'Engine Driver',
       isQualifiedCounty: false,
       isQualifiedAVFRD: false,
-      missingCountyRequirements: ['EVOC', 'Engine Operations'],
-      missingAVFRDRequirements: ['EVOC', 'Engine Operations', 'Pump Operations'],
       missingCountyTrainings: [],
       missingAVFRDTrainings: [],
       completedTrainings: []
