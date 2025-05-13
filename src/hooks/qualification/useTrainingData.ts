@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { CachedCompletion } from "@/types/bamboo";
-import { TrainingType } from "@/lib/types";
+import { Training, TrainingType } from "@/lib/types";
 
 // Function to fetch training data from Supabase
 export const useTrainingData = (employeeId?: string) => {
@@ -38,8 +38,9 @@ export const useTrainingData = (employeeId?: string) => {
   const trainingTypesQuery = useQuery({
     queryKey: ['trainingTypes'],
     queryFn: async () => {
+      // Using the correct table name: bamboo_training_types instead of training_types
       const { data, error } = await supabase
-        .from('training_types')
+        .from('bamboo_training_types')
         .select('*');
         
       if (error) {
@@ -47,7 +48,15 @@ export const useTrainingData = (employeeId?: string) => {
         throw new Error(`Failed to fetch training types: ${error.message}`);
       }
       
-      return data as TrainingType[];
+      // Transform the bamboo_training_types data to match the TrainingType interface
+      const formattedData: TrainingType[] = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category || undefined,
+        description: item.description || undefined
+      }));
+      
+      return formattedData;
     }
   });
 

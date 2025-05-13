@@ -1,7 +1,7 @@
 
 import { useEffect } from "react";
 import { useUser } from "@/contexts/user";
-import { QualificationStatus } from "@/lib/types";
+import { QualificationStatus, Training } from "@/lib/types";
 import { getAllPositionQualifications } from "@/lib/qualifications";
 import { useToast } from "@/components/ui/use-toast";
 import { useTrainingData } from "./qualification/useTrainingData";
@@ -39,12 +39,23 @@ export function useQualifications() {
     }
   }, [positionsError, trainingsError, toast]);
 
+  // Convert TrainingType[] to Training[] by adding the required properties
+  const trainingsForQualifications: Training[] = trainingTypes.map(trainingType => ({
+    id: trainingType.id,
+    title: trainingType.name,
+    type: trainingType.category || 'Unknown',
+    category: trainingType.category || 'Unknown',
+    description: trainingType.description || '',
+    durationHours: 0, // Default value since we don't have this data
+    requiredFor: [] // Default value since we don't have this data
+  }));
+
   // Calculate qualifications once we have all required data
   const qualifications: QualificationStatus[] = currentUser && !isLoadingPositions && !isLoadingTrainings
     ? getAllPositionQualifications(
         currentUser.employeeId,
         positions,
-        trainingTypes,
+        trainingsForQualifications,
         userCompletedTrainings
       )
     : [];
