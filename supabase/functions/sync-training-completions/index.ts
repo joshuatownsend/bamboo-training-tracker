@@ -20,6 +20,9 @@ const bambooApiKey = Deno.env.get("BAMBOOHR_API_KEY") || "";
 // Log the start of the function
 console.log("Starting sync-training-completions edge function");
 
+// Helper function to add delay between API requests
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function fetchEmployees() {
   console.log("Fetching employees from BambooHR");
   
@@ -45,8 +48,9 @@ async function fetchEmployees() {
   }
 }
 
-async function fetchTrainingRecords(employeeId: string) {
-  console.log(`Fetching training records for employee ${employeeId}`);
+// Improved fetchTrainingRecords with retry logic and better error handling
+async function fetchTrainingRecords(employeeId: string, maxRetries = 3) {
+  console.log(`Fetching training records for employee ${employeeId} (attempt 1/${maxRetries + 1})`);
   
   const apiUrl = `https://api.bamboohr.com/api/gateway.php/${bambooSubdomain}/v1/training/record/employee/${employeeId}`;
   const headers = {
@@ -54,23 +58,53 @@ async function fetchTrainingRecords(employeeId: string) {
     "Authorization": `Basic ${btoa(`${bambooApiKey}:x`)}`,
   };
   
-  try {
-    const response = await fetch(apiUrl, { headers });
-    
-    if (!response.ok) {
-      // Handle 404s gracefully (employee without training records)
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // On retry attempts, add exponential backoff
+      if (attempt > 0) {
+        const backoffTime = Math.pow(2, attempt) * 500; // 1s, 2s, 4s backoff
+        console.log(`Retry attempt ${attempt + 1}/${maxRetries + 1} for employee ${employeeId}, waiting ${backoffTime}ms`);
+        await delay(backoffTime);
+      }
+      
+      const response = await fetch(apiUrl, { headers });
+      
+      // Handle 404 gracefully (employee without training records)
       if (response.status === 404) {
+        console.log(`No training records found for employee ${employeeId} (404 response)`);
         return [];
       }
-      throw new Error(`Failed to fetch training records: ${response.status} ${response.statusText}`);
+      
+      // Handle rate limiting (503 Service Unavailable)
+      if (response.status === 503) {
+        console.log(`Rate limiting detected (503) for employee ${employeeId}`);
+        if (attempt < maxRetries) {
+          continue; // Retry with backoff
+        } else {
+          console.log(`Max retries reached for employee ${employeeId}, skipping`);
+          return [];
+        }
+      }
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch training records: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Successfully fetched ${Object.keys(data || {}).length} training records for employee ${employeeId}`);
+      return data || [];
+    } catch (error) {
+      console.error(`Error fetching training records for employee ${employeeId} (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+      if (attempt < maxRetries) {
+        continue; // Retry with backoff
+      } else {
+        console.log(`Max retries reached for employee ${employeeId}, skipping`);
+        return []; // Return empty array on error after max retries to continue with other employees
+      }
     }
-    
-    const data = await response.json();
-    return data || [];
-  } catch (error) {
-    console.error(`Error fetching training records for employee ${employeeId}:`, error);
-    return []; // Return empty array on error to continue with other employees
   }
+  
+  return []; // Default return if we somehow exit the loop
 }
 
 async function saveTrainingCompletions(completions: any[]) {
@@ -147,37 +181,39 @@ async function syncTrainingCompletions() {
     
     // 2. For each employee, fetch and process their training records
     const allCompletions = [];
-    const batchSize = 10; // Process employees in small batches
     
-    for (let i = 0; i < employees.length; i += batchSize) {
-      const batch = employees.slice(i, i + batchSize);
-      console.log(`Processing employee batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(employees.length/batchSize)}`);
+    // Process employees sequentially rather than in parallel to avoid rate limiting
+    // This is slower but more reliable
+    for (let i = 0; i < employees.length; i++) {
+      const employee = employees[i];
+      console.log(`Processing employee ${i + 1}/${employees.length}: ID ${employee.id}`);
       
-      // Process employees in parallel within each batch
-      const batchPromises = batch.map(async (employee) => {
-        try {
-          const trainingRecords = await fetchTrainingRecords(employee.id);
-          
-          // Map records to our database format
-          return trainingRecords.map((record: any) => ({
-            employee_id: parseInt(employee.id, 10),
-            training_id: parseInt(record.typeId, 10),
-            completion_date: record.completed,
-            notes: record.notes || null,
-            instructor: record.instructor || null,
-          }));
-        } catch (error) {
-          console.error(`Error processing employee ${employee.id}:`, error);
-          return []; // Skip this employee on error
+      try {
+        // Add a small delay between employee processing to avoid rate limiting
+        if (i > 0) {
+          await delay(300); // 300ms delay between employee processing
         }
-      });
-      
-      const batchResults = await Promise.all(batchPromises);
-      allCompletions.push(...batchResults.flat());
-      
-      // Add a small delay between batches to avoid rate limiting
-      if (i + batchSize < employees.length) {
-        await new Promise(r => setTimeout(r, 500));
+        
+        const trainingRecords = await fetchTrainingRecords(employee.id);
+        
+        // Map records to our database format
+        const employeeCompletions = trainingRecords.map((record: any) => ({
+          employee_id: parseInt(employee.id, 10),
+          training_id: parseInt(record.typeId, 10),
+          completion_date: record.completed,
+          notes: record.notes || null,
+          instructor: record.instructor || null,
+        }));
+        
+        allCompletions.push(...employeeCompletions);
+        
+        // Periodically log progress
+        if (i % 10 === 0 || i === employees.length - 1) {
+          console.log(`Progress: ${i + 1}/${employees.length} employees processed, found ${allCompletions.length} total completions so far`);
+        }
+      } catch (error) {
+        console.error(`Error processing employee ${employee.id}:`, error);
+        // Continue with next employee on error
       }
     }
     
@@ -238,7 +274,7 @@ serve(async (req) => {
     // Debug log all request headers
     console.log("Request headers:", Object.fromEntries(req.headers));
     
-    // Verify authentication - IMPROVED AUTHENTICATION HANDLING
+    // Verify authentication - comprehensive approach
     const authHeader = req.headers.get('Authorization');
     const apiKey = req.headers.get('apikey');
     
@@ -264,10 +300,8 @@ serve(async (req) => {
     // Log authentication method being used
     if (authHeader) {
       console.log("Using Authorization header authentication");
-      // Optionally validate JWT token here if needed
     } else if (apiKey) {
       console.log("Using apikey header authentication");
-      // Optionally validate API key here if needed
     }
     
     // Start the sync process
