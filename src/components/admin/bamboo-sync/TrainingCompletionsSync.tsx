@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,9 +11,10 @@ import { useSyncStatus } from "@/hooks/cache/useSyncStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { SyncStatus, SyncStatusDetails } from "@/types/bamboo";
+import { DiagnosticTools } from "./DiagnosticTools";
 
 // Version of this component - helps track which version is deployed
-const COMPONENT_VERSION = "1.1.0";
+const COMPONENT_VERSION = "1.2.0";
 
 export const TrainingCompletionsSync: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -288,6 +288,13 @@ export const TrainingCompletionsSync: React.FC = () => {
           </p>
         </AlertDescription>
       </Alert>
+      
+      {/* Add the diagnostic tools section */}
+      <Card className="bg-slate-50 border-slate-200">
+        <CardContent className="pt-4">
+          <DiagnosticTools />
+        </CardContent>
+      </Card>
       
       {syncStatus?.details && (syncStatus.status === 'error' || syncStatus.status === 'partial_success') && (
         <Card className="bg-red-50 border-red-200">

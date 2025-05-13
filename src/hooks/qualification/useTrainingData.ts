@@ -1,90 +1,35 @@
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@/contexts/user";
-import { Training, TrainingCompletion } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useUser } from "@/contexts/user";
+import { CachedCompletion } from "@/types/bamboo";
 
-export function useTrainingData() {
+// Function to fetch training data from Supabase
+export const useTrainingData = (employeeId?: string) => {
   const { currentUser } = useUser();
-  const { toast } = useToast();
-
-  // Fetch user's trainings from BambooHR
-  const {
-    data: userTrainings = [],
-    isLoading: isLoadingTrainings,
-    error: trainingsError
-  } = useQuery({
-    queryKey: ['trainings', currentUser?.employeeId],
+  
+  return useQuery({
+    queryKey: ['trainings', employeeId || currentUser?.id],
     queryFn: async () => {
-      if (!currentUser?.employeeId) {
-        throw new Error("No employee ID available");
-      }
-
-      const bamboo = new (await import('@/lib/bamboohr/api')).default({
-        subdomain: 'avfrd',
-        apiKey: '',
-        useEdgeFunction: true,
-        edgeFunctionUrl: import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
-      });
+      const targetEmployeeId = employeeId || currentUser?.bambooEmployeeId;
       
-      try {
-        const result = await bamboo.getUserTrainings(currentUser.employeeId);
-        console.log("Fetched user trainings:", result);
-        return result || [];
-      } catch (err) {
-        console.error("Error fetching training data:", err);
-        throw err;
+      if (!targetEmployeeId) {
+        return [];
       }
-    },
-    enabled: !!currentUser?.employeeId
-  });
-
-  // Fetch all training types from Supabase
-  const {
-    data: trainingTypes = [],
-    isLoading: isLoadingTrainingTypes
-  } = useQuery({
-    queryKey: ['training-types'],
-    queryFn: async () => {
+      
+      // Get training completions from cached data
       const { data, error } = await supabase
-        .from('bamboo_training_types')
-        .select('*');
-      
+        .from('cached_training_completions')
+        .select('*')
+        .eq('employee_id', targetEmployeeId);
+        
       if (error) {
-        console.error("Error fetching training types:", error);
-        throw error;
+        console.error('Error fetching training data:', error);
+        throw new Error(`Failed to fetch training data: ${error.message}`);
       }
       
-      // Map the data to match the Training type
-      return data.map(item => ({
-        id: item.id,
-        title: item.name,
-        type: item.category || 'unknown',
-        category: item.category || 'uncategorized',
-        description: item.description || '',
-        durationHours: 0, // Default value as it's not in the database
-        requiredFor: [] // Default value as it's not in the database
-      })) as Training[];
+      return data as CachedCompletion[];
     },
-    enabled: !!currentUser
+    enabled: !!(employeeId || currentUser?.bambooEmployeeId),
   });
-
-  // Process training completions once we have the data
-  const userCompletedTrainings: TrainingCompletion[] = userTrainings.map(training => ({
-    id: training.id,
-    employeeId: currentUser?.employeeId || '',
-    trainingId: training.trainingId || training.type?.toString() || '',
-    completionDate: training.completionDate,
-    status: 'completed' as const
-  }));
-
-  return {
-    userCompletedTrainings,
-    trainingTypes,
-    isLoadingTrainings,
-    isLoadingTrainingTypes,
-    trainingsError
-  };
-}
+};

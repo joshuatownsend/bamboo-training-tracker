@@ -3,3 +3,4 @@
 export * from './client';
 export * from './api-tester';
 export * from './config';
+export * from './types';

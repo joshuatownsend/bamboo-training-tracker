@@ -393,11 +393,19 @@ export type Database = {
         Args: { function_name: string }
         Returns: Json
       }
+      diagnostic_training_completions: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       sync_bamboohr_trainings: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
       sync_employee_mappings_job: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      test_auth_keys_access: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
