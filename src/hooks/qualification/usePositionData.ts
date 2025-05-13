@@ -1,73 +1,60 @@
 
-import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@/contexts/user";
-import { Position, RequirementGroup } from "@/lib/types";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Position } from "@/lib/types";
 
 export function usePositionData() {
-  const { currentUser } = useUser();
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  // Fetch positions from Supabase
-  const {
-    data: positions = [],
-    isLoading: isLoadingPositions,
-    error: positionsError
-  } = useQuery({
-    queryKey: ['positions'],
-    queryFn: async () => {
+  // Function to fetch positions from database
+  const fetchPositions = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
       const { data, error } = await supabase
         .from('positions')
-        .select('*');
+        .select('*')
+        .order('title');
+        
+      if (error) throw error;
       
-      if (error) {
-        console.error("Error fetching positions:", error);
-        throw error;
-      }
+      // Map the database records to Position type
+      setPositions(data.map(position => ({
+        id: position.id,
+        title: position.title,
+        description: position.description || '',
+        department: position.department || '',
+        countyRequirements: position.county_requirements || [],
+        avfrdRequirements: position.avfrd_requirements || []
+      })));
+    } catch (err) {
+      console.error('Error fetching positions:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch positions');
       
-      return data.map(position => {
-        // Process county requirements data
-        const countyReqs = position.county_requirements;
-        let countyRequirements;
-        
-        // Try to parse as JSON if it's not an array but might be a stringified object
-        if (typeof countyReqs === 'string') {
-          try {
-            countyRequirements = JSON.parse(countyReqs);
-          } catch {
-            countyRequirements = [];
-          }
-        } else {
-          countyRequirements = countyReqs || [];
-        }
-        
-        // Process AVFRD requirements data
-        const avfrdReqs = position.avfrd_requirements;
-        let avfrdRequirements;
-        
-        // Try to parse as JSON if it's not an array but might be a stringified object
-        if (typeof avfrdReqs === 'string') {
-          try {
-            avfrdRequirements = JSON.parse(avfrdReqs);
-          } catch {
-            avfrdRequirements = [];
-          }
-        } else {
-          avfrdRequirements = avfrdReqs || [];
-        }
-        
-        return {
-          ...position,
-          countyRequirements,
-          avfrdRequirements
-        };
-      }) as Position[];
-    },
-    enabled: !!currentUser
-  });
-
+      toast({
+        title: "Error loading positions",
+        description: "Could not load position data from the database",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Fetch positions on component mount
+  useEffect(() => {
+    fetchPositions();
+  }, []);
+  
   return {
     positions,
-    isLoadingPositions,
-    positionsError
+    isLoading,
+    error,
+    refetchPositions: fetchPositions
   };
 }

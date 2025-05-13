@@ -51,10 +51,10 @@ export interface CachedTraining {
 export interface CachedCompletion {
   id?: string;
   employee_id: string;
-  training_id: string;
-  completionDate?: string;
+  type: string;
+  completed?: string;
   expirationDate?: string; 
   status?: string;
-  score?: number;
-  certificateUrl?: string;
+  instructor?: string;
+  notes?: string;
 }

@@ -1,16 +1,20 @@
 
-import { useState } from 'react';
+import { useState } from "react";
 
-export const useQualificationTabs = () => {
-  const [activeTab, setActiveTab] = useState<'county' | 'avfrd'>('county');
+type TabValue = "county" | "avfrd" | "both";
+
+export function useQualificationTabs() {
+  const [activeTab, setActiveTab] = useState<TabValue>("county");
   
-  const toggleTab = () => {
-    setActiveTab(prev => prev === 'county' ? 'avfrd' : 'county');
-  };
+  const isCountyTab = activeTab === "county";
+  const isAVFRDTab = activeTab === "avfrd";
+  const isBothTab = activeTab === "both";
   
   return {
     activeTab,
     setActiveTab,
-    toggleTab
+    isCountyTab,
+    isAVFRDTab,
+    isBothTab
   };
-};
+}

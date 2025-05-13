@@ -1,65 +1,63 @@
 
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Training, TrainingCompletion } from '@/lib/types';
-import { CachedTraining, CachedCompletion } from '@/types/bamboo';
+import { useEffect, useMemo } from "react";
+import useEmployeeCache from "@/hooks/useEmployeeCache";
+import { supabase } from "@/integrations/supabase/client";
+import { Training, TrainingCompletion } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
-export const useTrainingData = () => {
-  const {
-    data: trainings = [],
-    isLoading: isTrainingsLoading,
-    error: trainingsError
-  } = useQuery({
-    queryKey: ['cached_trainings'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cached_trainings').select('*');
-      if (error) throw error;
-      
-      // Map database columns to Training type
-      return data.map((training): Training => ({
-        id: training.id,
-        title: training.title,
-        type: training.type || '',
-        category: training.category || '',
-        description: training.description || '',
-        durationHours: parseFloat(training.duration_hours?.toString() || '0'),
-        requiredFor: training.required_for || [],
-      }));
-    },
-  });
+export function useTrainingData(employeeId?: string) {
+  const { 
+    trainings, 
+    isTrainingsLoading,
+    completions,
+    isCompletionsLoading
+  } = useEmployeeCache();
+  
+  const { toast } = useToast();
 
-  const {
-    data: completions = [],
-    isLoading: isCompletionsLoading,
-    error: completionsError
-  } = useQuery({
-    queryKey: ['cached_training_completions'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('cached_training_completions').select('*');
-      if (error) throw error;
-      
-      // Map database columns to TrainingCompletion type
-      return data.map((completion): TrainingCompletion => ({
-        id: completion.id || `${completion.employee_id}-${completion.training_id}`,
-        employeeId: completion.employee_id,
-        trainingId: completion.training_id,
-        completionDate: completion.completion_date || '',
-        expirationDate: completion.expiration_date || undefined,
-        status: completion.status as 'completed' || 'completed',
-        score: completion.score ? parseFloat(completion.score?.toString() || '0') : undefined,
-        certificateUrl: completion.certificate_url,
-      }));
-    },
-  });
-
-  const isLoading = isTrainingsLoading || isCompletionsLoading;
-  const error = trainingsError || completionsError;
-
+  // Filter completions for specific employee if employeeId is provided
+  const employeeCompletions = useMemo(() => {
+    if (!employeeId || !completions) return [];
+    
+    return completions.filter(completion => 
+      completion.employeeId === employeeId
+    );
+  }, [employeeId, completions]);
+  
+  // Get the unique training IDs from the employee's completions
+  const completedTrainingIds = useMemo(() => {
+    return new Set(employeeCompletions.map(completion => completion.trainingId));
+  }, [employeeCompletions]);
+  
+  // Find training objects that correspond to the completed trainings
+  const completedTrainings = useMemo(() => {
+    if (!trainings) return [];
+    
+    return trainings.filter(training => 
+      completedTrainingIds.has(training.id)
+    );
+  }, [trainings, completedTrainingIds]);
+  
+  // Get the training details for a specific ID
+  const getTrainingById = (trainingId: string): Training | undefined => {
+    return trainings?.find(t => t.id === trainingId);
+  };
+  
+  // Debug output
+  useEffect(() => {
+    if (employeeId && completedTrainings.length > 0) {
+      console.log(`Employee ${employeeId} has ${completedTrainings.length} completed trainings`);
+    }
+  }, [employeeId, completedTrainings]);
+  
   return {
     trainings,
+    isTrainingsLoading,
     completions,
-    isLoading,
-    error,
+    isCompletionsLoading,
+    employeeCompletions,
+    completedTrainings,
+    completedTrainingIds,
+    getTrainingById
   };
-};
+}

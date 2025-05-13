@@ -27,12 +27,12 @@ export function useCompletionsCache() {
       return data.map((completion): TrainingCompletion => ({
         id: completion.id,
         employeeId: completion.employee_id,
-        trainingId: completion.training_id,
-        completionDate: completion.completion_date,
-        expirationDate: completion.expiration_date,
+        trainingId: completion.type,
+        completionDate: completion.completed,
+        expirationDate: completion.expirationDate,
         status: completion.status as any,
-        score: completion.score,
-        certificateUrl: completion.certificate_url
+        instructor: completion.instructor,
+        notes: completion.notes
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

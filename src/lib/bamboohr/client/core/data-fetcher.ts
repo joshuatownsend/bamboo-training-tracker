@@ -1,4 +1,3 @@
-
 import { ConnectionTester } from './connection-tester';
 import { Employee, Training } from '@/lib/types';
 import { BambooEmployee } from '../../types';
@@ -169,14 +168,18 @@ export class DataFetcher extends ConnectionTester {
           // Convert object format to array for consistency
           const trainingArray = Object.values(trainings);
           return trainingArray.map((training: any) => {
-            const trainingId = training?.type?.toString() || '';
-            const trainingDetails = trainingMap.get(trainingId) || this.getTrainingDetailsById(trainingId);
+            const trainingType = training?.type?.toString() || '';
+            const trainingDetails = trainingMap.get(trainingType) || this.getTrainingDetailsById(trainingType);
             
             return {
               ...training,
               trainingDetails: trainingDetails,
-              completionDate: training.completed || '',
-              trainingId: trainingId
+              // Use the fields from actual API response
+              id: training.id || `${employeeId}-${trainingType}`,
+              employeeId: employeeId,
+              type: trainingType,
+              // Map any other fields directly
+              // Mapping happens later when we save to database
             };
           });
         } else {
@@ -201,7 +204,9 @@ export class DataFetcher extends ConnectionTester {
           const trainingArray = Object.values(completedTrainings);
           return trainingArray.map((training: any) => ({
             ...training,
-            trainingDetails: this.getTrainingDetailsById(training?.type)
+            employeeId: employeeId,
+            trainingDetails: this.getTrainingDetailsById(training?.type),
+            type: training?.type
           }));
         } else {
           console.log("Training completed table returned empty data, trying next alternative");
@@ -225,7 +230,9 @@ export class DataFetcher extends ConnectionTester {
           const certArray = Object.values(certifications);
           return certArray.map((cert: any) => ({
             ...cert,
-            trainingDetails: this.getTrainingDetailsById(cert?.type)
+            employeeId: employeeId,
+            trainingDetails: this.getTrainingDetailsById(cert?.type),
+            type: cert?.type
           }));
         } else {
           console.log("Certifications table returned empty data");

@@ -103,35 +103,41 @@ export type Database = {
         Row: {
           cached_at: string
           certificate_url: string | null
-          completion_date: string | null
+          completed: string | null
           employee_id: string
           expiration_date: string | null
           id: string | null
+          instructor: string | null
+          notes: string | null
           score: number | null
           status: string | null
-          training_id: string
+          type: string
         }
         Insert: {
           cached_at?: string
           certificate_url?: string | null
-          completion_date?: string | null
+          completed?: string | null
           employee_id: string
           expiration_date?: string | null
           id?: string | null
+          instructor?: string | null
+          notes?: string | null
           score?: number | null
           status?: string | null
-          training_id: string
+          type: string
         }
         Update: {
           cached_at?: string
           certificate_url?: string | null
-          completion_date?: string | null
+          completed?: string | null
           employee_id?: string
           expiration_date?: string | null
           id?: string | null
+          instructor?: string | null
+          notes?: string | null
           score?: number | null
           status?: string | null
-          training_id?: string
+          type?: string
         }
         Relationships: []
       }
