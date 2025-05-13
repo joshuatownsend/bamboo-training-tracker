@@ -1,15 +1,28 @@
+
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/contexts/user';
-import type { Qualification } from '@/lib/types';
+import { Training, QualificationStatus } from '@/lib/types';
 import type { CachedCompletion, CachedTraining } from '@/types/bamboo';
+import { useQualificationTabs } from './qualification';
+
+// Define the interface for our qualification
+interface UserQualification {
+  id: string;
+  name: string;
+  trainingId: string;
+  employeeId: string;
+  status: 'completed' | 'not-started' | 'in-progress' | 'expired';
+  completionDate: string | null;
+}
 
 export function useQualifications() {
   const { currentUser } = useUser();
+  const { activeTab, setActiveTab } = useQualificationTabs();
 
   // Fetch cached training data
-  const { data: trainings = [], isLoading: isTrainingsLoading } = useQuery({
+  const { data: trainingsData = [], isLoading: isTrainingsLoading } = useQuery({
     queryKey: ['cached-trainings'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -20,12 +33,23 @@ export function useQualifications() {
         console.error('Error fetching cached trainings:', error);
         return [];
       }
-      return data as CachedTraining[];
+      
+      // Map database fields to needed types
+      return data.map(item => ({
+        id: item.id,
+        title: item.title,
+        name: item.title, // Add name property for CachedTraining compatibility
+        type: item.type || '',
+        category: item.category || '',
+        description: item.description || '',
+        duration_hours: item.duration_hours || 0,
+        required_for: item.required_for || []
+      }));
     },
   });
 
   // Fetch cached training completions for the current user
-  const { data: completions = [], isLoading: isCompletionsLoading } = useQuery({
+  const { data: completions = [], isLoading: isCompletionsLoading, error: completionsError } = useQuery({
     queryKey: ['cached-completions', currentUser?.bambooEmployeeId],
     queryFn: async () => {
       if (!currentUser?.bambooEmployeeId) return [];
@@ -58,16 +82,17 @@ export function useQualifications() {
 
   // Calculate qualifications once we have all required data
   const qualifications = useMemo(() => {
-    if (!trainings.length || !mapCompletions.length) {
+    if (!trainingsData.length) {
       return [];
     }
 
-    return trainings.map(training => {
+    // Transform into UserQualification objects
+    return trainingsData.map(training => {
       const completed = mapCompletions.find(
         completion => completion.trainingId === training.id
       );
 
-      let status: Qualification['status'] = 'not-started';
+      let status: UserQualification['status'] = 'not-started';
       if (completed) {
         status = 'completed';
       }
@@ -81,12 +106,106 @@ export function useQualifications() {
         completionDate: completed?.completionDate || null,
       };
     });
-  }, [trainings, mapCompletions, currentUser?.bambooEmployeeId]);
+  }, [trainingsData, mapCompletions, currentUser?.bambooEmployeeId]);
+
+  // Transform qualifications into QualificationStatus objects for component compatibility
+  const qualificationStatuses = useMemo(() => {
+    // Mock data for position qualifications
+    // In a real implementation, this would be fetched from a database
+    const mockPositions = [
+      {
+        id: 'pos1',
+        title: 'Engine Driver',
+        countyRequirements: ['training1', 'training2'],
+        avfrdRequirements: ['training1', 'training2', 'training3']
+      },
+      {
+        id: 'pos2',
+        title: 'Firefighter',
+        countyRequirements: ['training4', 'training5'],
+        avfrdRequirements: ['training4', 'training5', 'training6']
+      }
+    ];
+    
+    return mockPositions.map(position => {
+      // Check county qualifications
+      const hasAllCountyReqs = position.countyRequirements.every(reqId => 
+        qualifications.some(q => q.trainingId === reqId && q.status === 'completed')
+      );
+      
+      // Check AVFRD qualifications
+      const hasAllAVFRDReqs = position.avfrdRequirements.every(reqId => 
+        qualifications.some(q => q.trainingId === reqId && q.status === 'completed')
+      );
+      
+      // Get missing county trainings
+      const missingCountyTrainings = position.countyRequirements
+        .filter(reqId => !qualifications.some(q => q.trainingId === reqId && q.status === 'completed'))
+        .map(reqId => {
+          const training = trainingsData.find(t => t.id === reqId);
+          return {
+            id: reqId,
+            title: training?.title || 'Unknown Training',
+            type: training?.type || '',
+            category: training?.category || '',
+            description: training?.description || '',
+            durationHours: training?.duration_hours || 0,
+            requiredFor: training?.required_for || []
+          } as Training;
+        });
+      
+      // Get missing AVFRD trainings
+      const missingAVFRDTrainings = position.avfrdRequirements
+        .filter(reqId => !qualifications.some(q => q.trainingId === reqId && q.status === 'completed'))
+        .map(reqId => {
+          const training = trainingsData.find(t => t.id === reqId);
+          return {
+            id: reqId,
+            title: training?.title || 'Unknown Training',
+            type: training?.type || '',
+            category: training?.category || '',
+            description: training?.description || '',
+            durationHours: training?.duration_hours || 0,
+            requiredFor: training?.required_for || []
+          } as Training;
+        });
+      
+      // Get completed trainings
+      const completedTrainings = qualifications
+        .filter(q => q.status === 'completed')
+        .map(q => {
+          const training = trainingsData.find(t => t.id === q.trainingId);
+          return {
+            id: q.trainingId,
+            title: training?.title || 'Unknown Training',
+            type: training?.type || '',
+            category: training?.category || '',
+            description: training?.description || '',
+            durationHours: training?.duration_hours || 0,
+            requiredFor: training?.required_for || []
+          } as Training;
+        });
+      
+      return {
+        positionId: position.id,
+        positionTitle: position.title,
+        isQualifiedCounty: hasAllCountyReqs,
+        isQualifiedAVFRD: hasAllAVFRDReqs,
+        missingCountyTrainings,
+        missingAVFRDTrainings,
+        completedTrainings
+      } as QualificationStatus;
+    });
+  }, [qualifications, trainingsData]);
 
   const isLoading = isTrainingsLoading || isCompletionsLoading;
+  const error = completionsError;
 
   return {
-    qualifications,
+    qualifications: qualificationStatuses, // Return QualificationStatus[] for component compatibility
     isLoading,
+    error,
+    activeTab,
+    setActiveTab
   };
 }

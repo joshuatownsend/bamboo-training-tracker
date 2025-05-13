@@ -18,7 +18,17 @@ export function useTrainingData() {
         console.error('Error fetching trainings:', error);
         return [];
       }
-      return data as Training[];
+      
+      // Map database fields to Training type
+      return data.map(item => ({
+        id: item.id,
+        title: item.title,
+        type: item.type || '',
+        category: item.category || '',
+        description: item.description || '',
+        durationHours: item.duration_hours || 0,
+        requiredFor: item.required_for || []
+      })) as Training[];
     }
   });
 
