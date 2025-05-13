@@ -235,6 +235,9 @@ serve(async (req) => {
   }
   
   try {
+    // Log the incoming request headers for debugging
+    console.log("Request headers:", Object.fromEntries(req.headers));
+    
     // Start the sync process
     console.log("Training completions sync started");
     const result = await syncTrainingCompletions();

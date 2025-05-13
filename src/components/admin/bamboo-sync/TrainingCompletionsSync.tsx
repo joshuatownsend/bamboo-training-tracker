@@ -13,7 +13,7 @@ export const TrainingCompletionsSync: React.FC = () => {
   const [syncStartTime, setSyncStartTime] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: syncStatus, isLoading, refetch } = useSyncStatus();
+  const { data: syncStatus, isLoading, refetch } = useSyncStatus('training_completions');
   
   // Monitor the sync status to provide real-time updates
   useEffect(() => {
@@ -71,7 +71,7 @@ export const TrainingCompletionsSync: React.FC = () => {
         console.error("Error triggering sync:", error);
         toast({
           title: "Sync error",
-          description: "Failed to trigger the training completions sync.",
+          description: `Failed to trigger the training completions sync: ${error.message}`,
           variant: "destructive",
         });
         setIsSyncing(false);
@@ -91,7 +91,7 @@ export const TrainingCompletionsSync: React.FC = () => {
       console.error("Exception during sync:", e);
       toast({
         title: "Sync exception",
-        description: "An unexpected error occurred during the sync process.",
+        description: `An unexpected error occurred during the sync process: ${e instanceof Error ? e.message : String(e)}`,
         variant: "destructive",
       });
       setIsSyncing(false);

@@ -5,13 +5,13 @@ import { useUser } from "@/contexts/user";
 import { toast } from "@/components/ui/use-toast";
 
 /**
- * Hook to fetch the BambooHR sync status
+ * Hook to fetch the sync status for a specific sync operation
  */
-export function useSyncStatus() {
+export function useSyncStatus(syncId = 'bamboohr') {
   const { currentUser } = useUser();
   
   return useQuery({
-    queryKey: ['sync-status', 'bamboohr', currentUser?.id],
+    queryKey: ['sync-status', syncId, currentUser?.id],
     queryFn: async () => {
       try {
         // Check if user is authenticated
@@ -23,7 +23,7 @@ export function useSyncStatus() {
         const { data, error } = await supabase
           .from('sync_status')
           .select('*')
-          .eq('id', 'bamboohr')
+          .eq('id', syncId)
           .single();
         
         if (error) {
@@ -34,13 +34,13 @@ export function useSyncStatus() {
             return null;
           }
           
-          console.error("Error fetching sync status:", error);
+          console.error(`Error fetching sync status for ${syncId}:`, error);
           return null;
         }
         
         return data;
       } catch (error) {
-        console.error("Exception fetching sync status:", error);
+        console.error(`Exception fetching sync status for ${syncId}:`, error);
         return null;
       }
     },
