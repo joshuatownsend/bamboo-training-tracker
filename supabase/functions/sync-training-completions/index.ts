@@ -2,10 +2,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS Headers
+// CORS Headers for browser requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-bamboohr-auth",
 };
 
 // Create a Supabase client with the service role key
@@ -212,15 +212,15 @@ async function syncTrainingCompletions() {
       .from('sync_status')
       .update({ 
         status: 'error', 
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
         updated_at: new Date().toISOString()
       })
       .eq('id', 'training_completions');
     
     return {
       success: false,
-      message: `Sync failed: ${error.message}`,
-      error: error.message
+      message: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      error: error instanceof Error ? error.message : "Unknown error"
     };
   }
 }
@@ -235,8 +235,30 @@ serve(async (req) => {
   }
   
   try {
-    // Log the incoming request headers for debugging
+    // Debug log all request headers
     console.log("Request headers:", Object.fromEntries(req.headers));
+    
+    // Verify authentication (this was missing in the original function)
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const apiKey = req.headers.get('apikey');
+    
+    // Debug log the auth information we received
+    console.log("Auth header present:", !!authHeader);
+    console.log("API key present:", !!apiKey);
+    
+    if (!authHeader && !apiKey) {
+      console.error("No authentication provided");
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized",
+          message: "Missing authentication. Both Authorization header and apikey are missing."
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401 
+        }
+      );
+    }
     
     // Start the sync process
     console.log("Training completions sync started");
@@ -254,7 +276,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error instanceof Error ? error.message : "Unknown error"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
