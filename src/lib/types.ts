@@ -44,6 +44,8 @@ export interface TrainingCompletion {
   status: 'completed' | 'expired' | 'due';
   score?: number;
   certificateUrl?: string;
+  notes?: string;
+  instructor?: string;
 }
 
 export interface DepartmentStats {
