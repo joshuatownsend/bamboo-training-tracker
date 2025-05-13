@@ -3,4 +3,5 @@
 export * from './client';
 export * from './api-tester';
 export * from './config';
-export * from './types';
+// Fix the ambiguous export by explicitly re-exporting the types
+export { type BambooApiOptions } from './types';

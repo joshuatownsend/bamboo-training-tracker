@@ -32,6 +32,7 @@ export const mapAccountToUser = async (
     name: account.name || "Unknown User",
     email: account.username,
     role: role,
-    employeeId: employeeId || account.localAccountId // Use the mapped ID if available, otherwise fall back to account ID
+    employeeId: employeeId || account.localAccountId, // Use the mapped ID if available, otherwise fall back to account ID
+    bambooEmployeeId: employeeId // Add the bambooEmployeeId property
   };
 };

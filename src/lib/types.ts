@@ -1,3 +1,4 @@
+
 export interface Employee {
   id: string;
   name: string;
@@ -101,6 +102,8 @@ export interface User {
   email: string;
   role: 'user' | 'admin';
   employeeId: string;
+  // Add the bambooEmployeeId property to fix the TypeScript error
+  bambooEmployeeId?: string;
 }
 
 export interface UserTraining {

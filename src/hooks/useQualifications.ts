@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useUser } from "@/contexts/user";
 import { QualificationStatus } from "@/lib/types";
@@ -12,7 +13,7 @@ export function useQualifications() {
   const { activeTab, setActiveTab } = useQualificationTabs();
   const { toast } = useToast();
 
-  // Get training data from useTrainingData hook
+  // Get training data from useTrainingData hook with correct property access
   const { 
     userCompletedTrainings, 
     trainingTypes, 
