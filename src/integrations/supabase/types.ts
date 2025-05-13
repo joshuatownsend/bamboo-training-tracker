@@ -299,6 +299,7 @@ export type Database = {
       }
       sync_status: {
         Row: {
+          details: Json | null
           error: string | null
           id: string
           last_sync: string | null
@@ -306,6 +307,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          details?: Json | null
           error?: string | null
           id: string
           last_sync?: string | null
@@ -313,6 +315,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          details?: Json | null
           error?: string | null
           id?: string
           last_sync?: string | null
@@ -368,12 +371,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      training_completions_stats: {
+        Row: {
+          earliest_completion: string | null
+          employees_with_completions: number | null
+          latest_completion: string | null
+          latest_record_created: string | null
+          latest_record_updated: string | null
+          total_completions: number | null
+          unique_trainings: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_admin_access: {
         Args: { admin_email: string }
         Returns: boolean
+      }
+      check_edge_function_version: {
+        Args: { function_name: string }
+        Returns: Json
       }
       sync_bamboohr_trainings: {
         Args: Record<PropertyKey, never>

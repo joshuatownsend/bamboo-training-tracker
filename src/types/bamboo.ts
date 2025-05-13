@@ -1,10 +1,11 @@
 
 export interface SyncStatus {
   id: string;
-  status: 'success' | 'running' | 'error' | 'never_run' | string;
+  status: 'success' | 'running' | 'error' | 'never_run' | 'partial_success' | string;
   updated_at: string;
   last_sync?: string;
   error?: string | null;
+  details?: any; // Added this field to match the database schema
 }
 
 export interface CachedEmployee {
