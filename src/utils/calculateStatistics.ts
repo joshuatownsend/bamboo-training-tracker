@@ -1,3 +1,4 @@
+
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -27,6 +28,7 @@ export const calculateTrainingStatistics = (
   
   // Count all completions as completed trainings
   // Make sure we use the actual length of the completions array
+  // without any filtering to get the TOTAL number
   const completedTrainings = safeCompletions.length || 0;
   
   // Then separately count specific status types
@@ -34,6 +36,7 @@ export const calculateTrainingStatistics = (
   const upcomingTrainings = safeCompletions.filter(c => c.status === "due").length || 0;
 
   // Calculate completion rate based on total possible completions (employees × trainings)
+  // This calculation is no longer displayed but still kept for internal use
   const totalPossibleCompletions = safeEmployees.length * safeTrainings.length || 1; // Avoid division by zero
   const completionRate = (completedTrainings / totalPossibleCompletions) * 100;
 

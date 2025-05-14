@@ -14,6 +14,20 @@ export function useCompletionsCache() {
       console.log("Fetching training completions from employee_training_completions_2 table");
       
       // Try fetching from the employee_training_completions_2 table 
+      // with explicit count of records for debugging
+      const { count: totalCount, error: countError } = await supabase
+        .from('employee_training_completions_2')
+        .select('*', { count: 'exact', head: true });
+      
+      if (totalCount) {
+        console.log(`Database contains approximately ${totalCount} training completions`);
+      }
+      
+      if (countError) {
+        console.warn("Error getting count:", countError);
+      }
+      
+      // Now fetch all the data (no limit)
       const { data: newData, error: newError } = await supabase
         .from('employee_training_completions_2')
         .select('*');

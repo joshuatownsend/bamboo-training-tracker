@@ -13,7 +13,6 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
   const totalTrainings = stats?.totalTrainings ?? 0;
   const completedTrainings = stats?.completedTrainings ?? 0;
   const expiredTrainings = stats?.expiredTrainings ?? 0;
-  const completionRate = stats?.completionRate ?? 0;
   
   // Add console log for debugging
   console.log("Dashboard Stats rendering with:", {
@@ -21,7 +20,6 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
     totalTrainings,
     completedTrainings,
     expiredTrainings,
-    completionRate,
     rawStats: stats
   });
   
@@ -35,7 +33,6 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
       <StatCard
         title="Completed Trainings"
         value={completedTrainings}
-        description={`${completionRate.toFixed(1)}% completion rate`}
         icon={<CheckCircle2 className="h-5 w-5" />}
       />
       <StatCard
