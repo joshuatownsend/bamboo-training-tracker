@@ -23,6 +23,9 @@ export function calculateStatisticsAsync(
   if (completions && completions.length > 0) {
     console.log("Sample completion data for statistics:", completions.slice(0, 3));
     
+    // Add detailed logging about completion counts
+    console.log(`Processing ${completions.length} completions for statistics calculation`);
+    
     // Count completion statuses for better debugging
     const statusCounts: Record<string, number> = {};
     completions.forEach(c => {

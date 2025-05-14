@@ -32,6 +32,11 @@ export const calculateDashboardStatistics = (
       completionsCount: effectiveCompletions.length
     });
     
+    // Make sure we're passing the full array of completions to the calculation function
+    if (effectiveCompletions.length >= 1000) {
+      console.log(`Processing large number of completions: ${effectiveCompletions.length}`);
+    }
+    
     return calculateStatisticsAsync(
       effectiveEmployees, 
       effectiveTrainings, 

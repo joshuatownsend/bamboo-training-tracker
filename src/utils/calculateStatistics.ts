@@ -1,4 +1,3 @@
-
 import { DepartmentStats, Employee, Training, TrainingCompletion, TrainingStatistics } from "@/lib/types";
 
 /**
@@ -26,8 +25,8 @@ export const calculateTrainingStatistics = (
   // Calculate basic statistics
   const totalTrainings = safeTrainings.length || 0;
   
-  // Count all completions as completed trainings, regardless of status
-  // This is the key fix - we're counting all records in the completions array
+  // Count all completions as completed trainings
+  // Make sure we use the actual length of the completions array
   const completedTrainings = safeCompletions.length || 0;
   
   // Then separately count specific status types

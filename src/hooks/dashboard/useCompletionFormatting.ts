@@ -26,6 +26,11 @@ export function useCompletionFormatting(completions: any[] | undefined) {
     
     console.log(`Formatting ${completions.length} completions for dashboard use`);
     
+    // Add a log to see a sample of the raw data
+    if (completions.length > 0) {
+      console.log("Sample raw completion data:", completions.slice(0, 3));
+    }
+    
     // Properly cast the data to our DB type for proper property access
     return completions.map((completion: any): TrainingCompletion => {
       const dbCompletion = completion as DbTrainingCompletion;

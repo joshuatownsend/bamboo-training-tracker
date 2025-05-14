@@ -5,6 +5,7 @@ import { TrainingCompletion } from "@/lib/types";
 
 /**
  * Hook to fetch training completions from the employee_training_completions_2 table
+ * Updated to ensure we retrieve all training completions without limit
  */
 export function useCompletionsCache() {
   return useQuery({

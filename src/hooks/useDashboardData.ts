@@ -49,10 +49,20 @@ export function useDashboardData() {
     if (formattedCompletions && formattedCompletions.length > 0) {
       console.log(`Dashboard has ${formattedCompletions.length} completion records available`);
       console.log("Sample completion data:", formattedCompletions.slice(0, 3));
+      
+      // Add a log specifically for the count
+      if (formattedCompletions.length >= 1000) {
+        console.log(`WARNING: Large number of completions (${formattedCompletions.length}). Check if all records are being processed.`);
+      }
     } else {
       console.log("No completion data available for Dashboard");
     }
-  }, [formattedCompletions]);
+    
+    // Log raw completion data count for comparison
+    if (trainingCompletions) {
+      console.log(`Raw training completions count: ${trainingCompletions.length}`);
+    }
+  }, [formattedCompletions, trainingCompletions]);
   
   // Calculate statistics only when data is available and not loading
   const statistics = useMemo(() => {
@@ -63,12 +73,27 @@ export function useDashboardData() {
       return null;
     }
 
-    return calculateDashboardStatistics(
+    if (!formattedCompletions || formattedCompletions.length === 0) {
+      console.log("No completion data available, cannot calculate statistics");
+      return null;
+    }
+
+    const stats = calculateDashboardStatistics(
       employees, 
       trainings, 
       formattedCompletions,
       toast
     );
+    
+    console.log("Calculated dashboard statistics:", {
+      totalTrainings: stats?.totalTrainings,
+      completedTrainings: stats?.completedTrainings,
+      expiredTrainings: stats?.expiredTrainings,
+      completionRate: stats?.completionRate?.toFixed(2) + '%',
+      completionsUsed: formattedCompletions?.length
+    });
+    
+    return stats;
   }, [
     employees, 
     trainings, 

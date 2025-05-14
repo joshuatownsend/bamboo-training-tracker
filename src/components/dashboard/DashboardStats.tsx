@@ -21,7 +21,8 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
     totalTrainings,
     completedTrainings,
     expiredTrainings,
-    completionRate
+    completionRate,
+    rawStats: stats
   });
   
   return (
