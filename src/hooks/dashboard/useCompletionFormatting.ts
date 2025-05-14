@@ -1,6 +1,6 @@
 
 import { useMemo } from "react";
-import { Employee, Training, TrainingCompletion } from "@/lib/types";
+import { TrainingCompletion } from "@/lib/types";
 
 // Define type for database training completion record with joined data
 interface DbTrainingCompletion {
@@ -10,6 +10,7 @@ interface DbTrainingCompletion {
   completion_date?: string;
   instructor?: string;
   notes?: string;
+  display_name?: string;
   employee?: {
     id: string;
     name: string;
@@ -39,7 +40,7 @@ export function useCompletionFormatting(completions: any[] | undefined) {
     
     // Add a log to see a sample of the raw data
     if (completions.length > 0) {
-      console.log("Sample raw completion data:", completions.slice(0, 1));
+      console.log("Sample raw completion data:", completions[0]);
     }
     
     // Properly cast the data to our DB type for proper property access
@@ -50,17 +51,26 @@ export function useCompletionFormatting(completions: any[] | undefined) {
       const completionDate = dbCompletion.completed || dbCompletion.completion_date || '';
       
       // Make sure employee and training data are properly handled
-      const safeEmployeeData = dbCompletion.employee || {
-        id: "unknown",
-        name: "Unknown Employee",
-        bamboo_employee_id: String(dbCompletion.employee_id)
+      // Prefer displayed employee data if available
+      const employeeName = dbCompletion.employeeData?.name || 
+                           dbCompletion.employee?.name || 
+                           dbCompletion.display_name || 
+                           "Unknown Employee";
+      
+      const safeEmployeeData = {
+        id: dbCompletion.employee?.id || "unknown",
+        name: employeeName,
+        bamboo_employee_id: String(dbCompletion.employee_id),
+        email: dbCompletion.employee?.email
       };
       
-      const safeTrainingData = dbCompletion.training || {
-        id: "unknown",
-        name: "Unknown Training",
-        category: "Unknown"
-      };
+      const safeTrainingData = dbCompletion.trainingData || 
+                               dbCompletion.training || 
+                               {
+                                 id: "unknown",
+                                 name: dbCompletion.training?.name || "Unknown Training",
+                                 category: dbCompletion.training?.category || "Unknown"
+                               };
       
       return {
         id: `${dbCompletion.employee_id}-${dbCompletion.training_id}-${completionDate}`,

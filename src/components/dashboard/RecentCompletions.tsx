@@ -42,7 +42,7 @@ export function RecentCompletions({
   // Get most recent 10 completions
   const recentCompletions = [...completions]
     .sort((a, b) => 
-      new Date(b.completionDate).getTime() - new Date(a.completionDate).getTime()
+      new Date(b.completionDate || '').getTime() - new Date(a.completionDate || '').getTime()
     )
     .slice(0, 10);
     
@@ -71,58 +71,33 @@ export function RecentCompletions({
       <CardContent>
         <div className="space-y-4">
           {recentCompletions.map((completion) => {
-            // First try to use the embedded joined data if available
+            // Use the embedded data directly if available
             let employeeName = completion.employeeData?.name;
             let trainingTitle = completion.trainingData?.name;
             
-            // If not available, fall back to looking up from the arrays
-            if (!employeeName || !trainingTitle) {
-              // Try to find the employee and training from the arrays using string IDs
-              const employee = employees.find(e => e.id === completion.employeeId ||
-                                                  e.bamboo_employee_id === completion.employeeId);
-              const training = trainings.find(t => t.id === completion.trainingId);
-              
-              // If still not found, try numeric comparison as fallback
-              if (!employee) {
-                const numEmployeeId = parseInt(completion.employeeId);
-                const employeeWithNumericId = employees.find(e => 
-                  e.bamboo_employee_id === numEmployeeId.toString() || 
-                  e.id === numEmployeeId.toString() ||
-                  e.bambooEmployeeId === numEmployeeId.toString()
-                );
-                if (employeeWithNumericId) {
-                  employeeName = employeeWithNumericId.name;
-                }
-              } else {
-                employeeName = employee.name;
-              }
-              
-              if (!training) {
-                const numTrainingId = parseInt(completion.trainingId);
-                const trainingWithNumericId = trainings.find(t => t.id === numTrainingId.toString());
-                if (trainingWithNumericId) {
-                  trainingTitle = trainingWithNumericId.title;
-                }
-              } else {
-                trainingTitle = training.title;
-              }
+            // If still no data, use fallbacks from the completion itself
+            if (!employeeName) {
+              employeeName = "Unknown Employee";
             }
             
-            // Skip if we still can't find the data
-            if (!employeeName || !trainingTitle) {
-              console.warn(`Missing data for completion: ${completion.id}, employee: ${employeeName}, training: ${trainingTitle}`);
-              return null;
+            if (!trainingTitle) {
+              trainingTitle = "Unknown Training";
             }
+            
+            // Create unique key from all available data
+            const uniqueKey = `${completion.id || completion.employeeId}-${completion.trainingId}-${completion.completionDate}`;
             
             const initials = employeeName
               .split(" ")
               .map((n) => n[0])
-              .join("");
+              .join("")
+              .toUpperCase()
+              .substring(0, 2);
               
             return (
-              <div key={completion.id} className="flex items-center">
+              <div key={uniqueKey} className="flex items-center">
                 <Avatar className="h-9 w-9 mr-3">
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  <AvatarFallback>{initials || "??"}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium">{employeeName}</p>
@@ -136,14 +111,7 @@ export function RecentCompletions({
                 </div>
               </div>
             );
-          }).filter(Boolean)}
-          
-          {/* Show placeholder if we filtered out all completions due to missing data */}
-          {recentCompletions.filter(Boolean).length === 0 && (
-            <div className="flex items-center justify-center h-[200px]">
-              <p className="text-sm text-muted-foreground">Could not display completions due to missing data</p>
-            </div>
-          )}
+          })}
         </div>
       </CardContent>
     </Card>
