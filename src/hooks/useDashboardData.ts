@@ -63,7 +63,12 @@ export function useDashboardData() {
       return null;
     }
 
-    return calculateDashboardStatistics(employees, trainings, formattedCompletions, toast);
+    return calculateDashboardStatistics(
+      employees, 
+      trainings, 
+      formattedCompletions,
+      toast
+    );
   }, [
     employees, 
     trainings, 

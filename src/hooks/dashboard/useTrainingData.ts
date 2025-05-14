@@ -7,7 +7,7 @@ import { Training } from "@/lib/types";
  * Hook to get training data for dashboard
  */
 export function useTrainingData() {
-  const { data: trainings, isLoading: isTrainingsLoading } = useQuery({
+  const { data: rawTrainings, isLoading: isTrainingsLoading } = useQuery({
     queryKey: ['cached', 'trainings'],
     queryFn: async () => {
       console.log("Fetching trainings from cached data");
@@ -55,24 +55,40 @@ export function useTrainingData() {
     },
   });
 
+  // Map raw trainings to proper Training type
+  const mappedRawTrainings = useMemo(() => {
+    if (!rawTrainings || rawTrainings.length === 0) return [];
+    
+    // Map the raw database data to the Training type
+    return rawTrainings.map(item => ({
+      id: String(item.training_id),
+      title: `Training ${item.training_id}`,  // Use a placeholder title
+      type: String(item.training_id),
+      category: 'General',
+      description: '',
+      durationHours: 0,
+      requiredFor: []
+    } as Training));
+  }, [rawTrainings]);
+
   // Combine trainings from cache and training types
   const combinedTrainings = useMemo(() => {
-    // If we have trainings from the cache, use those
-    if (trainings && trainings.length > 0) {
-      console.log("Using trainings from cache:", trainings.length);
-      return trainings;
+    // If we have training types, prioritize those
+    if (trainingTypes && trainingTypes.length > 0) {
+      console.log("Using training types:", trainingTypes.length);
+      return trainingTypes;
     }
     
-    // Otherwise, if we have training types, use those
-    if (trainingTypes && trainingTypes.length > 0) {
-      console.log("Using training types as fallback:", trainingTypes.length);
-      return trainingTypes;
+    // Otherwise, if we have mapped raw trainings, use those
+    if (mappedRawTrainings.length > 0) {
+      console.log("Using mapped raw trainings:", mappedRawTrainings.length);
+      return mappedRawTrainings;
     }
     
     // If we have neither, return an empty array
     console.log("No trainings or training types available");
-    return [];
-  }, [trainings, trainingTypes]);
+    return [] as Training[];
+  }, [trainingTypes, mappedRawTrainings]);
   
   return {
     trainings: combinedTrainings,
