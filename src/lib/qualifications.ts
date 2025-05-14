@@ -1,4 +1,5 @@
 import { Training, TrainingCompletion, Position, QualificationStatus, RequirementGroup } from "./types";
+import { toStringId } from "@/utils/idConverters";
 
 /**
  * Evaluates a requirement group against a list of completed trainings
@@ -11,17 +12,21 @@ export function evaluateRequirementGroup(
   isMet: boolean;
   missingTrainings: Training[];
 } {
+  // Ensure all training IDs are strings for consistent comparison
+  const normalizedCompletedIds = completedTrainingIds.map(id => toStringId(id));
+
   // For AND logic - all requirements must be met
   if (group.logic === 'AND') {
     const results = group.requirements.map(req => {
       if (typeof req === 'string') {
         // It's a simple training ID
-        const isMet = completedTrainingIds.includes(req);
-        const missingTrainings = isMet ? [] : [trainingsMap[req]].filter(Boolean);
+        const stringReq = toStringId(req);
+        const isMet = normalizedCompletedIds.includes(stringReq);
+        const missingTrainings = isMet ? [] : [trainingsMap[stringReq]].filter(Boolean);
         return { isMet, missingTrainings };
       } else {
         // It's a nested requirement group
-        return evaluateRequirementGroup(req, completedTrainingIds, trainingsMap);
+        return evaluateRequirementGroup(req, normalizedCompletedIds, trainingsMap);
       }
     });
     
@@ -35,12 +40,13 @@ export function evaluateRequirementGroup(
     const results = group.requirements.map(req => {
       if (typeof req === 'string') {
         // It's a simple training ID
-        const isMet = completedTrainingIds.includes(req);
-        const missingTrainings = isMet ? [] : [trainingsMap[req]].filter(Boolean);
+        const stringReq = toStringId(req);
+        const isMet = normalizedCompletedIds.includes(stringReq);
+        const missingTrainings = isMet ? [] : [trainingsMap[stringReq]].filter(Boolean);
         return { isMet, missingTrainings };
       } else {
         // It's a nested requirement group
-        return evaluateRequirementGroup(req, completedTrainingIds, trainingsMap);
+        return evaluateRequirementGroup(req, normalizedCompletedIds, trainingsMap);
       }
     });
     
@@ -57,12 +63,13 @@ export function evaluateRequirementGroup(
     const results = group.requirements.map(req => {
       if (typeof req === 'string') {
         // It's a simple training ID
-        const isMet = completedTrainingIds.includes(req);
-        const missingTrainings = isMet ? [] : [trainingsMap[req]].filter(Boolean);
+        const stringReq = toStringId(req);
+        const isMet = normalizedCompletedIds.includes(stringReq);
+        const missingTrainings = isMet ? [] : [trainingsMap[stringReq]].filter(Boolean);
         return { isMet, missingTrainings };
       } else {
         // It's a nested requirement group
-        return evaluateRequirementGroup(req, completedTrainingIds, trainingsMap);
+        return evaluateRequirementGroup(req, normalizedCompletedIds, trainingsMap);
       }
     });
     
@@ -105,21 +112,35 @@ export function checkPositionQualification(
   trainings: Training[],
   completions: TrainingCompletion[]
 ): QualificationStatus | null {
-  const position = positions.find(p => p.id === positionId);
-  if (!position) return null;
+  console.log(`Checking qualifications for employee ${employeeId} and position ${positionId}`);
+  
+  // Ensure IDs are strings for consistent comparison
+  const stringEmployeeId = toStringId(employeeId);
+  const stringPositionId = toStringId(positionId);
+  
+  const position = positions.find(p => toStringId(p.id) === stringPositionId);
+  if (!position) {
+    console.log(`Position ${positionId} not found`);
+    return null;
+  }
 
   // Map of training IDs to training objects for quick lookup
   const trainingsMap = trainings.reduce((acc, training) => {
-    acc[training.id] = training;
+    const stringId = toStringId(training.id);
+    acc[stringId] = training;
     return acc;
   }, {} as Record<string, Training>);
 
   // Get all of the employee's completed trainings (not expired)
   const employeeCompletions = completions
-    .filter(c => c.employeeId === employeeId && c.status === "completed");
+    .filter(c => toStringId(c.employeeId) === stringEmployeeId && c.status === "completed");
   
   const employeeCompletedTrainingIds = employeeCompletions
-    .map(c => c.trainingId);
+    .map(c => toStringId(c.trainingId));
+
+  // Add debug logging
+  console.log(`Employee ${employeeId} has ${employeeCompletedTrainingIds.length} completed trainings`);
+  console.log("First few training IDs:", employeeCompletedTrainingIds.slice(0, 5));
 
   // Check if requirements are the legacy array format or the new complex format
   const countyRequirements = position.countyRequirements;
@@ -131,12 +152,13 @@ export function checkPositionQualification(
   
   if (Array.isArray(countyRequirements)) {
     // Legacy array format - simple "all required" check
-    meetsCountyRequirements = countyRequirements.every(
-      trainingId => employeeCompletedTrainingIds.includes(trainingId)
+    const normalizedRequirements = countyRequirements.map(id => toStringId(id));
+    meetsCountyRequirements = normalizedRequirements.every(
+      reqId => employeeCompletedTrainingIds.some(id => toStringId(id) === reqId)
     );
     
-    missingCountyTrainings = countyRequirements
-      .filter(id => !employeeCompletedTrainingIds.includes(id))
+    missingCountyTrainings = normalizedRequirements
+      .filter(id => !employeeCompletedTrainingIds.some(completedId => toStringId(completedId) === id))
       .map(id => trainingsMap[id])
       .filter(Boolean); // Filter out undefined values
   } else {
@@ -157,12 +179,13 @@ export function checkPositionQualification(
   
   if (Array.isArray(avfrdRequirements)) {
     // Legacy array format - simple "all required" check
-    meetsAVFRDRequirements = avfrdRequirements.every(
-      trainingId => employeeCompletedTrainingIds.includes(trainingId)
+    const normalizedRequirements = avfrdRequirements.map(id => toStringId(id));
+    meetsAVFRDRequirements = normalizedRequirements.every(
+      reqId => employeeCompletedTrainingIds.some(id => toStringId(id) === reqId)
     );
     
-    missingAVFRDTrainings = avfrdRequirements
-      .filter(id => !employeeCompletedTrainingIds.includes(id))
+    missingAVFRDTrainings = normalizedRequirements
+      .filter(id => !employeeCompletedTrainingIds.some(completedId => toStringId(completedId) === id))
       .map(id => trainingsMap[id])
       .filter(Boolean); // Filter out undefined values
   } else {
@@ -177,13 +200,21 @@ export function checkPositionQualification(
     missingAVFRDTrainings = avfrdResult.missingTrainings;
   }
 
+  // Log the qualification result
+  console.log(`Qualification results for ${position.title}:`, {
+    countyQualified: meetsCountyRequirements,
+    avfrdQualified: meetsAVFRDRequirements,
+    missingCountyCount: missingCountyTrainings.length,
+    missingAVFRDCount: missingAVFRDTrainings.length
+  });
+
   // Get completed training objects
   const completedTrainingObjects = trainings.filter(
-    t => employeeCompletedTrainingIds.includes(t.id)
+    t => employeeCompletedTrainingIds.includes(toStringId(t.id))
   );
 
   return {
-    positionId,
+    positionId: stringPositionId,
     positionTitle: position.title,
     isQualifiedCounty: meetsCountyRequirements,
     isQualifiedAVFRD: meetsAVFRDRequirements,
@@ -202,9 +233,11 @@ export function getAllPositionQualifications(
   trainings: Training[],
   completions: TrainingCompletion[]
 ): QualificationStatus[] {
+  const stringEmployeeId = toStringId(employeeId);
+  
   return positions
     .map(position => 
-      checkPositionQualification(employeeId, position.id, positions, trainings, completions)
+      checkPositionQualification(stringEmployeeId, position.id, positions, trainings, completions)
     )
     .filter((status): status is QualificationStatus => status !== null);
 }
@@ -220,10 +253,21 @@ export function getEmployeesQualifiedForPosition(
   completions: TrainingCompletion[],
   requirementType: 'county' | 'avfrd' | 'both' = 'avfrd'
 ): any[] {
-  return employees.filter(employee => {
+  const stringPositionId = toStringId(positionId);
+  console.log(`Finding employees qualified for position ${positionId} (${stringPositionId}), type: ${requirementType}`);
+  console.log(`Total employees: ${employees.length}, Total completions: ${completions.length}`);
+
+  // Find the position to get its title for debugging
+  const position = positions.find(p => toStringId(p.id) === stringPositionId);
+  const positionTitle = position ? position.title : "Unknown Position";
+  
+  const qualifiedEmployees = employees.filter(employee => {
+    // Ensure employee ID is a string
+    const employeeStringId = toStringId(employee.id);
+    
     const qualification = checkPositionQualification(
-      employee.id, 
-      positionId, 
+      employeeStringId, 
+      stringPositionId, 
       positions, 
       trainings, 
       completions
@@ -231,14 +275,44 @@ export function getEmployeesQualifiedForPosition(
     
     if (!qualification) return false;
     
-    if (requirementType === 'both') {
-      return qualification.isQualifiedCounty && qualification.isQualifiedAVFRD;
-    }
+    const isQualified = 
+      requirementType === 'both' ? 
+        (qualification.isQualifiedCounty && qualification.isQualifiedAVFRD) :
+      requirementType === 'county' ? 
+        qualification.isQualifiedCounty :
+        qualification.isQualifiedAVFRD;
     
-    return requirementType === 'county' 
-      ? qualification.isQualifiedCounty
-      : qualification.isQualifiedAVFRD;
+    return isQualified;
   });
+  
+  console.log(`Found ${qualifiedEmployees.length} employees qualified for "${positionTitle}" (${requirementType} requirements)`);
+  
+  // If no qualifications found, log more details to help troubleshoot
+  if (qualifiedEmployees.length === 0 && employees.length > 0) {
+    const sampleEmployee = employees[0];
+    console.log(`Sample check for ${sampleEmployee.firstName} ${sampleEmployee.lastName} (ID: ${sampleEmployee.id}):`);
+    
+    const sampleQualification = checkPositionQualification(
+      sampleEmployee.id,
+      stringPositionId,
+      positions,
+      trainings,
+      completions
+    );
+    
+    if (sampleQualification) {
+      console.log('Sample qualification result:', {
+        countyQualified: sampleQualification.isQualifiedCounty,
+        avfrdQualified: sampleQualification.isQualifiedAVFRD,
+        missingCounty: sampleQualification.missingCountyTrainings.map(t => t.title),
+        missingAVFRD: sampleQualification.missingAVFRDTrainings.map(t => t.title)
+      });
+    } else {
+      console.log('No qualification result for sample employee');
+    }
+  }
+  
+  return qualifiedEmployees;
 }
 
 /**

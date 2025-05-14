@@ -28,6 +28,17 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
   };
 
   console.log("Rendering QualifiedEmployeesTable with employees:", employees.length);
+  
+  // Log sample employees for debugging
+  if (employees.length > 0) {
+    const sampleEmployees = employees.slice(0, Math.min(3, employees.length));
+    console.log("Sample qualified employees:", 
+      sampleEmployees.map(emp => ({
+        name: formatFullName(emp),
+        id: emp.id
+      }))
+    );
+  }
 
   return (
     <Table>

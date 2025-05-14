@@ -11,6 +11,7 @@ import { QualifiedEmployeesTable } from "@/components/reports/QualifiedEmployees
 import { useTrainingCompletions } from "@/hooks/cache/useTrainingCompletions";
 import { useTrainingsCache } from "@/hooks/cache/useTrainingsCache";
 import { toast } from "@/hooks/use-toast";
+import { toStringId } from "@/utils/idConverters";
 
 export default function QualificationsReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
@@ -68,6 +69,19 @@ export default function QualificationsReport() {
     completionsError
   ]);
   
+  // Log position details to debug qualification issues
+  useEffect(() => {
+    if (selectedPosition && positions?.length) {
+      const position = positions.find(p => toStringId(p.id) === toStringId(selectedPosition));
+      if (position) {
+        console.log(`Selected position "${position.title}" (ID: ${position.id}) has requirements:`, {
+          countyRequirements: position.countyRequirements,
+          avfrdRequirements: position.avfrdRequirements
+        });
+      }
+    }
+  }, [selectedPosition, positions]);
+  
   // Fetch real employees from database
   const { 
     data: employees = [], 
@@ -96,7 +110,7 @@ export default function QualificationsReport() {
           console.error("Error fetching employee data from BambooHR:", employeeError);
           // Fall back to basic data from mappings if BambooHR fetch fails
           return mappings.map(mapping => ({
-            id: mapping.bamboo_employee_id.toString(), // Convert to string to match expected format
+            id: toStringId(mapping.bamboo_employee_id), // Convert to string for consistent comparison
             name: mapping.name || mapping.email.split('@')[0].replace('.', ' '),
             firstName: mapping.first_name || mapping.email.split('@')[0].split('.')[0] || '',
             lastName: mapping.last_name || mapping.email.split('@')[0].split('.')[1] || '',
@@ -113,16 +127,17 @@ export default function QualificationsReport() {
         const employeeMap = new Map();
         if (employeeData && Array.isArray(employeeData.employees)) {
           employeeData.employees.forEach((emp: any) => {
-            employeeMap.set(emp.id, emp);
+            employeeMap.set(toStringId(emp.id), emp);
           });
         }
         
         // Combine mapping data with BambooHR data
         return mappings.map(mapping => {
-          const bambooData = employeeMap.get(mapping.bamboo_employee_id);
+          const bambooEmployeeId = toStringId(mapping.bamboo_employee_id);
+          const bambooData = employeeMap.get(bambooEmployeeId);
           
           return {
-            id: mapping.bamboo_employee_id.toString(), // Convert to string to match expected format
+            id: bambooEmployeeId, // Ensure ID is a string
             name: bambooData ? `${bambooData.firstName} ${bambooData.lastName}` : (mapping.name || mapping.email.split('@')[0].replace('.', ' ')),
             firstName: bambooData?.firstName || mapping.first_name || mapping.email.split('@')[0].split('.')[0] || '',
             lastName: bambooData?.lastName || mapping.last_name || mapping.email.split('@')[0].split('.')[1] || '',
