@@ -56,6 +56,9 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
           )
         `)
         .order('completed', { ascending: false });
+
+      // Log the query being performed
+      console.log("Executing Supabase query for completions with joined data");
       
       // Apply limit if specified
       if (limit > 0) {
@@ -77,7 +80,9 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       if (joinedData && joinedData.length > 0) {
         console.log(`Fetched ${joinedData.length} joined training completions`);
-        console.log("Sample joined data:", joinedData[0]);
+        // Log a sample of the data to help debug date issues
+        console.log("Sample joined data first row:", joinedData[0]);
+        console.log("Sample 'completed' field value:", joinedData[0].completed);
         
         // Map to our TrainingCompletion type with the joined data
         return (joinedData as unknown as CompletionJoinedRow[]).map(mapToTrainingCompletion);
@@ -115,6 +120,11 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       if (completionsData && completionsData.length > 0) {
         console.log(`Fetched ${completionsData.length} training completions`);
+        console.log("Sample direct completion data:", {
+          employeeId: completionsData[0].employee_id,
+          trainingId: completionsData[0].training_id,
+          completedDate: completionsData[0].completed
+        });
         
         return completionsData.map((completion): TrainingCompletion => {
           // Get the training info from our map
@@ -124,7 +134,7 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
             id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
             employeeId: String(completion.employee_id),
             trainingId: String(completion.training_id),
-            completionDate: completion.completed,
+            completionDate: completion.completed, // Ensure we use this value
             status: 'completed' as const,
             instructor: completion.instructor ?? undefined,
             notes: completion.notes ?? undefined,

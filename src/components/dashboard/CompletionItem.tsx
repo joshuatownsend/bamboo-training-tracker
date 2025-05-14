@@ -16,10 +16,15 @@ export const CompletionItem = ({ completion, trainingName }: CompletionItemProps
   // Create unique key from all available data
   const uniqueKey = `${completion.id || completion.employeeId}-${completion.trainingId}-${completion.completionDate}`;
   
-  // Log the completion date being used (for debugging purposes)
-  if (!completion.completionDate) {
-    console.warn("Missing completion date for:", uniqueKey);
-  }
+  // Log the completion date being used for debugging
+  console.log("CompletionItem rendering with date:", {
+    completionDate: completion.completionDate,
+    uniqueKey,
+    hasDate: !!completion.completionDate
+  });
+  
+  // Get formatted date with improved handling
+  const formattedDate = formatCompletionDate(completion.completionDate);
   
   return (
     <div className="flex items-center">
@@ -32,7 +37,7 @@ export const CompletionItem = ({ completion, trainingName }: CompletionItemProps
       </div>
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">
-          {formatCompletionDate(completion.completionDate)}
+          {formattedDate}
         </span>
         <CheckCircle2 className="h-4 w-4 text-green-500" />
       </div>

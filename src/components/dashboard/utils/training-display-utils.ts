@@ -9,15 +9,32 @@ import { TrainingCompletion } from "@/lib/types";
  * @returns A formatted date string or the original string if formatting fails
  */
 export const formatCompletionDate = (dateString: string | undefined): string => {
+  // Added more logging to debug date formatting issues
+  console.log("Formatting completion date:", dateString);
+  
   // Only show "No date" if the date string is actually missing
-  if (!dateString) return "No date";
+  if (!dateString) {
+    console.log("Date string is empty or undefined");
+    return "No date";
+  }
   
   try {
     // Always attempt to create a Date object
     const date = new Date(dateString);
     
+    // Log the parsed date to verify conversion
+    console.log("Parsed date:", date);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn("Invalid date after parsing:", dateString);
+      return dateString; // Return the original if parsing failed
+    }
+    
     // Try to format with date-fns
-    return format(date, "MMM d, yyyy");
+    const formatted = format(date, "MMM d, yyyy");
+    console.log("Formatted date result:", formatted);
+    return formatted;
   } catch (err) {
     // If format fails, log the error but still show the raw date string
     console.warn("Error formatting date:", err, "Raw date:", dateString);
@@ -83,4 +100,3 @@ export const getInitials = (name: string): string => {
     .toUpperCase()
     .substring(0, 2);
 };
-

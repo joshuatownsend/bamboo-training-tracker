@@ -11,6 +11,12 @@ export function mapToTrainingCompletion(record: CompletionJoinedRow): TrainingCo
   // Enhanced: Better check for training data presence
   const hasValidTrainingData = record.training && record.training.name;
 
+  // Log completion date from database for debugging
+  console.log(`Mapping completion for employee ${record.employee_id}, training ${record.training_id}:`, {
+    rawCompletedDate: record.completed,
+    displayName: record.display_name
+  });
+
   // Extract employee data with null safety
   const employeeData = record.employee ? {
     id: String(record.employee.id),
@@ -40,7 +46,7 @@ export function mapToTrainingCompletion(record: CompletionJoinedRow): TrainingCo
     id: `${record.employee_id}-${record.training_id}-${record.completed}`,
     employeeId: String(record.employee_id),
     trainingId: String(record.training_id),
-    completionDate: record.completed,
+    completionDate: record.completed || null, // Ensure we preserve the date even if null
     status: 'completed' as const,
     instructor: record.instructor ?? undefined,
     notes: record.notes ?? undefined,
@@ -54,6 +60,11 @@ export function mapToTrainingCompletion(record: CompletionJoinedRow): TrainingCo
  * Handles null safety for joined data
  */
 export function mapToUserTraining(record: CompletionJoinedRow): UserTraining {
+  // Log completion date for debugging
+  console.log(`Mapping UserTraining for employee ${record.employee_id}, training ${record.training_id}:`, {
+    rawCompletedDate: record.completed
+  });
+
   // Create training details with null safety
   const trainingDetails: Training = record.training ? {
     id: String(record.training.id),
@@ -77,11 +88,11 @@ export function mapToUserTraining(record: CompletionJoinedRow): UserTraining {
     id: `${record.employee_id}-${record.training_id}-${record.completed}`,
     employeeId: String(record.employee_id),
     trainingId: toStringId(record.training_id),
-    completionDate: record.completed,
+    completionDate: record.completed, // Ensure the date is preserved
     instructor: record.instructor ?? undefined,
     notes: record.notes ?? undefined,
     type: toStringId(record.training_id),
-    completed: record.completed,
+    completed: record.completed, // Duplicate to ensure we have the value in both places
     trainingDetails
   };
 }

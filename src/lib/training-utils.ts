@@ -28,21 +28,44 @@ export const safeTextValue = (value: any): string => {
   return String(value);
 };
 
-// Function to format date with proper validation
+// Enhanced function to format date with proper validation and logging
 export const formatDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return "N/A";
+  // Add logging for debugging date formatting issues
+  console.log("Training utils - formatDate input:", dateStr);
+  
+  if (!dateStr) {
+    console.log("Training utils - formatDate: No date provided");
+    return "N/A";
+  }
   
   try {
+    // First try ISO format
     const date = parseISO(dateStr);
-    return isValid(date) ? format(date, "MMM d, yyyy") : dateStr;
-  } catch (e) {
-    // Handle non-ISO format dates (like MM/DD/YYYY)
-    try {
-      const date = new Date(dateStr);
-      return isValid(date) ? format(date, "MMM d, yyyy") : dateStr;
-    } catch {
-      return dateStr;
+    console.log("Training utils - parseISO result:", date);
+    
+    if (isValid(date)) {
+      const formatted = format(date, "MMM d, yyyy");
+      console.log("Training utils - formatted result:", formatted);
+      return formatted;
     }
+    
+    // If not valid ISO format, try regular Date constructor
+    const fallbackDate = new Date(dateStr);
+    console.log("Training utils - fallback Date constructor result:", fallbackDate);
+    
+    if (isValid(fallbackDate)) {
+      const formatted = format(fallbackDate, "MMM d, yyyy");
+      console.log("Training utils - fallback formatted result:", formatted);
+      return formatted;
+    }
+    
+    // If all else fails, return the raw string
+    console.warn("Training utils - Unable to parse date:", dateStr);
+    return dateStr;
+  } catch (e) {
+    // Handle any other errors
+    console.error("Training utils - Error formatting date:", e);
+    return dateStr;
   }
 };
 
