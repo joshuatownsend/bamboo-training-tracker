@@ -156,21 +156,21 @@ export function RecentCompletions({
     return `Unknown Training (ID: ${trainingId})`;
   };
   
-  // Function to format date or show meaningful fallback
+  // UPDATED: Modified function to always display dates, including potentially invalid ones
   const formatCompletionDate = (dateString: string | undefined): string => {
+    // Only show "No date" if the date string is actually missing
     if (!dateString) return "No date";
     
     try {
+      // Always attempt to create a Date object
       const date = new Date(dateString);
-      // Check if date is valid before formatting
-      if (isNaN(date.getTime())) {
-        console.warn("Invalid date:", dateString);
-        return "Invalid date";
-      }
+      
+      // Try to format with date-fns
       return format(date, "MMM d, yyyy");
     } catch (err) {
-      console.error("Error formatting date:", err);
-      return "Date error";
+      // If format fails, log the error but still show the raw date string
+      console.warn("Error formatting date:", err, "Raw date:", dateString);
+      return dateString; // Return the original string so user can see the problematic date
     }
   };
     
@@ -199,6 +199,11 @@ export function RecentCompletions({
               .join("")
               .toUpperCase()
               .substring(0, 2);
+              
+            // Log the completion date being used (for debugging purposes)
+            if (!completion.completionDate) {
+              console.warn("Missing completion date for:", uniqueKey);
+            }
               
             return (
               <div key={uniqueKey} className="flex items-center">
