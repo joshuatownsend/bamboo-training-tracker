@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -39,7 +39,7 @@ export default function QualificationsReport() {
   } = useTrainingCompletions();
   
   // Log data for debugging
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("QualificationsReport - Data loaded:", {
       positionsCount: positions?.length || 0,
       trainingsCount: trainings?.length || 0,

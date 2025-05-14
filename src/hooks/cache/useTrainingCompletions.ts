@@ -13,7 +13,7 @@ export function useTrainingCompletions() {
       console.log("Fetching training completions from database");
       
       const { data, error } = await supabase
-        .from('employee_training_completions')
+        .from('employee_training_completions_2')
         .select('*');
       
       if (error) {
@@ -21,17 +21,17 @@ export function useTrainingCompletions() {
         return [];
       }
       
-      console.log(`Fetched ${data.length} training completions`);
+      console.log(`Fetched ${data?.length || 0} training completions`);
       
       // Map database records to our TrainingCompletion type
       return data.map((completion): TrainingCompletion => ({
-        id: completion.id,
+        id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
         employeeId: completion.employee_id.toString(),
         trainingId: completion.training_id.toString(),
-        completionDate: completion.completion_date,
+        completionDate: completion.completed,
         status: 'completed' as const,
-        notes: completion.notes,
-        instructor: completion.instructor
+        notes: completion.notes || undefined,
+        instructor: completion.instructor || undefined
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
