@@ -64,7 +64,7 @@ export const useTrainingData = (employeeId?: string) => {
         let trainingDetails: Training | null = null;
         
         // Only try to access training properties if it exists and is an object
-        if (item.training && typeof item.training === 'object') {
+        if (item.training && typeof item.training === 'object' && item.training !== null) {
           trainingDetails = {
             id: String(item.training.id || item.training_id),
             title: String(item.training.name || `Training ${item.training_id}`),

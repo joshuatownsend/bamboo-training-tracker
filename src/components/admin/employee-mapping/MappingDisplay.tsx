@@ -27,7 +27,7 @@ export const MappingDisplay = ({
   // Filter mappings based on search query
   const filteredMappings = mappings.filter(mapping => 
     mapping.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    mapping.bamboo_employee_id.toLowerCase().includes(searchQuery.toLowerCase())
+    String(mapping.bamboo_employee_id).includes(searchQuery)
   );
 
   return (
