@@ -1,36 +1,47 @@
 
-import ComplianceChart from "@/components/dashboard/ComplianceChart";
-import RecentCompletions from "@/components/dashboard/RecentCompletions";
+import { Card } from "@/components/ui/card";
+import ComplianceChart from "./ComplianceChart";
+import RecentCompletions from "./RecentCompletions";
 import { DepartmentStats, Employee, Training, TrainingCompletion } from "@/lib/types";
 
 interface DashboardChartsProps {
-  departmentStats: DepartmentStats[] | undefined;
-  completions: TrainingCompletion[] | undefined;
-  employees: Employee[] | undefined;
-  trainings: Training[] | undefined;
+  departmentStats?: DepartmentStats[];
+  completions?: TrainingCompletion[];
+  employees?: Employee[];
+  trainings?: Training[];
 }
 
-export function DashboardCharts({ 
-  departmentStats, 
-  completions, 
-  employees, 
-  trainings 
+export function DashboardCharts({
+  departmentStats = [],
+  completions = [],
+  employees = [],
+  trainings = []
 }: DashboardChartsProps) {
+  // Log data for debugging
+  console.log("DashboardCharts received:", {
+    departmentStatsCount: departmentStats?.length || 0,
+    completionsCount: completions?.length || 0,
+    employeesCount: employees?.length || 0,
+    trainingsCount: trainings?.length || 0
+  });
+
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      {departmentStats && (
-        <ComplianceChart data={departmentStats} />
-      )}
-      {completions && employees && trainings && (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Department Compliance Chart */}
+      <Card className="col-span-2">
+        <ComplianceChart departmentStats={departmentStats} />
+      </Card>
+      
+      {/* Recent Completions */}
+      <div className="lg:col-span-1">
         <RecentCompletions 
           completions={completions} 
           employees={employees} 
           trainings={trainings} 
         />
-      )}
+      </div>
     </div>
   );
 }
 
 export default DashboardCharts;
-

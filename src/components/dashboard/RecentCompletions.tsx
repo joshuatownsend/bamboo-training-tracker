@@ -39,12 +39,12 @@ export function RecentCompletions({
     );
   }
 
-  // Get most recent completions
+  // Get most recent 10 completions instead of 5
   const recentCompletions = [...completions]
     .sort((a, b) => 
       new Date(b.completionDate).getTime() - new Date(a.completionDate).getTime()
     )
-    .slice(0, 5);
+    .slice(0, 10);
     
   console.log(`Found ${recentCompletions.length} recent completions to display`);
   
@@ -74,7 +74,11 @@ export function RecentCompletions({
             const employee = employees.find(e => e.id === completion.employeeId);
             const training = trainings.find(t => t.id === completion.trainingId);
             
-            if (!employee || !training) return null;
+            // Skip if we can't find associated employee or training
+            if (!employee || !training) {
+              console.warn(`Missing employee or training data for completion: ${completion.id}`);
+              return null;
+            }
             
             const initials = employee.name
               .split(" ")
