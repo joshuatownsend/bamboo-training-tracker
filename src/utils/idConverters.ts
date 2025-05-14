@@ -48,16 +48,16 @@ export const isDefined = <T>(value: T | null | undefined): value is T => {
  * @param propertyName The property name to check
  * @returns True if the object has the property and it's not null/undefined
  */
-export function hasProperty<T, K extends string | number>(
+export function hasProperty<T extends Record<string, any>, K extends string>(
   obj: T,
   propertyName: K
-): obj is T & Record<K, unknown> {
+): obj is T & { [P in K]: unknown } {
   return obj !== null && 
          obj !== undefined && 
          typeof obj === 'object' && 
          propertyName in obj && 
-         (obj as any)[propertyName] !== null && 
-         (obj as any)[propertyName] !== undefined;
+         obj[propertyName] !== null && 
+         obj[propertyName] !== undefined;
 }
 
 /**
@@ -67,13 +67,13 @@ export function hasProperty<T, K extends string | number>(
  * @param fallback Optional fallback value if property doesn't exist
  * @returns The property value or fallback
  */
-export const safeProperty = <T extends Record<string, any>, K extends string>(
-  obj: T | null | undefined, 
+export const safeProperty = <T extends Record<string, any> | null | undefined, K extends string>(
+  obj: T, 
   prop: K, 
   fallback: any = undefined
 ): any => {
   if (obj === null || obj === undefined) {
     return fallback;
   }
-  return obj[prop] !== undefined ? obj[prop] : fallback;
+  return prop in (obj as Record<string, any>) ? (obj as Record<string, any>)[prop] : fallback;
 };

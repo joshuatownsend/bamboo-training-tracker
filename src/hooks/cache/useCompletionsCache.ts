@@ -2,7 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TrainingCompletion } from "@/lib/types";
-import { toStringId, hasProperty } from "@/utils/idConverters";
+import { CompletionJoinedRow } from "@/lib/dbTypes";
+import { mapToTrainingCompletion } from "@/lib/rowMappers";
 
 /**
  * Hook to fetch training completions with employee and training details
@@ -43,66 +44,7 @@ export function useCompletionsCache() {
         console.log("Sample joined data:", joinedData[0]);
         
         // Map to our TrainingCompletion type with the joined data
-        return joinedData.map((record): TrainingCompletion => {
-          // Default values for employee data when missing
-          const defaultEmployeeData = {
-            id: "unknown",
-            name: record.display_name || "Unknown Employee",
-            bamboo_employee_id: String(record.employee_id),
-            email: undefined
-          };
-          
-          // Process employee data with null safety
-          const employeeData = (record.employee !== null && 
-                               typeof record.employee === 'object') ? 
-            {
-              id: record.employee && hasProperty(record.employee, 'id') ? 
-                  String(record.employee.id) : "unknown",
-              name: record.employee && hasProperty(record.employee, 'name') ? 
-                  String(record.employee.name) : 
-                  (record.display_name || "Unknown Employee"),
-              bamboo_employee_id: record.employee && hasProperty(record.employee, 'bamboo_employee_id') ? 
-                  String(record.employee.bamboo_employee_id) : 
-                  String(record.employee_id),
-              email: record.employee && hasProperty(record.employee, 'email') ? 
-                  record.employee.email as string | undefined : 
-                  undefined
-            } : defaultEmployeeData;
-              
-          // Default values for training data when missing
-          const defaultTrainingData = {
-            id: String(record.training_id),
-            name: "Unknown Training",
-            category: "Unknown"
-          };
-          
-          // Process training data with null safety
-          const trainingData = (record.training !== null && 
-                               typeof record.training === 'object') ? 
-            {
-              id: record.training && hasProperty(record.training, 'id') ? 
-                  toStringId(record.training.id, "unknown") : 
-                  String(record.training_id),
-              name: record.training && hasProperty(record.training, 'name') ? 
-                  String(record.training.name) : 
-                  "Unknown Training",
-              category: record.training && hasProperty(record.training, 'category') ? 
-                  String(record.training.category) : 
-                  "Unknown"
-            } : defaultTrainingData;
-            
-          return {
-            id: `${record.employee_id}-${record.training_id}-${record.completed}`,
-            employeeId: String(record.employee_id),
-            trainingId: String(record.training_id),
-            completionDate: record.completed,
-            status: 'completed' as const,
-            instructor: record.instructor,
-            notes: record.notes,
-            employeeData,
-            trainingData
-          };
-        });
+        return (joinedData as unknown as CompletionJoinedRow[]).map(mapToTrainingCompletion);
       }
       
       // If join fails, try the traditional approach as fallback
@@ -126,8 +68,8 @@ export function useCompletionsCache() {
           trainingId: String(completion.training_id),
           completionDate: completion.completed,
           status: 'completed' as const,
-          instructor: completion.instructor,
-          notes: completion.notes,
+          instructor: completion.instructor ?? undefined,
+          notes: completion.notes ?? undefined,
           // Include the display name from the record itself
           employeeData: {
             id: "direct",

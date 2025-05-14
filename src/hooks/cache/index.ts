@@ -6,3 +6,4 @@ export * from './useCompletionsCache';
 export * from './useSyncStatus';
 export * from './useBambooSync';
 export * from './useTrainingCompletions';
+export * from '../../lib/rowMappers'; // Add row mappers

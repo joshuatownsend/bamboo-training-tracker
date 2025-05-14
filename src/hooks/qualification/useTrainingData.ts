@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { UserTraining, Training } from "@/lib/types";
-import { toStringId, hasProperty } from "@/utils/idConverters";
+import { CompletionJoinedRow } from "@/lib/dbTypes";
+import { toStringId } from "@/utils/idConverters";
+import { mapToUserTraining } from "@/lib/rowMappers";
 
 /**
  * Hook to fetch user training data from BambooHR via Supabase
@@ -59,52 +61,8 @@ export const useTrainingData = (employeeId?: string) => {
       
       console.log(`Found ${data.length} trainings for employee ID: ${employeeIdNumber}`);
       
-      // Convert to UserTraining format with null safety
-      return data.map((item): UserTraining => {
-        // Create default training values for safety
-        const defaultTraining: Training = {
-          id: String(item.training_id),
-          title: `Training ${item.training_id}`,
-          type: String(item.training_id),
-          category: 'Uncategorized',
-          description: '',
-          durationHours: 0,
-          requiredFor: []
-        };
-        
-        // Process training data with null safety
-        let trainingDetails: Training = defaultTraining;
-        
-        if (item.training !== null && typeof item.training === 'object') {
-          trainingDetails = {
-            id: toStringId(item.training_id),
-            title: item.training && hasProperty(item.training, 'name') ? 
-              String(item.training.name) : 
-              `Training ${item.training_id}`,
-            type: toStringId(item.training_id),
-            category: item.training && hasProperty(item.training, 'category') ? 
-              String(item.training.category) : 
-              'Uncategorized',
-            description: item.training && hasProperty(item.training, 'description') ? 
-              String(item.training.description) : 
-              '',
-            durationHours: 0,
-            requiredFor: []
-          };
-        }
-        
-        return {
-          id: `${item.employee_id}-${item.training_id}-${item.completed}`,
-          employeeId: String(item.employee_id),
-          trainingId: toStringId(item.training_id),
-          completionDate: item.completed,
-          instructor: item.instructor,
-          notes: item.notes,
-          type: toStringId(item.training_id),
-          completed: item.completed,
-          trainingDetails
-        };
-      });
+      // Convert the data to the expected type and then map to UserTraining format
+      return (data as unknown as CompletionJoinedRow[]).map(mapToUserTraining);
     },
     enabled: !!targetEmployeeId,
     staleTime: 5 * 60 * 1000 // 5 minutes
