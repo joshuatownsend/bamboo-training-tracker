@@ -25,7 +25,8 @@ export default function MyQualifications() {
     hasError: !!error,
     qualificationCount: qualifications?.length || 0,
     currentUser: !!currentUser,
-    employeeId: currentUser?.employeeId
+    employeeId: currentUser?.employeeId,
+    activeTab
   });
   
   if (isLoading) {
@@ -61,7 +62,7 @@ export default function MyQualifications() {
       <QualificationsSummaryCards qualifications={safeQualifications} />
       <QualificationsTabs 
         qualifications={safeQualifications}
-        activeTab={activeTab as "county" | "avfrd"} // Cast to ensure compatibility
+        activeTab={activeTab} 
         setActiveTab={setActiveTab}
       />
     </div>

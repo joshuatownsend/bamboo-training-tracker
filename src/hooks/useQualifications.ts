@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useTrainingData } from './qualification';
 import { useUser } from '@/contexts/user';

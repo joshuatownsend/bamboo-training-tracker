@@ -7,8 +7,8 @@ import { QualificationStatus } from "@/lib/types";
 
 interface QualificationsTabsProps {
   qualifications: QualificationStatus[];
-  activeTab: "county" | "avfrd";
-  setActiveTab: (value: "county" | "avfrd") => void;
+  activeTab: "county" | "avfrd" | "both";
+  setActiveTab: (value: "county" | "avfrd" | "both") => void;
 }
 
 export function QualificationsTabs({ 
@@ -27,14 +27,15 @@ export function QualificationsTabs({
   // Handle tab change with correct typing
   const handleTabChange = (value: string) => {
     // Cast to the correct type since we're constraining to valid values
-    setActiveTab(value as "county" | "avfrd");
+    setActiveTab(value as "county" | "avfrd" | "both");
   };
 
   console.log("Rendering QualificationsTabs with:", {
     activeTab,
     qualificationCount: safeQualifications.length,
     qualifiedCountyCount: qualifiedCounty.length,
-    qualifiedAVFRDCount: qualifiedAVFRD.length
+    qualifiedAVFRDCount: qualifiedAVFRD.length,
+    qualifiedBothCount: qualifiedBoth.length
   });
 
   return (
@@ -43,9 +44,10 @@ export function QualificationsTabs({
       value={activeTab} 
       onValueChange={handleTabChange}
     >
-      <TabsList className="grid w-full grid-cols-2 mb-6">
+      <TabsList className="grid w-full grid-cols-3 mb-6">
         <TabsTrigger value="county">Loudoun County</TabsTrigger>
         <TabsTrigger value="avfrd">AVFRD</TabsTrigger>
+        <TabsTrigger value="both">Both</TabsTrigger>
       </TabsList>
       
       <TabsContent value="county">
@@ -63,6 +65,12 @@ export function QualificationsTabs({
           type="avfrd"
           title="AVFRD Qualifications"
           description="Positions you are qualified for under AVFRD requirements"
+        />
+      </TabsContent>
+
+      <TabsContent value="both">
+        <QualificationsBothTabContent
+          qualifications={safeQualifications}
         />
       </TabsContent>
     </Tabs>
