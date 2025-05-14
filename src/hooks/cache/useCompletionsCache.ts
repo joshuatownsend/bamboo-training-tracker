@@ -5,7 +5,7 @@ import { TrainingCompletion } from "@/lib/types";
 
 /**
  * Hook to fetch training completions from the employee_training_completions_2 table
- * Updated to ensure we retrieve all training completions without limit
+ * Updated to ensure we retrieve ALL training completions without pagination limits
  */
 export function useCompletionsCache() {
   return useQuery({
@@ -27,10 +27,11 @@ export function useCompletionsCache() {
         console.warn("Error getting count:", countError);
       }
       
-      // Now fetch all the data (no limit)
+      // Now fetch all the data with a very high limit (no default limit which was causing the 1000 record issue)
       const { data: newData, error: newError } = await supabase
         .from('employee_training_completions_2')
-        .select('*');
+        .select('*')
+        .limit(100000); // Set a very high limit to ensure we get all records
       
       if (newData && newData.length > 0) {
         console.log(`Fetched ${newData.length} training completions from employee_training_completions_2 table`);
@@ -54,7 +55,8 @@ export function useCompletionsCache() {
       // Try the legacy employee_training_completions table as fallback
       const { data: legacyData, error: legacyError } = await supabase
         .from('employee_training_completions')
-        .select('*');
+        .select('*')
+        .limit(100000); // Also apply the high limit here
       
       if (legacyData && legacyData.length > 0) {
         console.log(`Fetched ${legacyData.length} training completions from legacy employee_training_completions table`);
