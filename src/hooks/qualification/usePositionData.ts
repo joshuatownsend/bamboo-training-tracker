@@ -1,63 +1,43 @@
 
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Position } from "@/lib/types";
+import { useUser } from "@/contexts/user";
+import { toast } from "@/components/ui/use-toast";
 
+/**
+ * Hook to fetch position data for qualifications
+ * @returns Position data query result
+ */
 export function usePositionData() {
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
-
-  const fetchPositions = async () => {
-    setIsLoading(true);
-    setError("");
-    
-    try {
-      const { data, error } = await supabase
-        .from('positions')
-        .select('*')
-        .order('title', { ascending: true });
-      
-      if (error) {
-        throw new Error(`Error fetching positions: ${error.message}`);
+  const { currentUser } = useUser();
+  
+  return useQuery({
+    queryKey: ['position_data', currentUser?.id],
+    queryFn: async () => {
+      try {
+        console.info("Fetching position data for qualifications...");
+        
+        const { data, error } = await supabase
+          .from('positions')
+          .select('*');
+          
+        if (error) {
+          console.error("Error fetching position data:", error);
+          throw error;
+        }
+        
+        console.info(`Fetched position data: ${data.length} positions`);
+        return data || [];
+      } catch (error) {
+        console.error("Exception in usePositionData:", error);
+        toast({
+          title: "Error loading position data",
+          description: error instanceof Error ? error.message : "An unknown error occurred",
+          variant: "destructive"
+        });
+        return [];
       }
-      
-      // Map to Position type
-      const mappedPositions: Position[] = data.map(pos => ({
-        id: pos.id,
-        title: pos.title,
-        description: pos.description || "",
-        department: pos.department || "Operations",
-        countyRequirements: pos.county_requirements || [],
-        avfrdRequirements: pos.avfrd_requirements || [],
-        created_at: pos.created_at,
-        updated_at: pos.updated_at
-      }));
-      
-      setPositions(mappedPositions);
-    } catch (err) {
-      console.error("Error in fetchPositions:", err);
-      setError(err instanceof Error ? err.message : "Unknown error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPositions();
-  }, []);
-
-  const refetchPositions = async () => {
-    await fetchPositions();
-  };
-
-  // For backward compatibility, alias isLoading as isLoadingPositions and error as positionsError
-  return { 
-    positions, 
-    isLoading, 
-    isLoadingPositions: isLoading,
-    error, 
-    positionsError: error,
-    refetchPositions 
-  };
+    },
+    enabled: !!currentUser,
+  });
 }

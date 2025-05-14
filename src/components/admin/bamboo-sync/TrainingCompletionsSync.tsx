@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,7 +14,7 @@ import { SyncStatus, SyncStatusDetails } from "@/types/bamboo";
 import { DiagnosticTools } from "./DiagnosticTools";
 
 // Version of this component - helps track which version is deployed
-const COMPONENT_VERSION = "2.0.0";
+const COMPONENT_VERSION = "2.1.0";
 
 export const TrainingCompletionsSync: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -81,6 +80,7 @@ export const TrainingCompletionsSync: React.FC = () => {
             
             // Refresh related data
             queryClient.invalidateQueries({ queryKey: ['training_completions'] });
+            queryClient.invalidateQueries({ queryKey: ['training_data'] });
           } else if (syncStatus?.status === 'partial_success') {
             toast({
               title: "Sync Completed with Warnings",
@@ -91,6 +91,7 @@ export const TrainingCompletionsSync: React.FC = () => {
             
             // Still refresh the data we did get
             queryClient.invalidateQueries({ queryKey: ['training_completions'] });
+            queryClient.invalidateQueries({ queryKey: ['training_data'] });
           } else if (syncStatus?.status === 'error') {
             toast({
               title: "Sync Failed",
@@ -120,6 +121,7 @@ export const TrainingCompletionsSync: React.FC = () => {
       // Check edge function version first
       await checkEdgeFunctionVersion();
       
+      // Call the database function to trigger the sync
       const { data, error } = await supabase.rpc('trigger_training_completions_sync');
       
       if (error) {
