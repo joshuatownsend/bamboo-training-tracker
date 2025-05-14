@@ -79,15 +79,16 @@ export function RecentCompletions({
             if (!employeeName || !trainingTitle) {
               // Try to find the employee and training from the arrays using string IDs
               const employee = employees.find(e => e.id === completion.employeeId ||
-                                                  e.bambooEmployee_id === completion.employeeId);
+                                                  e.bamboo_employee_id === completion.employeeId);
               const training = trainings.find(t => t.id === completion.trainingId);
               
               // If still not found, try numeric comparison as fallback
               if (!employee) {
                 const numEmployeeId = parseInt(completion.employeeId);
                 const employeeWithNumericId = employees.find(e => 
-                  e.bambooEmployeeId === numEmployeeId.toString() || 
-                  e.id === numEmployeeId.toString()
+                  e.bamboo_employee_id === numEmployeeId.toString() || 
+                  e.id === numEmployeeId.toString() ||
+                  e.bambooEmployeeId === numEmployeeId.toString()
                 );
                 if (employeeWithNumericId) {
                   employeeName = employeeWithNumericId.name;

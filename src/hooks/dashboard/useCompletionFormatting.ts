@@ -15,12 +15,12 @@ interface DbTrainingCompletion {
     name: string;
     bamboo_employee_id: string;
     email?: string;
-  };
+  } | null;
   training?: {
     id: string;
     name: string;
     category?: string;
-  };
+  } | null;
   [key: string]: any; // For other potential fields
 }
 
@@ -49,6 +49,19 @@ export function useCompletionFormatting(completions: any[] | undefined) {
       // Use the completion date from either field, defaulting to the most likely field first
       const completionDate = dbCompletion.completed || dbCompletion.completion_date || '';
       
+      // Make sure employee and training data are properly handled
+      const safeEmployeeData = dbCompletion.employee || {
+        id: "unknown",
+        name: "Unknown Employee",
+        bamboo_employee_id: String(dbCompletion.employee_id)
+      };
+      
+      const safeTrainingData = dbCompletion.training || {
+        id: "unknown",
+        name: "Unknown Training",
+        category: "Unknown"
+      };
+      
       return {
         id: `${dbCompletion.employee_id}-${dbCompletion.training_id}-${completionDate}`,
         employeeId: String(dbCompletion.employee_id),
@@ -57,9 +70,9 @@ export function useCompletionFormatting(completions: any[] | undefined) {
         status: 'completed' as const,
         instructor: dbCompletion.instructor,
         notes: dbCompletion.notes,
-        // Pass through the joined data if available
-        employeeData: dbCompletion.employee,
-        trainingData: dbCompletion.training
+        // Pass through the joined data if available with safety checks
+        employeeData: safeEmployeeData,
+        trainingData: safeTrainingData
       };
     });
   }, [completions]);

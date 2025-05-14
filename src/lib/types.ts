@@ -17,6 +17,11 @@ export interface Employee {
   
   // Add the lastSync property to fix the TypeScript error
   lastSync?: string | null;
+  
+  // Add bambooEmployeeId property for proper ID matching
+  bambooEmployeeId?: string;
+  // For backward compatibility with existing code
+  bamboo_employee_id?: string;
 }
 
 export interface Training {

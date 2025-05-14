@@ -50,9 +50,17 @@ export function useCompletionsCache() {
           status: 'completed' as const,
           instructor: record.instructor,
           notes: record.notes,
-          // Include the joined data
-          employeeData: record.employee,
-          trainingData: record.training
+          // Include the joined data with proper error handling
+          employeeData: record.employee || {
+            id: "unknown",
+            name: "Unknown Employee",
+            bamboo_employee_id: record.employee_id.toString(),
+          },
+          trainingData: record.training || {
+            id: "unknown",
+            name: "Unknown Training",
+            category: "Unknown"
+          }
         }));
       }
       
