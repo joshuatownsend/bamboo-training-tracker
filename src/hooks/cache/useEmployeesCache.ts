@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Employee } from "@/lib/types";
 
 /**
- * Hook to fetch cached employees from Supabase
+ * Hook to fetch employees from the employee_mappings table
  */
 export function useEmployeesCache() {
   const { toast } = useToast();

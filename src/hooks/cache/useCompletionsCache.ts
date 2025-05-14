@@ -4,21 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { TrainingCompletion } from "@/lib/types";
 
 /**
- * Hook to fetch cached training completions from Supabase
+ * Hook to fetch training completions from the employee_training_completions_2 table
  */
 export function useCompletionsCache() {
   return useQuery({
     queryKey: ['cached', 'completions'],
     queryFn: async () => {
-      console.log("Fetching training completions from both new and cached tables");
+      console.log("Fetching training completions from employee_training_completions_2 table");
       
-      // Try fetching from the new employee_training_completions_2 table first
+      // Try fetching from the employee_training_completions_2 table 
       const { data: newData, error: newError } = await supabase
         .from('employee_training_completions_2')
         .select('*');
       
       if (newData && newData.length > 0) {
-        console.log(`Fetched ${newData.length} training completions from new table`);
+        console.log(`Fetched ${newData.length} training completions from employee_training_completions_2 table`);
         
         // Map the data to our TrainingCompletion type
         return newData.map((completion): TrainingCompletion => ({
@@ -33,7 +33,7 @@ export function useCompletionsCache() {
       }
       
       if (newError) {
-        console.warn("Error fetching from new training completions table:", newError);
+        console.warn("Error fetching from employee_training_completions_2 table:", newError);
       }
       
       // Try the legacy employee_training_completions table as fallback
@@ -42,7 +42,7 @@ export function useCompletionsCache() {
         .select('*');
       
       if (legacyData && legacyData.length > 0) {
-        console.log(`Fetched ${legacyData.length} training completions from legacy table`);
+        console.log(`Fetched ${legacyData.length} training completions from legacy employee_training_completions table`);
         
         return legacyData.map((completion): TrainingCompletion => ({
           id: completion.id,
@@ -56,32 +56,12 @@ export function useCompletionsCache() {
       }
       
       if (legacyError) {
-        console.error("Error fetching legacy training completions:", legacyError);
+        console.error("Error fetching from legacy employee_training_completions:", legacyError);
       }
       
-      // If both tables failed or had no data, try the cached_training_completions as the final fallback
-      const { data, error } = await supabase
-        .from('cached_training_completions')
-        .select('*');
-      
-      if (error) {
-        console.error("Error fetching cached training completions:", error);
-        return [];
-      }
-      
-      console.log(`Fetched ${data?.length || 0} cached training completions`);
-      
-      // Map Supabase data to our TrainingCompletion type
-      return (data || []).map((completion): TrainingCompletion => ({
-        id: completion.id || `${completion.employee_id}-${completion.type}`,
-        employeeId: completion.employee_id,
-        trainingId: completion.type, // Updated to match the new schema
-        completionDate: completion.completed, // Updated to match the new schema
-        expirationDate: completion.expiration_date,
-        status: completion.status as any,
-        instructor: completion.instructor,
-        notes: completion.notes
-      }));
+      // If both tables failed or had no data, return empty array
+      console.log("No training completions found in any table");
+      return [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

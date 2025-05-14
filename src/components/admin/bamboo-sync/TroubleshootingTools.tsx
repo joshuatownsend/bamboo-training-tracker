@@ -22,9 +22,9 @@ export const TroubleshootingTools: React.FC<TroubleshootingToolsProps> = ({
   // Check database connection
   const checkDatabaseConnection = async () => {
     try {
-      // Use the correct syntax for Supabase query with count
+      // Use the employee_mappings table instead of cached_employees
       const { data, error, count } = await supabase
-        .from('cached_employees')
+        .from('employee_mappings')
         .select('*', { count: 'exact', head: true });
       
       if (error) {

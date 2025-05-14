@@ -4,35 +4,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { Training } from "@/lib/types";
 
 /**
- * Hook to fetch cached trainings from Supabase
+ * Hook to fetch training types from the bamboo_training_types table
  */
 export function useTrainingsCache() {
   return useQuery({
     queryKey: ['cached', 'trainings'],
     queryFn: async () => {
-      console.log("Fetching cached trainings from Supabase");
+      console.log("Fetching training types from bamboo_training_types table");
       
       const { data, error } = await supabase
-        .from('cached_trainings')
+        .from('bamboo_training_types')
         .select('*')
-        .order('title');
+        .order('name');
       
       if (error) {
-        console.error("Error fetching cached trainings:", error);
+        console.error("Error fetching training types:", error);
         return [];
       }
       
-      console.log(`Fetched ${data.length} cached trainings`);
+      console.log(`Fetched ${data.length} training types`);
       
       // Map Supabase data to our Training type
       return data.map((training): Training => ({
         id: training.id,
-        title: training.title,
-        type: training.type,
-        category: training.category,
+        title: training.name,
+        type: training.id,
+        category: training.category || '',
         description: training.description || '',
-        durationHours: training.duration_hours || 0,
-        requiredFor: training.required_for || []
+        durationHours: 0, // This field may not be available in the data
+        requiredFor: [] // This field may not be available in the data
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
