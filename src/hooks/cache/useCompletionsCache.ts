@@ -56,9 +56,17 @@ export function useCompletionsCache() {
           
           if (record.employee && 
               typeof record.employee === 'object' && 
-              record.employee !== null && 
-              !('error' in record.employee)) {
-            employeeData = record.employee;
+              record.employee !== null) {
+            // Check if it's an error object from Supabase
+            if (!('error' in record.employee)) {
+              // It's safe to access employee properties now
+              employeeData = {
+                id: record.employee.id || "unknown",
+                name: record.employee.name || record.display_name || "Unknown Employee",
+                bamboo_employee_id: record.employee.bamboo_employee_id || record.employee_id.toString(),
+                email: record.employee.email
+              };
+            }
           }
               
           // Safe access for training data with null checks
@@ -70,9 +78,16 @@ export function useCompletionsCache() {
           
           if (record.training && 
               typeof record.training === 'object' && 
-              record.training !== null && 
-              !('error' in record.training)) {
-            trainingData = record.training;
+              record.training !== null) {
+            // Check if it's an error object from Supabase
+            if (!('error' in record.training)) {
+              // It's safe to access training properties now
+              trainingData = {
+                id: record.training.id || "unknown",
+                name: record.training.name || "Unknown Training",
+                category: record.training.category || "Unknown"
+              };
+            }
           }
             
           return {
@@ -117,6 +132,12 @@ export function useCompletionsCache() {
             id: "direct",
             name: completion.display_name || "Unknown Employee",
             bamboo_employee_id: completion.employee_id.toString()
+          },
+          // Add a basic training data object for consistency
+          trainingData: {
+            id: completion.training_id.toString(),
+            name: "Training " + completion.training_id,
+            category: undefined
           }
         }));
       }
