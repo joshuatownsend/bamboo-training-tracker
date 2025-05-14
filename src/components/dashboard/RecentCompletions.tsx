@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
 
 interface RecentCompletionsProps {
   completions: TrainingCompletion[];
@@ -22,6 +23,9 @@ export function RecentCompletions({
     employeesCount: employees?.length || 0,
     trainingsCount: trainings?.length || 0
   });
+
+  // Use our custom hook to get training names
+  const { trainingTypeNames, isLoadingNames } = useTrainingTypeNames(completions);
   
   if (!completions?.length) {
     console.warn("No completions data provided to RecentCompletions component");
@@ -62,6 +66,47 @@ export function RecentCompletions({
       </Card>
     );
   }
+  
+  // Function to get training name from ID
+  const getTrainingName = (completion: TrainingCompletion): string => {
+    // First check if we already have the name in the joined data
+    if (completion.trainingData?.name) {
+      return completion.trainingData.name;
+    }
+    
+    // Next, try to find the name in our trainingTypeNames map
+    const trainingId = completion.trainingId;
+    if (trainingTypeNames[trainingId]) {
+      return trainingTypeNames[trainingId];
+    }
+    
+    // If all else fails, try to find it in the trainings array
+    const training = trainings.find(t => t.id === trainingId);
+    if (training) {
+      return training.title;
+    }
+    
+    // Default fallback
+    return `Training ${trainingId}`;
+  };
+  
+  // Function to format date or show meaningful fallback
+  const formatCompletionDate = (dateString: string | undefined): string => {
+    if (!dateString) return "No date";
+    
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid before formatting
+      if (isNaN(date.getTime())) {
+        console.warn("Invalid date:", dateString);
+        return "Invalid date";
+      }
+      return format(date, "MMM d, yyyy");
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return "Date error";
+    }
+  };
     
   return (
     <Card>
@@ -73,15 +118,10 @@ export function RecentCompletions({
           {recentCompletions.map((completion) => {
             // Use the embedded data directly if available
             let employeeName = completion.employeeData?.name;
-            let trainingTitle = completion.trainingData?.name;
             
             // If still no data, use fallbacks from the completion itself
             if (!employeeName) {
               employeeName = "Unknown Employee";
-            }
-            
-            if (!trainingTitle) {
-              trainingTitle = "Unknown Training";
             }
             
             // Create unique key from all available data
@@ -101,11 +141,11 @@ export function RecentCompletions({
                 </Avatar>
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium">{employeeName}</p>
-                  <p className="text-xs text-muted-foreground">{trainingTitle}</p>
+                  <p className="text-xs text-muted-foreground">{getTrainingName(completion)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {completion.completionDate ? format(new Date(completion.completionDate), "MMM d, yyyy") : "No date"}
+                    {formatCompletionDate(completion.completionDate)}
                   </span>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 </div>
