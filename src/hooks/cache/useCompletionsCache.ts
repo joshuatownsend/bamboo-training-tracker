@@ -45,22 +45,28 @@ export function useCompletionsCache() {
         return joinedData.map((record): TrainingCompletion => {
           // Handle potential errors in joined data
           // Ensure we always have valid objects for employee and training data
-          const employeeData = record.employee && typeof record.employee === 'object' && !('error' in record.employee)
-            ? record.employee
-            : {
-                id: "unknown",
-                name: "Unknown Employee",
-                bamboo_employee_id: record.employee_id.toString(),
-                email: undefined
-              };
+          const employeeData = record.employee && 
+            typeof record.employee === 'object' && 
+            record.employee !== null && 
+            !('error' in record.employee)
+              ? record.employee
+              : {
+                  id: "unknown",
+                  name: "Unknown Employee",
+                  bamboo_employee_id: record.employee_id.toString(),
+                  email: undefined
+                };
               
-          const trainingData = record.training && typeof record.training === 'object' && !('error' in record.training)
-            ? record.training
-            : {
-                id: "unknown",
-                name: "Unknown Training",
-                category: "Unknown"
-              };
+          const trainingData = record.training && 
+            typeof record.training === 'object' && 
+            record.training !== null && 
+            !('error' in record.training)
+              ? record.training
+              : {
+                  id: "unknown",
+                  name: "Unknown Training",
+                  category: "Unknown"
+                };
             
           return {
             id: `${record.employee_id}-${record.training_id}-${record.completed}`,
