@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { UserTraining, Training } from "@/lib/types";
-import { toStringId } from "@/utils/idConverters";
+import { toStringId, hasProperty } from "@/utils/idConverters";
 
 /**
  * Hook to fetch user training data from BambooHR via Supabase
@@ -59,7 +59,7 @@ export const useTrainingData = (employeeId?: string) => {
       
       console.log(`Found ${data.length} trainings for employee ID: ${employeeIdNumber}`);
       
-      // Convert to UserTraining format
+      // Convert to UserTraining format with null safety
       return data.map((item): UserTraining => {
         // Create default training values for safety
         const defaultTraining: Training = {
@@ -72,16 +72,22 @@ export const useTrainingData = (employeeId?: string) => {
           requiredFor: []
         };
         
-        // Only try to access training properties if it exists and is an object
+        // Process training data with null safety
         let trainingDetails: Training = defaultTraining;
         
-        if (item.training && typeof item.training === 'object' && item.training !== null) {
+        if (hasProperty(item, 'training') && typeof item.training === 'object') {
           trainingDetails = {
             id: toStringId(item.training_id),
-            title: item.training.name || `Training ${item.training_id}`,
+            title: hasProperty(item.training, 'name') ? 
+              String(item.training.name) : 
+              `Training ${item.training_id}`,
             type: toStringId(item.training_id),
-            category: item.training.category || 'Uncategorized',
-            description: item.training.description || '',
+            category: hasProperty(item.training, 'category') ? 
+              String(item.training.category) : 
+              'Uncategorized',
+            description: hasProperty(item.training, 'description') ? 
+              String(item.training.description) : 
+              '',
             durationHours: 0,
             requiredFor: []
           };
