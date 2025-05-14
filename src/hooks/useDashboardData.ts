@@ -8,10 +8,11 @@ import { useTrainingData } from "@/hooks/dashboard/useTrainingData";
 import { useSyncOperations } from "@/hooks/dashboard/useSyncOperations";
 import { useCompletionFormatting } from "@/hooks/dashboard/useCompletionFormatting";
 import useBambooHR from "@/hooks/useBambooHR";
+import useDashboardStats from "@/hooks/dashboard/useDashboardStats";
 
 /**
  * Custom hook for efficiently retrieving and processing dashboard data
- * Uses cached data from Supabase instead of direct API calls to BambooHR
+ * Now uses optimized statistics for accurate counts while maintaining detailed data for displays
  */
 export function useDashboardData() {
   const { toast } = useToast();
@@ -28,8 +29,11 @@ export function useDashboardData() {
   // Get training data using our focused hook
   const { trainings, isLoading: isTrainingsLoading } = useTrainingData();
 
-  // Get training completions using our fixed cache hook
+  // Get training completions using our fixed cache hook - still needed for detailed views
   const { data: trainingCompletions, isLoading: isTrainingCompletionsLoading, refetch: refetchCompletions } = useCompletionsCache();
+
+  // Get optimized dashboard statistics with accurate counts
+  const { data: dashboardStats, isLoading: isDashboardStatsLoading, refetch: refetchStats } = useDashboardStats();
 
   // Format completions for consistent use across components
   const formattedCompletions = useCompletionFormatting(trainingCompletions);
@@ -42,30 +46,35 @@ export function useDashboardData() {
   } = useSyncOperations(async () => {
     await refetchAll();
     await refetchCompletions();
+    await refetchStats(); // Also refresh the accurate statistics
   });
 
   // Log completion data for debugging
   useMemo(() => {
     if (formattedCompletions && formattedCompletions.length > 0) {
-      console.log(`Dashboard has ${formattedCompletions.length} completion records available`);
-      console.log("Sample completion data:", formattedCompletions.slice(0, 3));
-      
-      // Add a log specifically for the count
-      if (formattedCompletions.length >= 1000) {
-        console.log(`WARNING: Large number of completions (${formattedCompletions.length}). Check if all records are being processed.`);
-      }
+      console.log(`Dashboard has ${formattedCompletions.length} completion records available for detailed display`);
     } else {
-      console.log("No completion data available for Dashboard");
+      console.log("No detailed completion data available for Dashboard");
     }
     
-    // Log raw completion data count for comparison
-    if (trainingCompletions) {
-      console.log(`Raw training completions count: ${trainingCompletions.length}`);
+    // Log the accurate count
+    if (dashboardStats) {
+      console.log(`Actual completion count from database: ${dashboardStats.completedTrainings}`);
     }
-  }, [formattedCompletions, trainingCompletions]);
+  }, [formattedCompletions, dashboardStats]);
   
-  // Calculate statistics only when data is available and not loading
+  // Calculate detailed statistics when needed, but use accurate counts from dashboardStats
   const statistics = useMemo(() => {
+    // Fast path: if we have dashboard stats already, prioritize those accurate counts
+    if (dashboardStats && !isDashboardStatsLoading) {
+      console.log("Using optimized dashboard statistics:", {
+        totalTrainings: dashboardStats.totalTrainings,
+        completedTrainings: dashboardStats.completedTrainings
+      });
+      return dashboardStats;
+    }
+    
+    // Fallback to calculated statistics if needed
     const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading;
                      
     if (isLoading) {
@@ -85,11 +94,9 @@ export function useDashboardData() {
       toast
     );
     
-    console.log("Calculated dashboard statistics:", {
+    console.log("Calculated dashboard statistics (legacy method):", {
       totalTrainings: stats?.totalTrainings,
       completedTrainings: stats?.completedTrainings,
-      expiredTrainings: stats?.expiredTrainings,
-      completionRate: stats?.completionRate?.toFixed(2) + '%',
       completionsUsed: formattedCompletions?.length
     });
     
@@ -98,9 +105,11 @@ export function useDashboardData() {
     employees, 
     trainings, 
     formattedCompletions,
+    dashboardStats,
     isEmployeesLoading, 
     isTrainingsLoading, 
     isTrainingCompletionsLoading,
+    isDashboardStatsLoading,
     toast
   ]);
 
@@ -109,7 +118,7 @@ export function useDashboardData() {
 
   // Single loading state derived from all data sources
   const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
-                   !statistics;
+                   isDashboardStatsLoading || !statistics;
 
   return {
     // Data

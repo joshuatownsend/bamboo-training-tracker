@@ -5,18 +5,41 @@ import { TrainingCompletion } from "@/lib/types";
 import { CompletionJoinedRow } from "@/lib/dbTypes";
 import { mapToTrainingCompletion } from "@/lib/rowMappers";
 
+interface UseCompletionsCacheOptions {
+  limit?: number;
+  countOnly?: boolean;
+}
+
 /**
  * Hook to fetch training completions with employee and training details
  * Returns a joined dataset to avoid frontend matching issues
  */
-export function useCompletionsCache() {
+export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
+  const { limit = 100, countOnly = false } = options;
+
   return useQuery({
-    queryKey: ['cached', 'completions'],
+    queryKey: ['cached', 'completions', { limit, countOnly }],
     queryFn: async () => {
-      console.log("Fetching training completions with joined employee and training data");
+      // If we only need the count, use an optimized query
+      if (countOnly) {
+        console.log("Fetching training completions count only");
+        const { count, error } = await supabase
+          .from('employee_training_completions_2')
+          .select('*', { count: 'exact', head: true });
+          
+        if (error) {
+          console.error("Error fetching completion count:", error);
+          return [];
+        }
+        
+        console.log(`Found ${count} total completions`);
+        return count || 0;
+      }
+      
+      console.log(`Fetching training completions with joined data (limit: ${limit})`);
       
       // Fetch data with a join to ensure we have all related information
-      const { data: joinedData, error: joinError } = await supabase
+      const query = supabase
         .from('employee_training_completions_2')
         .select(`
           *,
@@ -32,8 +55,14 @@ export function useCompletionsCache() {
             category
           )
         `)
-        .order('completed', { ascending: false })
-        .limit(100); // Limit to recent records
+        .order('completed', { ascending: false });
+      
+      // Apply limit if specified
+      if (limit > 0) {
+        query.limit(limit);
+      }
+      
+      const { data: joinedData, error: joinError } = await query;
       
       if (joinError) {
         console.error("Error fetching joined completion data:", joinError);
@@ -52,8 +81,11 @@ export function useCompletionsCache() {
       const { data: completionsData, error: completionsError } = await supabase
         .from('employee_training_completions_2')
         .select('*')
-        .limit(100)
         .order('completed', { ascending: false });
+      
+      if (limit > 0) {
+        query.limit(limit);
+      }
       
       if (completionsError) {
         console.error("Error fetching training completions:", completionsError);
@@ -91,3 +123,6 @@ export function useCompletionsCache() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
+// Export hook with the dashboard stats hook to ensure it's available
+export { default as useDashboardStats } from '@/hooks/dashboard/useDashboardStats';

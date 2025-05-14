@@ -34,6 +34,7 @@ export function DashboardStats({ employeeCount, stats }: DashboardStatsProps) {
         title="Completed Trainings"
         value={completedTrainings}
         icon={<CheckCircle2 className="h-5 w-5" />}
+        description="Total completions across all employees"
       />
       <StatCard
         title="Expired Trainings"
