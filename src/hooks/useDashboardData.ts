@@ -1,13 +1,12 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { calculateStatisticsAsync } from "@/utils/StatisticsWorker";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
-import useTrainingCompletions from "@/hooks/cache/useTrainingCompletions";
 import { supabase } from "@/integrations/supabase/client";
 import type { TrainingStatistics, Training, TrainingCompletion } from "@/lib/types";
 import useBambooHR from "@/hooks/useBambooHR";
+import { useCompletionsCache } from "@/hooks/cache";
 
 /**
  * Custom hook for efficiently retrieving and processing dashboard data
@@ -28,8 +27,8 @@ export function useDashboardData() {
     syncStatus: bambooSyncStatus
   } = useEmployeeCache();
 
-  // Get training completions from the new database table
-  const { data: trainingCompletions, isLoading: isTrainingCompletionsLoading, refetch: refetchCompletions } = useTrainingCompletions();
+  // Get training completions using our fixed cache hook
+  const { data: trainingCompletions, isLoading: isTrainingCompletionsLoading, refetch: refetchCompletions } = useCompletionsCache();
 
   // Get sync status for training completions
   const { data: trainingSyncStatus, isLoading: isTrainingSyncStatusLoading, refetch: refetchSyncStatus } = useQuery({
@@ -80,65 +79,6 @@ export function useDashboardData() {
     },
   });
 
-  // Fetch completions directly from BambooHR if cache is empty
-  const { data: directCompletions, isLoading: isDirectCompletionsLoading } = useQuery({
-    queryKey: ['bamboohr', 'direct_completions'],
-    queryFn: async () => {
-      // Only execute if cached completions are empty and BambooHR client is configured
-      if ((trainingCompletions && trainingCompletions.length > 0) || !bambooClient.isConfigured) {
-        return null;
-      }
-      
-      console.log("Cache empty. Fetching training completions directly from BambooHR");
-      try {
-        // Get a small sample of employees for direct completion fetching
-        const bambooCachedEmployees = employees?.slice(0, 50) || [];
-        
-        if (bambooCachedEmployees.length === 0) {
-          console.log("No employees available to fetch completions for");
-          return [];
-        }
-        
-        console.log(`Fetching completions for ${bambooCachedEmployees.length} sample employees`);
-        
-        // Fetch completions for each employee
-        const directCompletionPromises = bambooCachedEmployees.map(async (employee) => {
-          try {
-            const employeeCompletions = await bambooClient.fetchUserTrainings(employee.id);
-            return employeeCompletions.map(completion => ({
-              id: `${employee.id}-${completion.trainingId || completion.type}`,
-              employeeId: employee.id,
-              trainingId: completion.trainingId || completion.type || '',
-              completionDate: completion.completionDate || completion.completed || '',
-              status: 'completed' as const,
-            }));
-          } catch (error) {
-            console.error(`Error fetching completions for employee ${employee.id}:`, error);
-            return [];
-          }
-        });
-        
-        // Wait for all completions to be fetched
-        const completionResults = await Promise.all(directCompletionPromises);
-        const allDirectCompletions = completionResults.flat();
-        
-        console.log(`Fetched ${allDirectCompletions.length} completions directly from BambooHR API`);
-        
-        // Provide sample data if we have any
-        if (allDirectCompletions.length > 0) {
-          console.log("Sample direct completion:", allDirectCompletions[0]);
-        }
-        
-        return allDirectCompletions as TrainingCompletion[];
-      } catch (error) {
-        console.error("Error fetching direct completions:", error);
-        return [];
-      }
-    },
-    // Only execute this query if the cached completions are empty
-    enabled: (!trainingCompletions || trainingCompletions.length === 0) && bambooClient.isConfigured,
-  });
-
   // Combine trainings from cache and training types
   const combinedTrainings = useMemo(() => {
     // If we have trainings from the cache, use those
@@ -158,37 +98,46 @@ export function useDashboardData() {
     return [];
   }, [trainings, trainingTypes]);
 
-  // Combine completions from database and direct BambooHR fetch
-  const combinedCompletions = useMemo(() => {
-    if (trainingCompletions && trainingCompletions.length > 0) {
-      console.log(`Using ${trainingCompletions.length} completions from database`);
-      return trainingCompletions;
+  // Prepare the completions data in the format our components expect
+  const formattedCompletions = useMemo(() => {
+    if (!trainingCompletions || trainingCompletions.length === 0) {
+      console.log("No training completions available for dashboard");
+      return [];
     }
     
-    if (directCompletions && directCompletions.length > 0) {
-      console.log(`Using ${directCompletions.length} directly fetched completions`);
-      return directCompletions;
-    }
+    console.log(`Formatting ${trainingCompletions.length} completions for dashboard use`);
     
-    console.log("No completion data available from any source");
-    return [];
-  }, [trainingCompletions, directCompletions]);
+    // Format the completions to match our TrainingCompletion type
+    return trainingCompletions.map(completion => {
+      // Make sure we're handling both v1 and v2 table formats
+      // employee_training_completions_2 has snake_case fields
+      return {
+        id: `${completion.employee_id}-${completion.training_id}-${completion.completed || completion.completion_date}`,
+        employeeId: completion.employee_id.toString(),
+        trainingId: completion.training_id.toString(),
+        completionDate: completion.completed || completion.completion_date,
+        status: 'completed' as const,
+        instructor: completion.instructor,
+        notes: completion.notes
+      } as TrainingCompletion;
+    });
+  }, [trainingCompletions]);
 
   // Log completion data for debugging
   useMemo(() => {
-    if (combinedCompletions && combinedCompletions.length > 0) {
-      console.log(`Dashboard has ${combinedCompletions.length} completion records available`);
-      console.log("Sample completion data:", combinedCompletions.slice(0, 3));
+    if (formattedCompletions && formattedCompletions.length > 0) {
+      console.log(`Dashboard has ${formattedCompletions.length} completion records available`);
+      console.log("Sample completion data:", formattedCompletions.slice(0, 3));
     } else {
       console.log("No completion data available for Dashboard");
     }
-  }, [combinedCompletions]);
+  }, [formattedCompletions]);
   
   // Calculate statistics only when data is available and not loading
   // Use memoization to avoid recalculating unnecessarily
   const statistics = useMemo(() => {
     const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
-                     isTrainingTypesLoading || isDirectCompletionsLoading;
+                     isTrainingTypesLoading;
                      
     if (isLoading) {
       console.log("Still loading data, deferring statistics calculation");
@@ -197,7 +146,7 @@ export function useDashboardData() {
 
     const effectiveEmployees = employees?.length ? employees : [];
     const effectiveTrainings = combinedTrainings?.length ? combinedTrainings : [];
-    const effectiveCompletions = combinedCompletions?.length ? combinedCompletions : [];
+    const effectiveCompletions = formattedCompletions?.length ? formattedCompletions : [];
     
     if ((!effectiveEmployees.length || !effectiveTrainings.length) && !trainingTypes?.length) {
       console.log("Missing required data for statistics calculation:", {
@@ -234,13 +183,12 @@ export function useDashboardData() {
   }, [
     employees, 
     combinedTrainings, 
-    combinedCompletions, 
+    formattedCompletions, 
     trainingTypes,
     isEmployeesLoading, 
     isTrainingsLoading, 
     isTrainingCompletionsLoading, 
-    isTrainingTypesLoading, 
-    isDirectCompletionsLoading,
+    isTrainingTypesLoading,
     toast
   ]);
 
@@ -249,7 +197,7 @@ export function useDashboardData() {
 
   // Single loading state derived from all data sources
   const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
-                   isTrainingTypesLoading || isDirectCompletionsLoading || !statistics;
+                   isTrainingTypesLoading || !statistics;
 
   // Function to manually trigger a full data refresh
   const refreshDashboard = async () => {
@@ -262,7 +210,6 @@ export function useDashboardData() {
       // Invalidate any prefetch query to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'prefetch'] });
       queryClient.invalidateQueries({ queryKey: ['bamboo_training_types'] });
-      queryClient.invalidateQueries({ queryKey: ['bamboohr', 'direct_completions'] });
       
       toast({
         title: "Refresh initiated",
@@ -321,7 +268,7 @@ export function useDashboardData() {
     // Data
     employees,
     trainings: combinedTrainings,
-    completions: combinedCompletions,
+    completions: formattedCompletions,
     statistics,
     syncStatus,
     
