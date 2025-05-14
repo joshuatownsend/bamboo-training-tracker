@@ -60,13 +60,19 @@ export function useCompletionsCache() {
               record.employee !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.employee)) {
-              // Now it's safe to access the properties
-              const employee = record.employee; // Create a local variable that TypeScript knows is non-null
+              // Create a type-safe copy of the employee data with null checks on each property
+              const employeeObj = record.employee;
+              const id = employeeObj && 'id' in employeeObj ? employeeObj.id : null;
+              const name = employeeObj && 'name' in employeeObj ? employeeObj.name : null;
+              const bamboo_employee_id = employeeObj && 'bamboo_employee_id' in employeeObj ? employeeObj.bamboo_employee_id : null;
+              const email = employeeObj && 'email' in employeeObj ? employeeObj.email : undefined;
+              
+              // Now use the safely extracted properties
               employeeData = {
-                id: employee.id || "unknown",
-                name: employee.name || record.display_name || "Unknown Employee",
-                bamboo_employee_id: employee.bamboo_employee_id || record.employee_id.toString(),
-                email: employee.email
+                id: id || "unknown",
+                name: name || record.display_name || "Unknown Employee",
+                bamboo_employee_id: bamboo_employee_id || record.employee_id.toString(),
+                email: email
               };
             }
           }
@@ -84,12 +90,17 @@ export function useCompletionsCache() {
               record.training !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.training)) {
-              // Now it's safe to access the properties
-              const training = record.training; // Create a local variable that TypeScript knows is non-null
+              // Create a type-safe copy of the training data with null checks on each property
+              const trainingObj = record.training;
+              const id = trainingObj && 'id' in trainingObj ? trainingObj.id : null;
+              const name = trainingObj && 'name' in trainingObj ? trainingObj.name : null;
+              const category = trainingObj && 'category' in trainingObj ? trainingObj.category : null;
+              
+              // Now use the safely extracted properties
               trainingData = {
-                id: training.id || "unknown",
-                name: training.name || "Unknown Training",
-                category: training.category || "Unknown"
+                id: id || "unknown",
+                name: name || "Unknown Training",
+                category: category || "Unknown"
               };
             }
           }
