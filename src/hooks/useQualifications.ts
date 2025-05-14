@@ -4,6 +4,7 @@ import { useUser } from '@/contexts/user';
 import { Training, UserTraining, QualificationStatus } from '@/lib/types';
 import { useQualificationTabs } from './qualification';
 import { usePositionData } from './qualification/usePositionData';
+import { useTrainingTypes } from './useTrainingTypes';
 
 // Update UserQualification interface to match QualificationStatus properties
 export interface UserQualification extends QualificationStatus {
@@ -19,6 +20,7 @@ export const useQualifications = () => {
   const { currentUser } = useUser();
   const { trainings, isLoading: isLoadingTrainings, error: trainingError } = useTrainingData(currentUser?.employeeId);
   const { positions, isLoading: isLoadingPositions, error: positionsError } = usePositionData();
+  const { data: trainingTypesMap, isLoading: isLoadingTypes } = useTrainingTypes();
   const [qualifications, setQualifications] = useState<QualificationStatus[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -29,18 +31,17 @@ export const useQualifications = () => {
     console.log("useQualifications effect running", { 
       isLoadingTrainings, 
       isLoadingPositions,
+      isLoadingTypes,
       trainingCount: trainings?.length || 0,
       positionCount: positions?.length || 0,
       hasError: !!trainingError || !!positionsError 
     });
     
-    // Only proceed if we're not loading anymore and have no errors
-    if (isLoadingTrainings || isLoadingPositions) {
+    if (isLoadingTrainings || isLoadingPositions || isLoadingTypes) {
       setIsLoading(true);
       return;
     }
     
-    // Set error state if we have any errors
     if (trainingError || positionsError) {
       console.error("Error in useQualifications:", trainingError || positionsError);
       setError(trainingError || positionsError || new Error("Failed to load qualification data"));
@@ -49,26 +50,31 @@ export const useQualifications = () => {
     }
     
     try {
-      // Ensure we have both trainings and positions to work with
-      if (!trainings || !positions || positions.length === 0) {
-        console.log("No trainings or positions data yet", { trainings, positions });
+      if (!trainings || !positions || positions.length === 0 || !trainingTypesMap) {
+        console.log("Missing required data", { trainings, positions, trainingTypesMap });
         setQualifications([]);
         setIsLoading(false);
         return;
       }
 
-      console.log("Processing qualifications with", {
-        trainingCount: trainings.length,
-        positionCount: positions.length
-      });
-      
       // Map user's completed training IDs for easy lookup
       const userCompletedTrainingIds = trainings.map(t => t.trainingId);
       
-      // Map positions to qualifications by evaluating requirements
+      // Map positions to qualifications
       const mappedQualifications = positions.map((position): QualificationStatus => {
-        // For MVP, simplistic check of array requirement format
-        // Will be enhanced later with proper requirement group evaluation
+        const getTrainingDetails = (id: string): Training => {
+          return trainingTypesMap.get(id) || {
+            id,
+            title: `Unknown Training ${id}`,
+            type: id,
+            category: 'Unknown',
+            description: '',
+            durationHours: 0,
+            requiredFor: []
+          };
+        };
+        
+        // Handle county requirements
         const countyRequirements = Array.isArray(position.countyRequirements) 
           ? position.countyRequirements 
           : [];
@@ -77,7 +83,6 @@ export const useQualifications = () => {
           ? position.avfrdRequirements
           : [];
           
-        // Check if user meets requirements (simple version)
         const isQualifiedCounty = countyRequirements.length > 0 
           ? countyRequirements.every(reqId => userCompletedTrainingIds.includes(reqId))
           : false;
@@ -86,32 +91,17 @@ export const useQualifications = () => {
           ? avfrdRequirements.every(reqId => userCompletedTrainingIds.includes(reqId))
           : false;
           
-        // Get missing trainings (simple version) and convert to Training type
         const missingCountyTrainings = countyRequirements
           .filter(reqId => !userCompletedTrainingIds.includes(reqId))
-          .map(id => ({ 
-            id,
-            title: `Training ${id}`,
-            category: "Unknown",
-            type: "training", // Add required field
-            description: "", // Add required field
-            durationHours: 0, // Add required field
-            requiredFor: [] // Add required field
-          }));
+          .map(getTrainingDetails);
           
         const missingAVFRDTrainings = avfrdRequirements
           .filter(reqId => !userCompletedTrainingIds.includes(reqId))
-          .map(id => ({ 
-            id, 
-            title: `Training ${id}`,
-            category: "Unknown",
-            type: "training", // Add required field
-            description: "", // Add required field
-            durationHours: 0, // Add required field
-            requiredFor: [] // Add required field
-          }));
+          .map(getTrainingDetails);
           
-        // Return qualification status for position with properly typed Training objects
+        const completedTrainings = userCompletedTrainingIds
+          .map(getTrainingDetails);
+          
         return {
           positionId: position.id,
           positionTitle: position.title,
@@ -119,19 +109,11 @@ export const useQualifications = () => {
           isQualifiedAVFRD,
           missingCountyTrainings,
           missingAVFRDTrainings,
-          completedTrainings: trainings.map(t => ({
-            id: t.trainingId,
-            title: t.trainingDetails?.title || `Training ${t.trainingId}`,
-            category: t.trainingDetails?.category || "Unknown",
-            type: "training", // Add required field 
-            description: t.trainingDetails?.description || "", // Add required field
-            durationHours: t.trainingDetails?.durationHours || 0, // Add required field
-            requiredFor: t.trainingDetails?.requiredFor || [] // Add required field
-          }))
+          completedTrainings
         };
       });
       
-      console.log("Mapped qualifications:", mappedQualifications);
+      console.log("Mapped qualifications with training details:", mappedQualifications);
       setQualifications(mappedQualifications);
       setIsLoading(false);
     } catch (err) {
@@ -139,7 +121,7 @@ export const useQualifications = () => {
       setError(err instanceof Error ? err : new Error('Unknown error occurred'));
       setIsLoading(false);
     }
-  }, [trainings, positions, isLoadingTrainings, isLoadingPositions, trainingError, positionsError, currentUser?.employeeId]);
+  }, [trainings, positions, isLoadingTrainings, isLoadingPositions, trainingError, positionsError, currentUser?.employeeId, trainingTypesMap, isLoadingTypes]);
 
   return {
     qualifications,
