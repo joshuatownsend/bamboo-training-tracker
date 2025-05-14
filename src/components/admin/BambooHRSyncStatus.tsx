@@ -100,8 +100,8 @@ export function BambooHRSyncStatus() {
     // Make sure completions is an array before mapping
     const completionsArray = Array.isArray(completions) ? completions : [];
     
-    return completionsArray.map(comp => ({
-      id: comp.id,
+    return completionsArray.map((comp: any) => ({
+      id: comp.id || `${comp.employeeId}-${comp.trainingId}`,
       employee_id: comp.employeeId,
       type: comp.trainingId, // Updated to match our new schema
       completed: comp.completionDate, // Updated to match our new schema

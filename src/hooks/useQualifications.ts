@@ -87,13 +87,17 @@ export const useQualifications = () => {
           ? avfrdRequirements.every(reqId => userCompletedTrainingIds.includes(reqId))
           : false;
           
-        // Get missing trainings (simple version)
+        // Get missing trainings (simple version) and convert to Training type
         const missingCountyTrainings = countyRequirements
           .filter(reqId => !userCompletedTrainingIds.includes(reqId))
           .map(id => ({ 
             id,
             title: `Training ${id}`,
-            category: "Unknown" 
+            category: "Unknown",
+            type: "training", // Add required field
+            description: "", // Add required field
+            durationHours: 0, // Add required field
+            requiredFor: [] // Add required field
           }));
           
         const missingAVFRDTrainings = avfrdRequirements
@@ -101,10 +105,14 @@ export const useQualifications = () => {
           .map(id => ({ 
             id, 
             title: `Training ${id}`,
-            category: "Unknown" 
+            category: "Unknown",
+            type: "training", // Add required field
+            description: "", // Add required field
+            durationHours: 0, // Add required field
+            requiredFor: [] // Add required field
           }));
           
-        // Return qualification status for position
+        // Return qualification status for position with properly typed Training objects
         return {
           positionId: position.id,
           positionTitle: position.title,
@@ -115,7 +123,11 @@ export const useQualifications = () => {
           completedTrainings: trainings.map(t => ({
             id: t.trainingId,
             title: t.trainingDetails?.title || `Training ${t.trainingId}`,
-            category: t.trainingDetails?.category || "Unknown"
+            category: t.trainingDetails?.category || "Unknown",
+            type: "training", // Add required field 
+            description: t.trainingDetails?.description || "", // Add required field
+            durationHours: t.trainingDetails?.durationHours || 0, // Add required field
+            requiredFor: t.trainingDetails?.requiredFor || [] // Add required field
           }))
         };
       });
