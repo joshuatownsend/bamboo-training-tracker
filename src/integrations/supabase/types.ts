@@ -270,6 +270,36 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_training_completions_2: {
+        Row: {
+          completed: string
+          display_name: string
+          employee_id: number
+          inserted_at: string | null
+          instructor: string | null
+          notes: string | null
+          training_id: number
+        }
+        Insert: {
+          completed: string
+          display_name: string
+          employee_id: number
+          inserted_at?: string | null
+          instructor?: string | null
+          notes?: string | null
+          training_id: number
+        }
+        Update: {
+          completed?: string
+          display_name?: string
+          employee_id?: number
+          inserted_at?: string | null
+          instructor?: string | null
+          notes?: string | null
+          training_id?: number
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           avfrd_requirements: string[]

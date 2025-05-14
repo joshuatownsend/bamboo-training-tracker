@@ -1,351 +1,266 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "@/hooks/use-toast";
-import { Database, Wrench, AlertTriangle, RefreshCw, HelpCircle } from "lucide-react";
+import { 
+  Card, 
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  AlertCircle, 
+  Database, 
+  RefreshCw, 
+  Server, 
+  Terminal 
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-
-// Define types for the API responses
-interface AuthKeysTestResponse {
-  service_role_key_exists: boolean;
-  anon_key_exists: boolean;
-  timestamp?: string;
-}
-
-interface VersionCheckResponse {
-  success: boolean;
-  function?: string;
-  version_info?: {
-    version: string;
-    timestamp?: string;
-  };
-  error?: string;
-}
+import { cn } from "@/lib/utils";
 
 export function DiagnosticTools() {
-  const [isRunningDiagnostic, setIsRunningDiagnostic] = useState(false);
-  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  
+  const { toast } = useToast();
+  const [diagnosticData, setDiagnosticData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+
   const runDiagnostics = async () => {
-    setIsRunningDiagnostic(true);
+    setIsLoading(true);
     
     try {
-      toast({
-        title: "Running diagnostics",
-        description: "Checking training completions sync status...",
-      });
-      
-      // Call the diagnostic function
       const { data, error } = await supabase.rpc('diagnostic_training_completions');
       
       if (error) {
-        console.error("Error running diagnostics:", error);
+        console.error("Diagnostic error:", error);
         toast({
-          title: "Diagnostic error",
-          description: `Failed to run diagnostics: ${error.message}`,
-          variant: "destructive",
+          title: "Diagnostic Error",
+          description: error.message,
+          variant: "destructive"
         });
         return;
       }
       
-      console.log("Diagnostic results:", data);
-      setDiagnosticResult(data);
-      setShowDiagnostics(true);
+      setDiagnosticData(data);
       
       toast({
-        title: "Diagnostics complete",
-        description: "Check the results below for more details.",
+        title: "Diagnostics Complete",
+        description: "Database diagnostic information successfully retrieved.",
       });
-    } catch (error) {
-      console.error("Exception running diagnostics:", error);
+    } catch (e) {
+      console.error("Exception in diagnostics:", e);
       toast({
-        title: "Diagnostic exception",
-        description: `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+        title: "Diagnostic Exception",
+        description: e instanceof Error ? e.message : "Unknown error occurred",
+        variant: "destructive"
       });
     } finally {
-      setIsRunningDiagnostic(false);
+      setIsLoading(false);
     }
   };
-  
-  // Helper function to check authentication keys access
-  const testAuthKeys = async () => {
-    setIsRunningDiagnostic(true);
+
+  const runEdgeDiagnostics = async () => {
+    setIsLoading(true);
     
     try {
-      toast({
-        title: "Testing authentication keys",
-        description: "Checking if function can access authentication keys...",
-      });
-      
-      // Call the test function
-      const { data, error } = await supabase.rpc('test_auth_keys_access');
-      
-      if (error) {
-        console.error("Error testing auth keys:", error);
-        toast({
-          title: "Auth test error",
-          description: `Failed to test auth keys: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      console.log("Auth keys test result:", data);
-      // Cast the data properly with type checking
-      if (data && typeof data === 'object') {
-        const authTestResult = data as unknown as AuthKeysTestResponse;
-        
-        toast({
-          title: "Auth keys test complete",
-          description: `Service role key: ${authTestResult.service_role_key_exists ? 'Available' : 'Missing'}, Anon key: ${authTestResult.anon_key_exists ? 'Available' : 'Missing'}`,
-          variant: authTestResult.service_role_key_exists && authTestResult.anon_key_exists ? "default" : "destructive",
-        });
-      } else {
-        toast({
-          title: "Auth test error",
-          description: "Unexpected response format from auth keys test",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Exception testing auth keys:", error);
-      toast({
-        title: "Auth test exception",
-        description: `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsRunningDiagnostic(false);
-    }
-  };
-  
-  // Helper function to check the edge function version
-  const checkEdgeFunctionVersion = async () => {
-    setIsRunningDiagnostic(true);
-    
-    try {
-      toast({
-        title: "Checking edge function version",
-        description: "Contacting the sync-training-completions edge function...",
-      });
-      
-      // Call the version function
-      const { data, error } = await supabase.rpc('check_edge_function_version', {
-        function_name: 'sync-training-completions'
+      const { data, error } = await supabase.functions.invoke('sync-training-completions/diagnostic', {
+        body: { check: "all" }
       });
       
       if (error) {
-        console.error("Error checking edge function version:", error);
+        console.error("Edge function diagnostic error:", error);
         toast({
-          title: "Version check error",
-          description: `Failed to check version: ${error.message}`,
-          variant: "destructive",
+          title: "Edge Function Diagnostic Error",
+          description: error.message,
+          variant: "destructive"
         });
         return;
       }
       
-      console.log("Edge function version check result:", data);
-      // Cast data properly with type safety
-      if (data && typeof data === 'object' && 'success' in data) {
-        const versionResult = data as unknown as VersionCheckResponse;
-        
-        if (versionResult.success) {
-          toast({
-            title: "Version check complete",
-            description: `Edge function found: ${versionResult.version_info?.version || 'Unknown'}`,
-            variant: "default",
-          });
-        } else {
-          toast({
-            title: "Version check failed",
-            description: versionResult.error || "Unknown error",
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Version check error",
-          description: "Unexpected response format from version check",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Exception checking edge function version:", error);
+      setDiagnosticData(prev => ({
+        ...prev,
+        edge_function: data
+      }));
+      
       toast({
-        title: "Version check exception",
-        description: `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+        title: "Edge Function Diagnostics Complete",
+        description: "Edge function diagnostic information successfully retrieved.",
+      });
+    } catch (e) {
+      console.error("Exception in edge diagnostics:", e);
+      toast({
+        title: "Edge Diagnostic Exception",
+        description: e instanceof Error ? e.message : "Unknown error occurred",
+        variant: "destructive"
       });
     } finally {
-      setIsRunningDiagnostic(false);
+      setIsLoading(false);
     }
   };
-  
+
+  const checkVersion = async () => {
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-training-completions/version');
+      
+      if (error) {
+        console.error("Version check error:", error);
+        toast({
+          title: "Version Check Error",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setDiagnosticData(prev => ({
+        ...prev,
+        version_info: data
+      }));
+      
+      toast({
+        title: "Version Check Complete",
+        description: `Edge function version: ${data?.version || 'unknown'}`,
+      });
+    } catch (e) {
+      console.error("Exception in version check:", e);
+      toast({
+        title: "Version Check Exception",
+        description: e instanceof Error ? e.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div>
-      <h4 className="text-sm font-semibold mb-2 flex items-center">
-        <Wrench className="h-4 w-4 mr-1" />
-        Diagnostic Tools
-      </h4>
+    <div className="space-y-2">
+      <CardHeader className="p-0 pb-2">
+        <CardTitle className="text-sm font-medium">Diagnostic Tools</CardTitle>
+      </CardHeader>
       
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={runDiagnostics}
-            disabled={isRunningDiagnostic}
-            className="bg-white"
-          >
-            {isRunningDiagnostic ? (
-              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-            ) : (
-              <Database className="h-3 w-3 mr-1" />
+      <div className="flex flex-wrap gap-2">
+        <Button 
+          size="sm" 
+          variant="outline"
+          className="text-xs h-8"
+          onClick={runDiagnostics}
+          disabled={isLoading}
+        >
+          {isLoading ? <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> : <Database className="h-3 w-3 mr-1" />}
+          Database Diagnostics
+        </Button>
+        
+        <Button 
+          size="sm" 
+          variant="outline"
+          className="text-xs h-8" 
+          onClick={checkVersion}
+          disabled={isLoading}
+        >
+          {isLoading ? <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> : <Terminal className="h-3 w-3 mr-1" />}
+          Check Version
+        </Button>
+        
+        <Button 
+          size="sm" 
+          variant="outline"
+          className="text-xs h-8"
+          onClick={runEdgeDiagnostics}
+          disabled={isLoading}
+        >
+          {isLoading ? <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> : <Server className="h-3 w-3 mr-1" />}
+          Edge Function Diagnostics
+        </Button>
+      </div>
+      
+      {diagnosticData && (
+        <Card className="mt-4 bg-slate-50 border-slate-200 text-xs">
+          <CardContent className="p-3 space-y-2">
+            {/* Version Info */}
+            {diagnosticData.version_info && (
+              <div>
+                <p className="font-semibold">Edge Function Version:</p>
+                <p className="text-green-600">{diagnosticData.version_info.version}</p>
+              </div>
             )}
-            Run Diagnostics
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={testAuthKeys}
-            disabled={isRunningDiagnostic}
-            className="bg-white"
-          >
-            <HelpCircle className="h-3 w-3 mr-1" />
-            Test Auth Keys
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={checkEdgeFunctionVersion}
-            disabled={isRunningDiagnostic}
-            className="bg-white"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Check Edge Function
-          </Button>
-        </div>
-        
-        {diagnosticResult && showDiagnostics && (
-          <Collapsible open={showDiagnostics} onOpenChange={setShowDiagnostics} className="mt-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full justify-between bg-white">
-                <span>Diagnostic Results</span>
-                <span>{showDiagnostics ? '▲' : '▼'}</span>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-2 border border-t-0 border-gray-200 rounded-b-md">
-              <DiagnosticResultDisplay result={diagnosticResult} />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-        
-        {!diagnosticResult && (
-          <Alert className="bg-slate-50 mt-2">
-            <AlertDescription className="text-xs">
-              Run diagnostics to check sync status, database counts, and connectivity.
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
+            
+            {/* Database Counts */}
+            {diagnosticData.employee_completions_count !== undefined && (
+              <div>
+                <p className="font-semibold">Database Records:</p>
+                <div className="ml-2">
+                  <p>Legacy Training Completions: {diagnosticData.employee_completions_count}</p>
+                  <p>New Training Completions: {diagnosticData.employee_completions_2_count}</p>
+                  <p>Cached Completions: {diagnosticData.cached_completions_count}</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Sync Status */}
+            {diagnosticData.sync_status && (
+              <div>
+                <p className="font-semibold">Sync Status:</p>
+                <div className="ml-2 space-y-1">
+                  <p>Status: <span className={cn(
+                    "font-medium",
+                    diagnosticData.sync_status.status === 'success' && "text-green-600",
+                    diagnosticData.sync_status.status === 'error' && "text-red-600",
+                    diagnosticData.sync_status.status === 'running' && "text-amber-600"
+                  )}>{diagnosticData.sync_status.status}</span></p>
+                  
+                  {diagnosticData.sync_status.last_sync && (
+                    <p>Last sync: {new Date(diagnosticData.sync_status.last_sync).toLocaleString()}</p>
+                  )}
+                  
+                  {diagnosticData.sync_status.error && (
+                    <p className="text-red-600">Error: {diagnosticData.sync_status.error}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Auth Test */}
+            {diagnosticData.auth_test && (
+              <div>
+                <p className="font-semibold">Auth Status:</p>
+                <div className="ml-2">
+                  <p>Service Role Key Available: {diagnosticData.auth_test.service_role_key_exists ? "Yes" : "No"}</p>
+                  <p>Anon Key Available: {diagnosticData.auth_test.anon_key_exists ? "Yes" : "No"}</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Detailed info toggle */}
+            <Button 
+              variant="ghost" 
+              className="text-xs h-6 px-2 w-full justify-start"
+              onClick={() => setShowDetails(!showDetails)}
+            >
+              {showDetails ? "Hide" : "Show"} raw JSON data
+            </Button>
+            
+            {/* Raw diagnostic data */}
+            {showDetails && (
+              <div className="bg-slate-100 p-2 rounded overflow-auto max-h-40">
+                <pre>{JSON.stringify(diagnosticData, null, 2)}</pre>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="p-3 pt-0 flex justify-between">
+            <p className="text-slate-500 text-[10px]">Last run: {new Date().toLocaleString()}</p>
+            
+            {(!diagnosticData.employee_completions_2_count || diagnosticData.employee_completions_2_count === 0) && (
+              <div className="flex items-center text-amber-600 text-[10px]">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                No records in new table yet
+              </div>
+            )}
+          </CardFooter>
+        </Card>
+      )}
     </div>
   );
 }
-
-// Helper component to display diagnostic results
-function DiagnosticResultDisplay({ result }: { result: any }) {
-  if (!result) {
-    return <Skeleton className="h-20 w-full" />;
-  }
-  
-  const syncStatus = result.sync_status || {};
-  const stats = result.training_completions_stats || {};
-  // Safely access auth_test with proper type checking
-  const authTest = result.auth_test && typeof result.auth_test === 'object' ? 
-    result.auth_test as unknown as AuthKeysTestResponse : 
-    { service_role_key_exists: false, anon_key_exists: false };
-  
-  return (
-    <div className="space-y-3 text-xs">
-      <div>
-        <h5 className="font-medium mb-1">Sync Status</h5>
-        <div className="grid grid-cols-2 gap-1">
-          <div className="font-medium">Status:</div>
-          <div>
-            <StatusBadge status={syncStatus.status} />
-          </div>
-          <div className="font-medium">Last Sync:</div>
-          <div>{syncStatus.last_sync ? new Date(syncStatus.last_sync).toLocaleString() : 'Never'}</div>
-          <div className="font-medium">Last Updated:</div>
-          <div>{syncStatus.updated_at ? new Date(syncStatus.updated_at).toLocaleString() : 'Unknown'}</div>
-          {syncStatus.error && (
-            <>
-              <div className="font-medium text-red-600">Error:</div>
-              <div className="text-red-600">{syncStatus.error}</div>
-            </>
-          )}
-        </div>
-      </div>
-      
-      <div>
-        <h5 className="font-medium mb-1">Database Counts</h5>
-        <div className="grid grid-cols-2 gap-1">
-          <div className="font-medium">Employee Completions:</div>
-          <div>{result.employee_completions_count}</div>
-          <div className="font-medium">Cached Completions:</div>
-          <div>{result.cached_completions_count}</div>
-          <div className="font-medium">Unique Employees:</div>
-          <div>{stats.employees_with_completions || 0}</div>
-          <div className="font-medium">Unique Trainings:</div>
-          <div>{stats.unique_trainings || 0}</div>
-          <div className="font-medium">Earliest Completion:</div>
-          <div>{stats.earliest_completion || 'None'}</div>
-          <div className="font-medium">Latest Completion:</div>
-          <div>{stats.latest_completion || 'None'}</div>
-        </div>
-      </div>
-      
-      <div>
-        <h5 className="font-medium mb-1">Authentication Keys</h5>
-        <div className="grid grid-cols-2 gap-1">
-          <div className="font-medium">Service Role Key:</div>
-          <div>{authTest.service_role_key_exists ? 'Available ✅' : 'Missing ❌'}</div>
-          <div className="font-medium">Anon Key:</div>
-          <div>{authTest.anon_key_exists ? 'Available ✅' : 'Missing ❌'}</div>
-        </div>
-      </div>
-      
-      <div className="text-gray-500 italic">
-        Diagnostic run at: {result.diagnostic_time ? new Date(result.diagnostic_time).toLocaleString() : 'Unknown'}
-      </div>
-    </div>
-  );
-}
-
-// Helper component for status badges
-function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <Badge variant="outline">Unknown</Badge>;
-  
-  switch (status.toLowerCase()) {
-    case 'success':
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Success</Badge>;
-    case 'partial_success':
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Partial Success</Badge>;
-    case 'running':
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Running</Badge>;
-    case 'error':
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Error</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-}
-
-export default DiagnosticTools;

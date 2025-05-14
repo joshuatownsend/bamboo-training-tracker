@@ -1,66 +1,77 @@
 
-import { useEffect, useMemo, useState } from "react";
-import useEmployeeCache from "@/hooks/useEmployeeCache";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Training, TrainingCompletion } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
+import { UserTraining } from "@/lib/types";
 
+/**
+ * Hook to fetch all training completions for the current user from the database
+ */
 export function useTrainingData(employeeId?: string) {
-  const { 
-    trainings, 
-    isTrainingsLoading,
-    completions,
-    isCompletionsLoading
-  } = useEmployeeCache();
-  
-  const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
+  return useQuery({
+    queryKey: ['training-data', employeeId],
+    queryFn: async () => {
+      if (!employeeId) {
+        console.log("No employee ID provided to useTrainingData");
+        return [];
+      }
 
-  // Filter completions for specific employee if employeeId is provided
-  const employeeCompletions = useMemo(() => {
-    if (!employeeId || !completions) return [];
-    
-    return completions.filter(completion => 
-      completion.employeeId === employeeId
-    );
-  }, [employeeId, completions]);
-  
-  // Get the unique training IDs from the employee's completions
-  const completedTrainingIds = useMemo(() => {
-    return new Set(employeeCompletions.map(completion => completion.trainingId));
-  }, [employeeCompletions]);
-  
-  // Find training objects that correspond to the completed trainings
-  const completedTrainings = useMemo(() => {
-    if (!trainings) return [];
-    
-    return trainings.filter(training => 
-      completedTrainingIds.has(training.id)
-    );
-  }, [trainings, completedTrainingIds]);
-  
-  // Get the training details for a specific ID
-  const getTrainingById = (trainingId: string): Training | undefined => {
-    return trainings?.find(t => t.id === trainingId);
-  };
-  
-  // Debug output
-  useEffect(() => {
-    if (employeeId && completedTrainings.length > 0) {
-      console.log(`Employee ${employeeId} has ${completedTrainings.length} completed trainings`);
-    }
-  }, [employeeId, completedTrainings]);
-  
-  return {
-    trainings,
-    isTrainingsLoading,
-    completions,
-    isCompletionsLoading,
-    employeeCompletions,
-    completedTrainings,
-    completedTrainingIds,
-    getTrainingById,
-    isLoading: isTrainingsLoading || isCompletionsLoading,
-    error
-  };
+      console.log(`Fetching training data for employee ${employeeId}`);
+      
+      // First try the new employee_training_completions_2 table
+      const { data: newData, error: newError } = await supabase
+        .from('employee_training_completions_2')
+        .select('*')
+        .eq('employee_id', employeeId);
+      
+      // If we have data in the new table, use that
+      if (newData && newData.length > 0) {
+        console.log(`Found ${newData.length} training completions in new table for employee ${employeeId}`);
+        
+        return newData.map((completion): UserTraining => ({
+          id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
+          employeeId: completion.employee_id.toString(),
+          trainingId: completion.training_id.toString(),
+          completionDate: completion.completed,
+          status: 'completed' as const,
+          notes: completion.notes,
+          instructor: completion.instructor
+        }));
+      }
+      
+      // If no data in the new table or there was an error, fall back to old table
+      if (newError) {
+        console.warn("Error fetching from new training completions table:", newError);
+      }
+      
+      // Try the legacy employee_training_completions table as fallback
+      const { data: legacyData, error: legacyError } = await supabase
+        .from('employee_training_completions')
+        .select('*')
+        .eq('employee_id', employeeId);
+      
+      if (legacyError) {
+        console.error("Error fetching training completions:", legacyError);
+        return [];
+      }
+      
+      if (legacyData && legacyData.length > 0) {
+        console.log(`Found ${legacyData.length} training completions in legacy table for employee ${employeeId}`);
+        
+        return legacyData.map((completion): UserTraining => ({
+          id: completion.id,
+          employeeId: completion.employee_id.toString(),
+          trainingId: completion.training_id.toString(),
+          completionDate: completion.completion_date,
+          status: 'completed' as const,
+          notes: completion.notes,
+          instructor: completion.instructor
+        }));
+      }
+      
+      // If we get here, no data was found in either table
+      console.log(`No training completions found for employee ${employeeId}`);
+      return [];
+    },
+    enabled: !!employeeId,
+  });
 }
