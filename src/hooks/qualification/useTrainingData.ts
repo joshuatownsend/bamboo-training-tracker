@@ -60,18 +60,32 @@ export const useTrainingData = (employeeId?: string) => {
       
       // Convert to UserTraining format
       return data.map((item): UserTraining => {
-        // Safely access training properties with null checks
-        const trainingDetails: Training | null = item.training ? {
-          id: String(item.training.id || item.training_id),
-          title: String(item.training.name || `Training ${item.training_id}`),
-          type: String(item.training_id),
-          category: item.training && typeof item.training === 'object' ? 
-                   String(item.training.category || 'Uncategorized') : 'Uncategorized',
-          description: item.training && typeof item.training === 'object' ? 
-                       String(item.training.description || '') : '',
-          durationHours: 0,
-          requiredFor: []
-        } : null;
+        // Create default training values for safety
+        let trainingDetails: Training | null = null;
+        
+        // Only try to access training properties if it exists and is an object
+        if (item.training && typeof item.training === 'object') {
+          trainingDetails = {
+            id: String(item.training.id || item.training_id),
+            title: String(item.training.name || `Training ${item.training_id}`),
+            type: String(item.training_id),
+            category: item.training.category ? String(item.training.category) : 'Uncategorized',
+            description: item.training.description ? String(item.training.description) : '',
+            durationHours: 0,
+            requiredFor: []
+          };
+        } else {
+          // Fallback if training data is missing
+          trainingDetails = {
+            id: String(item.training_id),
+            title: `Training ${item.training_id}`,
+            type: String(item.training_id),
+            category: 'Uncategorized',
+            description: '',
+            durationHours: 0,
+            requiredFor: []
+          };
+        }
         
         return {
           id: `${item.employee_id}-${item.training_id}-${item.completed}`,

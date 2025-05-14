@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface EmployeeMapping {
   id: string;
   email: string;
-  bamboo_employee_id: string;
+  bamboo_employee_id: number; // Changed from string to number to match our DB schema
   created_at?: string;
   updated_at?: string;
 }
@@ -41,7 +41,8 @@ const useEmployeeMapping = () => {
       }
 
       console.log(`Found employee ID for ${email}:`, data?.bamboo_employee_id);
-      return data?.bamboo_employee_id || null;
+      // Convert number to string for API compatibility
+      return data?.bamboo_employee_id ? String(data.bamboo_employee_id) : null;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
@@ -78,11 +79,24 @@ const useEmployeeMapping = () => {
         return false;
       }
       
+      // Convert employeeId to number for database storage
+      const numericEmployeeId = parseInt(employeeId, 10);
+      if (isNaN(numericEmployeeId)) {
+        const errorMessage = 'Employee ID must be a valid number';
+        setError(errorMessage);
+        toast({
+          title: "Validation Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
       const { error } = await supabase
         .from('employee_mappings')
         .upsert({ 
           email: email.toLowerCase(), 
-          bamboo_employee_id: employeeId,
+          bamboo_employee_id: numericEmployeeId,
           updated_at: new Date().toISOString()
         }, { 
           onConflict: 'email' 
@@ -147,11 +161,25 @@ const useEmployeeMapping = () => {
         return false;
       }
       
+      // Convert string employeeId to number for database compatibility
       const formattedMappings = mappings.map(m => ({
         email: m.email.toLowerCase(),
-        bamboo_employee_id: m.employeeId,
+        bamboo_employee_id: parseInt(m.employeeId, 10),
         updated_at: new Date().toISOString()
       }));
+      
+      // Handle any non-numeric IDs
+      const hasInvalidIds = formattedMappings.some(m => isNaN(m.bamboo_employee_id));
+      if (hasInvalidIds) {
+        const errorMessage = 'Some employee IDs are not valid numbers';
+        setError(errorMessage);
+        toast({
+          title: "Validation Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
       
       const { error } = await supabase
         .from('employee_mappings')
@@ -217,7 +245,13 @@ const useEmployeeMapping = () => {
       }
 
       console.log(`Retrieved ${data?.length || 0} employee mappings`);
-      return data || [];
+      
+      // Convert the bamboo_employee_id back to string in the returned data
+      // for compatibility with existing code
+      return (data || []).map(item => ({
+        ...item,
+        bamboo_employee_id: Number(item.bamboo_employee_id)
+      }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);

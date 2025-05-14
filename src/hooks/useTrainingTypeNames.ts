@@ -13,10 +13,15 @@ export function useTrainingTypeNames(trainings: UserTraining[]) {
       setIsLoadingNames(true);
       
       try {
-        // Extract all unique training IDs
+        // Extract all unique training IDs and convert to numbers
         const trainingIds = [...new Set(trainings.map(t => 
           t.trainingId || t.type?.toString() || ''))]
-          .filter(id => id);
+          .filter(id => id)
+          .map(id => {
+            const numId = parseInt(id, 10);
+            return isNaN(numId) ? 0 : numId;
+          })
+          .filter(id => id > 0);
 
         if (trainingIds.length === 0) {
           setIsLoadingNames(false);
@@ -36,7 +41,8 @@ export function useTrainingTypeNames(trainings: UserTraining[]) {
 
         // Create a mapping of ID to name
         const nameMap = data.reduce((acc, item) => {
-          acc[item.id] = item.name;
+          // Store the key as a string for consistent lookups
+          acc[String(item.id)] = item.name;
           return acc;
         }, {} as Record<string, string>);
 

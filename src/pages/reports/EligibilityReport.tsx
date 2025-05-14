@@ -136,7 +136,8 @@ async function fetchEmployees() {
       console.error("Error fetching employee data from BambooHR:", employeeError);
       // Fall back to basic data from mappings if BambooHR fetch fails
       return mappings.map(mapping => ({
-        id: mapping.bamboo_employee_id,
+        // Convert number to string for compatibility with Employee type
+        id: String(mapping.bamboo_employee_id),
         name: mapping.email.split('@')[0].replace('.', ' '),
         firstName: mapping.email.split('@')[0].split('.')[0] || '',
         lastName: mapping.email.split('@')[0].split('.')[1] || '',
@@ -159,10 +160,10 @@ async function fetchEmployees() {
     
     // Combine mapping data with BambooHR data
     return mappings.map(mapping => {
-      const bambooData = employeeMap.get(mapping.bamboo_employee_id);
+      const bambooData = employeeMap.get(String(mapping.bamboo_employee_id));
       
       return {
-        id: mapping.bamboo_employee_id,
+        id: String(mapping.bamboo_employee_id), // Convert number to string for compatibility
         name: bambooData ? `${bambooData.firstName} ${bambooData.lastName}` : mapping.email.split('@')[0].replace('.', ' '),
         firstName: bambooData?.firstName || mapping.email.split('@')[0].split('.')[0] || '',
         lastName: bambooData?.lastName || mapping.email.split('@')[0].split('.')[1] || '',

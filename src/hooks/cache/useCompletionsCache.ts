@@ -47,7 +47,7 @@ export function useCompletionsCache() {
           let employeeData = {
             id: "unknown",
             name: record.display_name || "Unknown Employee",
-            bamboo_employee_id: record.employee_id.toString(),
+            bamboo_employee_id: String(record.employee_id),
             email: undefined
           };
           
@@ -57,8 +57,8 @@ export function useCompletionsCache() {
             // Type safety by checking existence of properties
             employeeData = {
               id: 'id' in record.employee ? String(record.employee.id) : "unknown",
-              name: 'name' in record.employee ? String(record.employee.name) : (record.display_name || "Unknown Employee"),
-              bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : record.employee_id.toString(),
+              name: 'name' in record.employee ? String(record.employee.name || record.display_name || "Unknown Employee") : (record.display_name || "Unknown Employee"),
+              bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : String(record.employee_id),
               email: 'email' in record.employee ? String(record.employee.email) : undefined
             };
           }
@@ -77,14 +77,14 @@ export function useCompletionsCache() {
             trainingData = {
               id: 'id' in record.training ? String(record.training.id) : "unknown",
               name: 'name' in record.training ? String(record.training.name) : "Unknown Training",
-              category: 'category' in record.training ? String(record.training.category) : "Unknown"
+              category: 'category' in record.training ? String(record.training.category || "Unknown") : "Unknown"
             };
           }
             
           return {
             id: `${record.employee_id}-${record.training_id}-${record.completed}`,
-            employeeId: record.employee_id.toString(),
-            trainingId: record.training_id.toString(),
+            employeeId: String(record.employee_id),
+            trainingId: String(record.training_id),
             completionDate: record.completed,
             status: 'completed' as const,
             instructor: record.instructor,
@@ -112,8 +112,8 @@ export function useCompletionsCache() {
         
         return completionsData.map((completion): TrainingCompletion => ({
           id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
-          employeeId: completion.employee_id.toString(),
-          trainingId: completion.training_id.toString(),
+          employeeId: String(completion.employee_id),
+          trainingId: String(completion.training_id),
           completionDate: completion.completed,
           status: 'completed' as const,
           instructor: completion.instructor,
@@ -122,11 +122,11 @@ export function useCompletionsCache() {
           employeeData: {
             id: "direct",
             name: completion.display_name || "Unknown Employee",
-            bamboo_employee_id: completion.employee_id.toString()
+            bamboo_employee_id: String(completion.employee_id)
           },
           // Add a basic training data object for consistency
           trainingData: {
-            id: completion.training_id.toString(),
+            id: String(completion.training_id),
             name: "Training " + completion.training_id,
             category: undefined
           }

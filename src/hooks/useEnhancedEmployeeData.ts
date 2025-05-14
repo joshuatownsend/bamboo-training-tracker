@@ -8,7 +8,7 @@ import useBambooHR from './useBambooHR';
 export interface EmployeeMapping {
   id: string;
   email: string;
-  bamboo_employee_id: string;
+  bamboo_employee_id: number; // Changed to number to match DB schema
   name: string | null;
   display_name: string | null;
   first_name: string | null;
@@ -63,8 +63,8 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
       }
 
       // Convert from employee_mappings to Employee type
-      const mappedEmployees: Employee[] = (data || []).map((mapping: EmployeeMapping): Employee => ({
-        id: mapping.bamboo_employee_id,
+      const mappedEmployees: Employee[] = (data || []).map((mapping): Employee => ({
+        id: String(mapping.bamboo_employee_id), // Convert number to string for UI compatibility
         name: mapping.name || `${mapping.first_name || ''} ${mapping.last_name || ''}`.trim() || mapping.email || 'Unknown',
         position: mapping.position || mapping.job_title || null,
         department: mapping.department || null,
@@ -76,7 +76,9 @@ const useEnhancedEmployeeData = (): UseEnhancedEmployeeDataResult => {
         lastName: mapping.last_name || null,
         jobTitle: mapping.job_title || mapping.position || null,
         avatar: mapping.avatar || null,
-        hireDate: mapping.hire_date || null
+        hireDate: mapping.hire_date || null,
+        // Always store bambooEmployeeId as string for API compatibility
+        bambooEmployeeId: String(mapping.bamboo_employee_id)
       }));
 
       setEmployees(mappedEmployees);
