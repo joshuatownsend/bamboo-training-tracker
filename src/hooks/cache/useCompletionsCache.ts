@@ -43,9 +43,6 @@ export function useCompletionsCache() {
         
         // Map to our TrainingCompletion type with the joined data
         return joinedData.map((record): TrainingCompletion => {
-          // Handle potential errors in joined data
-          // Ensure we always have valid objects for employee and training data
-          
           // Safe access for employee data with null checks
           let employeeData = {
             id: "unknown",
@@ -60,19 +57,12 @@ export function useCompletionsCache() {
               record.employee !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.employee)) {
-              // Create a type-safe copy of the employee data with null checks on each property
-              const employeeObj = record.employee;
-              const id = employeeObj && 'id' in employeeObj ? employeeObj.id : null;
-              const name = employeeObj && 'name' in employeeObj ? employeeObj.name : null;
-              const bamboo_employee_id = employeeObj && 'bamboo_employee_id' in employeeObj ? employeeObj.bamboo_employee_id : null;
-              const email = employeeObj && 'email' in employeeObj ? employeeObj.email : undefined;
-              
-              // Now use the safely extracted properties
+              // Type safety by checking existence of properties
               employeeData = {
-                id: id || "unknown",
-                name: name || record.display_name || "Unknown Employee",
-                bamboo_employee_id: bamboo_employee_id || record.employee_id.toString(),
-                email: email
+                id: 'id' in record.employee ? String(record.employee.id) : "unknown",
+                name: 'name' in record.employee ? record.employee.name : (record.display_name || "Unknown Employee"),
+                bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : record.employee_id.toString(),
+                email: 'email' in record.employee ? record.employee.email : undefined
               };
             }
           }
@@ -90,17 +80,11 @@ export function useCompletionsCache() {
               record.training !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.training)) {
-              // Create a type-safe copy of the training data with null checks on each property
-              const trainingObj = record.training;
-              const id = trainingObj && 'id' in trainingObj ? trainingObj.id : null;
-              const name = trainingObj && 'name' in trainingObj ? trainingObj.name : null;
-              const category = trainingObj && 'category' in trainingObj ? trainingObj.category : null;
-              
-              // Now use the safely extracted properties
+              // Type safety by checking existence of properties
               trainingData = {
-                id: id || "unknown",
-                name: name || "Unknown Training",
-                category: category || "Unknown"
+                id: 'id' in record.training ? String(record.training.id) : "unknown",
+                name: 'name' in record.training ? record.training.name : "Unknown Training",
+                category: 'category' in record.training ? record.training.category : "Unknown"
               };
             }
           }

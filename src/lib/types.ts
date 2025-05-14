@@ -18,7 +18,7 @@ export interface Employee {
   // Add the lastSync property to fix the TypeScript error
   lastSync?: string | null;
   
-  // Add bambooEmployeeId property for proper ID matching
+  // Add bambooEmployeeId property for proper ID matching - keep as string
   bambooEmployeeId?: string;
   // For backward compatibility with existing code
   bamboo_employee_id?: string;
@@ -120,7 +120,7 @@ export interface User {
   email: string;
   role: 'user' | 'admin';
   employeeId: string;
-  // Add the bambooEmployeeId property to fix the TypeScript error
+  // Add the bambooEmployeeId property - keep as string
   bambooEmployeeId?: string;
 }
 

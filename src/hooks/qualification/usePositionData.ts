@@ -1,65 +1,56 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/contexts/user";
-import { toast } from "@/components/ui/use-toast";
 import { Position } from "@/lib/types";
+import { useEffect } from "react";
 
 /**
- * Hook to fetch position data for qualifications
- * @returns Position data query result with additional properties
+ * Hook to fetch position data from Supabase
  */
-export function usePositionData() {
-  const { currentUser } = useUser();
-  
-  const query = useQuery({
-    queryKey: ['position_data', currentUser?.id],
-    queryFn: async () => {
-      try {
-        console.info("Fetching position data for qualifications...");
-        
-        const { data, error } = await supabase
-          .from('positions')
-          .select('*');
-          
-        if (error) {
-          console.error("Error fetching position data:", error);
-          throw error;
-        }
-        
-        console.info(`Fetched position data: ${data.length} positions`);
-        
-        // Map the database columns to the Position interface
-        const mappedPositions = data.map(position => ({
-          id: position.id,
-          title: position.title,
-          description: position.description,
-          department: position.department,
-          countyRequirements: position.county_requirements,
-          avfrdRequirements: position.avfrd_requirements,
-          created_at: position.created_at,
-          updated_at: position.updated_at,
-        })) as Position[];
-        
-        return mappedPositions || [];
-      } catch (error) {
-        console.error("Exception in usePositionData:", error);
-        toast({
-          title: "Error loading position data",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
-          variant: "destructive"
-        });
+export const usePositionData = () => {
+  const { data: positions, isLoading, error, refetch } = useQuery({
+    queryKey: ['positions'],
+    queryFn: async (): Promise<Position[]> => {
+      const { data, error } = await supabase
+        .from('positions')
+        .select('*')
+        .order('title');
+      
+      if (error) {
+        console.error("Error fetching positions:", error);
+        throw error;
+      }
+      
+      if (!data) {
         return [];
       }
+      
+      console.log(`Fetched ${data.length} positions`);
+      
+      // Ensure requirements are properly formatted for use in our app
+      return data.map(position => ({
+        id: position.id,
+        title: position.title,
+        description: position.description || '',
+        department: position.department || '',
+        countyRequirements: position.county_requirements || [],
+        avfrdRequirements: position.avfrd_requirements || [],
+        created_at: position.created_at,
+        updated_at: position.updated_at
+      }));
     },
-    enabled: !!currentUser,
+    staleTime: 10 * 60 * 1000 // 10 minutes
   });
-
-  // Return with the expected properties that components use
-  return {
-    positions: query.data as Position[],
-    isLoadingPositions: query.isLoading,
-    positionsError: query.error,
-    ...query
-  };
-}
+  
+  // Log initial data for debugging
+  useEffect(() => {
+    if (positions) {
+      console.log(`Loaded ${positions.length} positions`);
+      if (positions.length > 0) {
+        console.log("Sample position data:", positions[0]);
+      }
+    }
+  }, [positions]);
+  
+  return { positions, isLoading, error, refetch };
+};

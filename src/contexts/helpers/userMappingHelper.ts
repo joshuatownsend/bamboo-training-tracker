@@ -33,6 +33,6 @@ export const mapAccountToUser = async (
     email: account.username,
     role: role,
     employeeId: employeeId || account.localAccountId, // Use the mapped ID if available, otherwise fall back to account ID
-    bambooEmployeeId: employeeId // Add the bambooEmployeeId property
+    bambooEmployeeId: employeeId // Always keep as string
   };
 };
