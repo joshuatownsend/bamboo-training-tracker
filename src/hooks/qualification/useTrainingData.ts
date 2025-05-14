@@ -23,6 +23,14 @@ export const useTrainingData = (employeeId?: string) => {
       
       console.log(`Fetching trainings for employee ID: ${targetEmployeeId}`);
       
+      // Convert string ID to number for database query
+      const employeeIdNumber = parseInt(targetEmployeeId, 10);
+      
+      if (isNaN(employeeIdNumber)) {
+        console.error(`Invalid employee ID: ${targetEmployeeId} is not a number`);
+        return [];
+      }
+      
       // Join training completions with training types to get full details
       const { data, error } = await supabase
         .from('employee_training_completions_2')
@@ -35,7 +43,7 @@ export const useTrainingData = (employeeId?: string) => {
             category
           )
         `)
-        .eq('employee_id', targetEmployeeId)
+        .eq('employee_id', employeeIdNumber)
         .order('completed', { ascending: false });
         
       if (error) {
@@ -44,16 +52,16 @@ export const useTrainingData = (employeeId?: string) => {
       }
       
       if (!data || data.length === 0) {
-        console.log(`No training data found for employee ID: ${targetEmployeeId}`);
+        console.log(`No training data found for employee ID: ${employeeIdNumber}`);
         return [];
       }
       
-      console.log(`Found ${data.length} trainings for employee ID: ${targetEmployeeId}`);
+      console.log(`Found ${data.length} trainings for employee ID: ${employeeIdNumber}`);
       
       // Convert to UserTraining format
       return data.map((item): UserTraining => {
-        // Safely access training properties
-        const trainingDetails: Training | null = item.training && typeof item.training === 'object' ? {
+        // Safely access training properties with null checks
+        const trainingDetails: Training | null = item.training ? {
           id: String(item.training.id || item.training_id),
           title: String(item.training.name || `Training ${item.training_id}`),
           type: String(item.training_id),

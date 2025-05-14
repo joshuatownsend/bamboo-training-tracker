@@ -53,8 +53,7 @@ export function useCompletionsCache() {
           
           // Only try to access employee properties if employee exists and is an object
           if (record.employee && 
-              typeof record.employee === 'object' && 
-              record.employee !== null) {
+              typeof record.employee === 'object') {
             // Type safety by checking existence of properties
             employeeData = {
               id: 'id' in record.employee ? String(record.employee.id) : "unknown",
@@ -73,8 +72,7 @@ export function useCompletionsCache() {
           
           // Only try to access training properties if training exists and is an object
           if (record.training && 
-              typeof record.training === 'object' && 
-              record.training !== null) {
+              typeof record.training === 'object') {
             // Type safety by checking existence of properties
             trainingData = {
               id: 'id' in record.training ? String(record.training.id) : "unknown",

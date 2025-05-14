@@ -34,7 +34,7 @@ export function useEmployeesCache() {
       
       // Map Supabase data to our Employee type
       return data.map((emp): Employee => ({
-        id: emp.bamboo_employee_id,
+        id: String(emp.bamboo_employee_id), // Convert integer to string for the UI
         name: emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.email || 'Unknown',
         displayName: emp.display_name,
         firstName: emp.first_name,
@@ -47,7 +47,9 @@ export function useEmployeesCache() {
         workEmail: emp.work_email,
         avatar: emp.avatar,
         hireDate: emp.hire_date,
-        lastSync: emp.last_sync
+        lastSync: emp.last_sync,
+        // Store the original integer value for bambooEmployeeId
+        bambooEmployeeId: String(emp.bamboo_employee_id) // Convert to string for compatibility
       }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

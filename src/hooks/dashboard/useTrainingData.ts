@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,9 +45,9 @@ export function useTrainingData() {
       
       // Map to training format for compatibility
       return data.map(type => ({
-        id: type.id,
+        id: String(type.id), // Convert integer ID to string for compatibility
         title: type.name,
-        type: type.id,
+        type: String(type.id), // Convert integer ID to string for compatibility
         category: type.category || 'General',
         description: type.description || '',
         durationHours: 0,
@@ -60,15 +61,15 @@ export function useTrainingData() {
     if (!rawTrainings || rawTrainings.length === 0) return [];
     
     // Map the raw database data to the Training type
-    return rawTrainings.map(item => ({
-      id: String(item.training_id),
+    return rawTrainings.map((item): Training => ({
+      id: String(item.training_id), // Convert integer to string for compatibility
       title: `Training ${item.training_id}`,  // Use a placeholder title
-      type: String(item.training_id),
+      type: String(item.training_id), // Convert integer to string for compatibility
       category: 'General',
       description: '',
       durationHours: 0,
       requiredFor: []
-    } as Training));
+    }));
   }, [rawTrainings]);
 
   // Combine trainings from cache and training types

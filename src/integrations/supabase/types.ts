@@ -26,7 +26,7 @@ export type Database = {
           category: string | null
           created_at: string
           description: string | null
-          id: string
+          id: number
           name: string
           updated_at: string
         }
@@ -34,7 +34,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
-          id: string
+          id: number
           name: string
           updated_at?: string
         }
@@ -42,7 +42,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           description?: string | null
-          id?: string
+          id?: number
           name?: string
           updated_at?: string
         }
@@ -51,7 +51,7 @@ export type Database = {
       employee_mappings: {
         Row: {
           avatar: string | null
-          bamboo_employee_id: string
+          bamboo_employee_id: number
           created_at: string | null
           department: string | null
           display_name: string | null
@@ -71,7 +71,7 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
-          bamboo_employee_id: string
+          bamboo_employee_id: number
           created_at?: string | null
           department?: string | null
           display_name?: string | null
@@ -91,7 +91,7 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
-          bamboo_employee_id?: string
+          bamboo_employee_id?: number
           created_at?: string | null
           department?: string | null
           display_name?: string | null

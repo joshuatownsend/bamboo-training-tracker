@@ -26,9 +26,9 @@ export function useTrainingsCache() {
       
       // Map Supabase data to our Training type
       return data.map((training): Training => ({
-        id: training.id,
+        id: String(training.id), // Convert integer to string for compatibility
         title: training.name,
-        type: training.id,
+        type: String(training.id), // Convert integer to string for compatibility 
         category: training.category || '',
         description: training.description || '',
         durationHours: 0, // This field may not be available in the data
