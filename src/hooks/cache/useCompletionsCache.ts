@@ -54,17 +54,19 @@ export function useCompletionsCache() {
             email: undefined
           };
           
+          // Only try to access employee properties if employee exists and is an object
           if (record.employee && 
               typeof record.employee === 'object' && 
               record.employee !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.employee)) {
-              // It's safe to access employee properties now
+              // Now it's safe to access the properties
+              const employee = record.employee; // Create a local variable that TypeScript knows is non-null
               employeeData = {
-                id: record.employee.id || "unknown",
-                name: record.employee.name || record.display_name || "Unknown Employee",
-                bamboo_employee_id: record.employee.bamboo_employee_id || record.employee_id.toString(),
-                email: record.employee.email
+                id: employee.id || "unknown",
+                name: employee.name || record.display_name || "Unknown Employee",
+                bamboo_employee_id: employee.bamboo_employee_id || record.employee_id.toString(),
+                email: employee.email
               };
             }
           }
@@ -76,16 +78,18 @@ export function useCompletionsCache() {
             category: "Unknown"
           };
           
+          // Only try to access training properties if training exists and is an object
           if (record.training && 
               typeof record.training === 'object' && 
               record.training !== null) {
             // Check if it's an error object from Supabase
             if (!('error' in record.training)) {
-              // It's safe to access training properties now
+              // Now it's safe to access the properties
+              const training = record.training; // Create a local variable that TypeScript knows is non-null
               trainingData = {
-                id: record.training.id || "unknown",
-                name: record.training.name || "Unknown Training",
-                category: record.training.category || "Unknown"
+                id: training.id || "unknown",
+                name: training.name || "Unknown Training",
+                category: training.category || "Unknown"
               };
             }
           }
