@@ -13,7 +13,7 @@ export function useSyncOperations(onRefresh: () => Promise<void>) {
   // Get the sync status from our cache hook
   const { 
     data: syncStatus, 
-    triggerSync: triggerManualSync,
+    triggerSync,
     isLoading: isSyncStatusLoading
   } = useSyncStatus();
 
@@ -40,7 +40,7 @@ export function useSyncOperations(onRefresh: () => Promise<void>) {
   // Function to trigger training data sync
   const triggerTrainingSync = async () => {
     try {
-      await triggerManualSync();
+      await triggerSync();
       toast({
         title: "Sync initiated",
         description: "Training data sync has started. This may take a few moments."

@@ -4,14 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { toast } from "@/components/ui/use-toast";
 import { SyncStatus } from "@/types/bamboo";
+import { useBambooSync } from "./useBambooSync";
 
 /**
  * Hook to fetch the sync status for a specific sync operation
  */
 export function useSyncStatus(syncId = 'bamboohr') {
   const { currentUser } = useUser();
+  const { triggerSync } = useBambooSync();
   
-  return useQuery({
+  const query = useQuery({
     queryKey: ['sync-status', syncId, currentUser?.id],
     queryFn: async () => {
       try {
@@ -48,4 +50,9 @@ export function useSyncStatus(syncId = 'bamboohr') {
     refetchInterval: 10000, // Refresh every 10 seconds when component is mounted
     enabled: !!currentUser, // Only run the query if user is authenticated
   });
+
+  return {
+    ...query,
+    triggerSync // Passing through the triggerSync function from useBambooSync
+  };
 }
