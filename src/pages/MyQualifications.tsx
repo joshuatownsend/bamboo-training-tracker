@@ -12,7 +12,21 @@ import { useUser } from "@/contexts/user";
 
 export default function MyQualifications() {
   const { currentUser } = useUser();
-  const { qualifications, activeTab, setActiveTab, isLoading, error } = useQualifications();
+  const { 
+    qualifications, 
+    activeTab, 
+    setActiveTab, 
+    isLoading, 
+    error 
+  } = useQualifications();
+  
+  console.log("MyQualifications rendering with:", { 
+    isLoading, 
+    hasError: !!error,
+    qualificationCount: qualifications?.length || 0,
+    currentUser: !!currentUser,
+    employeeId: currentUser?.employeeId
+  });
   
   if (isLoading) {
     return <QualificationsLoadingState />;
@@ -24,6 +38,7 @@ export default function MyQualifications() {
   }
 
   if (error) {
+    console.error("Error in MyQualifications:", error);
     return (
       <Alert variant="destructive" className="mt-4">
         <AlertCircle className="h-4 w-4" />
@@ -37,12 +52,15 @@ export default function MyQualifications() {
     );
   }
 
+  // Use a safe default for qualifications if it's undefined
+  const safeQualifications = qualifications || [];
+  
   return (
     <div className="space-y-6">
       <QualificationsHeader />
-      <QualificationsSummaryCards qualifications={qualifications} />
+      <QualificationsSummaryCards qualifications={safeQualifications} />
       <QualificationsTabs 
-        qualifications={qualifications}
+        qualifications={safeQualifications}
         activeTab={activeTab as "county" | "avfrd"} // Cast to ensure compatibility
         setActiveTab={setActiveTab}
       />

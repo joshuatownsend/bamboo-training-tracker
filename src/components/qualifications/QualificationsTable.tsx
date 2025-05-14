@@ -17,6 +17,14 @@ export function QualificationsTable({ qualifications, type }: QualificationsTabl
   const isQualifiedKey = type === 'county' ? 'isQualifiedCounty' : 'isQualifiedAVFRD';
   const missingTrainingsKey = type === 'county' ? 'missingCountyTrainings' : 'missingAVFRDTrainings';
   
+  // Ensure we have valid qualifications to work with
+  const safeQualifications = qualifications || [];
+  
+  console.log(`Rendering QualificationsTable for ${type} with:`, {
+    count: safeQualifications.length,
+    qualifications: safeQualifications
+  });
+  
   return (
     <Table>
       <TableHeader>
@@ -27,10 +35,10 @@ export function QualificationsTable({ qualifications, type }: QualificationsTabl
         </TableRow>
       </TableHeader>
       <TableBody>
-        {qualifications.map((qualification) => (
+        {safeQualifications.map((qualification) => (
           <TableRow key={qualification.positionId}>
             <TableCell className="font-medium">
-              {qualification.positionTitle}
+              {qualification.positionTitle || "Unknown Position"}
             </TableCell>
             <TableCell>
               {qualification[isQualifiedKey] ? (
@@ -46,23 +54,23 @@ export function QualificationsTable({ qualifications, type }: QualificationsTabl
               )}
             </TableCell>
             <TableCell>
-              {qualification[missingTrainingsKey].length > 0 ? (
+              {qualification[missingTrainingsKey]?.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {qualification[missingTrainingsKey].map((training: Training) => (
-                    <Badge key={training.id} variant="outline">
-                      {training.title}
+                  {qualification[missingTrainingsKey].map((training: Training, index) => (
+                    <Badge key={`${training.id || 'unknown'}-${index}`} variant="outline">
+                      {training.title || `Training ${training.id}` || "Unknown Training"}
                     </Badge>
                   ))}
                 </div>
               ) : (
                 <span className="text-muted-foreground text-sm">
-                  None - All requirements met
+                  {qualification[isQualifiedKey] ? "None - All requirements met" : "No specific requirements defined"}
                 </span>
               )}
             </TableCell>
           </TableRow>
         ))}
-        {qualifications.length === 0 && (
+        {safeQualifications.length === 0 && (
           <TableRow>
             <TableCell colSpan={3} className="text-center py-4">
               No qualification data available

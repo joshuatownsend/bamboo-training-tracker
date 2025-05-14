@@ -16,16 +16,26 @@ export function QualificationsTabs({
   activeTab,
   setActiveTab
 }: QualificationsTabsProps) {
+  // Use empty array as fallback to prevent mapping errors
+  const safeQualifications = qualifications || [];
+  
   // Filter qualifications based on qualification status
-  const qualifiedCounty = qualifications.filter(q => q.isQualifiedCounty);
-  const qualifiedAVFRD = qualifications.filter(q => q.isQualifiedAVFRD);
-  const qualifiedBoth = qualifications.filter(q => q.isQualifiedCounty && q.isQualifiedAVFRD);
+  const qualifiedCounty = safeQualifications.filter(q => q.isQualifiedCounty);
+  const qualifiedAVFRD = safeQualifications.filter(q => q.isQualifiedAVFRD);
+  const qualifiedBoth = safeQualifications.filter(q => q.isQualifiedCounty && q.isQualifiedAVFRD);
 
   // Handle tab change with correct typing
   const handleTabChange = (value: string) => {
     // Cast to the correct type since we're constraining to valid values
     setActiveTab(value as "county" | "avfrd");
   };
+
+  console.log("Rendering QualificationsTabs with:", {
+    activeTab,
+    qualificationCount: safeQualifications.length,
+    qualifiedCountyCount: qualifiedCounty.length,
+    qualifiedAVFRDCount: qualifiedAVFRD.length
+  });
 
   return (
     <Tabs 
@@ -40,7 +50,7 @@ export function QualificationsTabs({
       
       <TabsContent value="county">
         <QualificationsTabContent
-          qualifications={qualifications}
+          qualifications={safeQualifications}
           type="county"
           title="Loudoun County Qualifications"
           description="Positions you are qualified for under Loudoun County requirements"
@@ -49,7 +59,7 @@ export function QualificationsTabs({
       
       <TabsContent value="avfrd">
         <QualificationsTabContent
-          qualifications={qualifications}
+          qualifications={safeQualifications}
           type="avfrd"
           title="AVFRD Qualifications"
           description="Positions you are qualified for under AVFRD requirements"

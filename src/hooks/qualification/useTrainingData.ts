@@ -34,35 +34,67 @@ export const useTrainingData = (employeeId?: string) => {
         return [];
       }
       
-      // Join training completions with training types to get full details
-      const { data, error } = await supabase
+      // Fetch training completions with a simpler query to avoid foreign key issues
+      const { data: completionsData, error: completionsError } = await supabase
         .from('employee_training_completions_2')
-        .select(`
-          *,
-          training:bamboo_training_types!training_id(
-            id,
-            name,
-            description,
-            category
-          )
-        `)
+        .select('*')
         .eq('employee_id', employeeIdNumber)
         .order('completed', { ascending: false });
         
-      if (error) {
-        console.error("Error fetching training data:", error);
-        throw error;
+      if (completionsError) {
+        console.error("Error fetching training completions:", completionsError);
+        throw completionsError;
       }
+
+      console.log(`Found ${completionsData?.length || 0} training completions`);
       
-      if (!data || data.length === 0) {
-        console.log(`No training data found for employee ID: ${employeeIdNumber}`);
+      // Now, fetch the training types separately
+      const trainingIds = completionsData?.map(completion => completion.training_id) || [];
+      
+      // Only fetch training types if we have completions
+      if (trainingIds.length === 0) {
+        console.log("No training completions found");
         return [];
       }
       
-      console.log(`Found ${data.length} trainings for employee ID: ${employeeIdNumber}`);
+      const { data: trainingTypesData, error: trainingTypesError } = await supabase
+        .from('bamboo_training_types')
+        .select('*')
+        .in('id', trainingIds);
+        
+      if (trainingTypesError) {
+        console.error("Error fetching training types:", trainingTypesError);
+        // Continue anyway, we'll just use placeholders for training details
+      }
       
-      // Convert the data to the expected type and then map to UserTraining format
-      return (data as unknown as CompletionJoinedRow[]).map(mapToUserTraining);
+      // Create a map for easy lookup
+      const trainingTypesMap = new Map();
+      if (trainingTypesData) {
+        trainingTypesData.forEach(type => {
+          trainingTypesMap.set(type.id, type);
+        });
+      }
+      
+      // Join the data manually
+      const joinedData = completionsData?.map(completion => {
+        const trainingType = trainingTypesMap.get(completion.training_id);
+        
+        // Create a joined structure that matches what we expect
+        const joinedRow = {
+          ...completion,
+          training: trainingType || {
+            id: completion.training_id,
+            name: `Training ${completion.training_id}`,
+            category: "Unknown",
+            description: null
+          }
+        };
+        
+        return mapToUserTraining(joinedRow as unknown as CompletionJoinedRow);
+      }) || [];
+      
+      console.log(`Mapped ${joinedData.length} training completions with details`);
+      return joinedData;
     },
     enabled: !!targetEmployeeId,
     staleTime: 5 * 60 * 1000 // 5 minutes
