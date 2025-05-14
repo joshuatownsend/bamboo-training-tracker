@@ -27,6 +27,8 @@ export function QualifiedEmployeesTable({ employees, isLoading }: QualifiedEmplo
     return employee.name || "Unknown Name";
   };
 
+  console.log("Rendering QualifiedEmployeesTable with employees:", employees.length);
+
   return (
     <Table>
       <TableHeader>
