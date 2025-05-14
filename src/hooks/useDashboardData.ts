@@ -1,24 +1,13 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { calculateStatisticsAsync } from "@/utils/StatisticsWorker";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
-import { supabase } from "@/integrations/supabase/client";
-import type { TrainingStatistics, Training, TrainingCompletion } from "@/lib/types";
-import useBambooHR from "@/hooks/useBambooHR";
 import { useCompletionsCache } from "@/hooks/cache";
-
-// Define type for database training completion record
-interface DbTrainingCompletion {
-  employee_id: number | string;
-  training_id: number | string;
-  completed?: string;
-  completion_date?: string;
-  instructor?: string;
-  notes?: string;
-  [key: string]: any; // For other potential fields
-}
+import { calculateDashboardStatistics } from "@/utils/dashboardStatistics";
+import { useTrainingData } from "@/hooks/dashboard/useTrainingData";
+import { useSyncOperations } from "@/hooks/dashboard/useSyncOperations";
+import { useCompletionFormatting } from "@/hooks/dashboard/useCompletionFormatting";
+import useBambooHR from "@/hooks/useBambooHR";
 
 /**
  * Custom hook for efficiently retrieving and processing dashboard data
@@ -26,117 +15,34 @@ interface DbTrainingCompletion {
  */
 export function useDashboardData() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const bambooClient = useBambooHR();
   
   // Get cached employees and trainings
   const { 
     employees, 
-    trainings, 
     isEmployeesLoading, 
-    isTrainingsLoading,
     refetchAll,
     syncStatus: bambooSyncStatus
   } = useEmployeeCache();
 
+  // Get training data using our focused hook
+  const { trainings, isLoading: isTrainingsLoading } = useTrainingData();
+
   // Get training completions using our fixed cache hook
   const { data: trainingCompletions, isLoading: isTrainingCompletionsLoading, refetch: refetchCompletions } = useCompletionsCache();
 
-  // Get sync status for training completions
-  const { data: trainingSyncStatus, isLoading: isTrainingSyncStatusLoading, refetch: refetchSyncStatus } = useQuery({
-    queryKey: ['sync-status', 'training_completions'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sync_status')
-        .select('*')
-        .eq('id', 'training_completions')
-        .single();
-      
-      if (error) {
-        console.error("Error fetching training sync status:", error);
-        return null;
-      }
-      
-      return data;
-    },
+  // Format completions for consistent use across components
+  const formattedCompletions = useCompletionFormatting(trainingCompletions);
+
+  // Handle sync operations with the dedicated hook
+  const { 
+    syncStatus: trainingSyncStatus, 
+    refreshDashboard,
+    triggerTrainingSync 
+  } = useSyncOperations(async () => {
+    await refetchAll();
+    await refetchCompletions();
   });
-
-  // Fetch training types directly from bamboo_training_types table as a backup
-  const { data: trainingTypes, isLoading: isTrainingTypesLoading } = useQuery({
-    queryKey: ['bamboo_training_types'],
-    queryFn: async () => {
-      console.log("Fetching training types from bamboo_training_types table");
-      
-      const { data, error } = await supabase
-        .from('bamboo_training_types')
-        .select('*');
-      
-      if (error) {
-        console.error("Error fetching training types:", error);
-        return [];
-      }
-      
-      console.log(`Fetched ${data.length} training types`);
-      
-      // Map to training format for compatibility
-      return data.map(type => ({
-        id: type.id,
-        title: type.name,
-        type: type.id,
-        category: type.category || 'General',
-        description: type.description || '',
-        durationHours: 0,
-        requiredFor: []
-      })) as Training[];
-    },
-  });
-
-  // Combine trainings from cache and training types
-  const combinedTrainings = useMemo(() => {
-    // If we have trainings from the cache, use those
-    if (trainings && trainings.length > 0) {
-      console.log("Using trainings from cache:", trainings.length);
-      return trainings;
-    }
-    
-    // Otherwise, if we have training types, use those
-    if (trainingTypes && trainingTypes.length > 0) {
-      console.log("Using training types as fallback:", trainingTypes.length);
-      return trainingTypes;
-    }
-    
-    // If we have neither, return an empty array
-    console.log("No trainings or training types available");
-    return [];
-  }, [trainings, trainingTypes]);
-
-  // Prepare the completions data in the format our components expect
-  const formattedCompletions = useMemo(() => {
-    if (!trainingCompletions || trainingCompletions.length === 0) {
-      console.log("No training completions available for dashboard");
-      return [];
-    }
-    
-    console.log(`Formatting ${trainingCompletions.length} completions for dashboard use`);
-    
-    // Properly cast the data to our DB type for proper property access
-    return trainingCompletions.map((completion: any): TrainingCompletion => {
-      const dbCompletion = completion as DbTrainingCompletion;
-      
-      // Use the completion date from either field, defaulting to the most likely field first
-      const completionDate = dbCompletion.completed || dbCompletion.completion_date || '';
-      
-      return {
-        id: `${dbCompletion.employee_id}-${dbCompletion.training_id}-${completionDate}`,
-        employeeId: String(dbCompletion.employee_id),
-        trainingId: String(dbCompletion.training_id),
-        completionDate,
-        status: 'completed' as const,
-        instructor: dbCompletion.instructor,
-        notes: dbCompletion.notes
-      };
-    });
-  }, [trainingCompletions]);
 
   // Log completion data for debugging
   useMemo(() => {
@@ -149,61 +55,22 @@ export function useDashboardData() {
   }, [formattedCompletions]);
   
   // Calculate statistics only when data is available and not loading
-  // Use memoization to avoid recalculating unnecessarily
   const statistics = useMemo(() => {
-    const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
-                     isTrainingTypesLoading;
+    const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading;
                      
     if (isLoading) {
       console.log("Still loading data, deferring statistics calculation");
       return null;
     }
 
-    const effectiveEmployees = employees?.length ? employees : [];
-    const effectiveTrainings = combinedTrainings?.length ? combinedTrainings : [];
-    const effectiveCompletions = formattedCompletions?.length ? formattedCompletions : [];
-    
-    if ((!effectiveEmployees.length || !effectiveTrainings.length) && !trainingTypes?.length) {
-      console.log("Missing required data for statistics calculation:", {
-        employeesCount: effectiveEmployees.length || 0,
-        trainingsCount: effectiveTrainings.length || 0,
-        trainingTypesCount: trainingTypes?.length || 0,
-        completionsCount: effectiveCompletions.length || 0
-      });
-      return null;
-    }
-
-    try {
-      console.log("Calculating dashboard statistics with:", {
-        employeesCount: effectiveEmployees.length,
-        trainingsCount: effectiveTrainings.length,
-        trainingTypesCount: trainingTypes?.length || 0,
-        completionsCount: effectiveCompletions.length
-      });
-      
-      return calculateStatisticsAsync(
-        effectiveEmployees, 
-        effectiveTrainings, 
-        effectiveCompletions
-      );
-    } catch (err) {
-      console.error("Error calculating dashboard statistics:", err);
-      toast({
-        title: "Error calculating statistics",
-        description: "There was a problem processing training data",
-        variant: "destructive"
-      });
-      return null;
-    }
+    return calculateDashboardStatistics(employees, trainings, formattedCompletions, toast);
   }, [
     employees, 
-    combinedTrainings, 
-    formattedCompletions, 
-    trainingTypes,
+    trainings, 
+    formattedCompletions,
     isEmployeesLoading, 
     isTrainingsLoading, 
-    isTrainingCompletionsLoading, 
-    isTrainingTypesLoading,
+    isTrainingCompletionsLoading,
     toast
   ]);
 
@@ -212,77 +79,12 @@ export function useDashboardData() {
 
   // Single loading state derived from all data sources
   const isLoading = isEmployeesLoading || isTrainingsLoading || isTrainingCompletionsLoading || 
-                   isTrainingTypesLoading || !statistics;
-
-  // Function to manually trigger a full data refresh
-  const refreshDashboard = async () => {
-    try {
-      console.log("Manually refreshing dashboard data...");
-      await refetchAll();
-      await refetchCompletions();
-      await refetchSyncStatus();
-      
-      // Invalidate any prefetch query to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'prefetch'] });
-      queryClient.invalidateQueries({ queryKey: ['bamboo_training_types'] });
-      
-      toast({
-        title: "Refresh initiated",
-        description: "Dashboard data is being refreshed...",
-      });
-    } catch (error) {
-      console.error("Error refreshing dashboard data:", error);
-      toast({
-        title: "Refresh failed",
-        description: "Failed to refresh dashboard data",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Function to trigger a full training completions sync
-  const triggerTrainingSync = async () => {
-    try {
-      console.log("Triggering training completions sync...");
-      
-      const { data, error } = await supabase.rpc('trigger_training_completions_sync');
-      
-      if (error) {
-        throw new Error(`Failed to trigger sync: ${error.message}`);
-      }
-      
-      toast({
-        title: "Sync started",
-        description: "Training completions sync has been initiated. This may take several minutes.",
-      });
-      
-      // Start polling for sync status
-      const intervalId = setInterval(async () => {
-        await refetchSyncStatus();
-      }, 5000); // Check every 5 seconds
-      
-      // Stop polling after 2 minutes
-      setTimeout(() => {
-        clearInterval(intervalId);
-        refreshDashboard(); // Final refresh after timeout
-      }, 120000);
-      
-      return true;
-    } catch (error) {
-      console.error("Error triggering training sync:", error);
-      toast({
-        title: "Sync failed",
-        description: error instanceof Error ? error.message : "Failed to start training sync",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
+                   !statistics;
 
   return {
     // Data
     employees,
-    trainings: combinedTrainings,
+    trainings,
     completions: formattedCompletions,
     statistics,
     syncStatus,
