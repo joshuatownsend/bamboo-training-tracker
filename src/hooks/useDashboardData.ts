@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -109,8 +110,7 @@ export function useDashboardData() {
     
     // Format the completions to match our TrainingCompletion type
     return trainingCompletions.map(completion => {
-      // Make sure we're handling both v1 and v2 table formats
-      // employee_training_completions_2 has snake_case fields
+      // Fixed: Use proper camelCase property names to match the TrainingCompletion type
       return {
         id: `${completion.employee_id}-${completion.training_id}-${completion.completed || completion.completion_date}`,
         employeeId: completion.employee_id.toString(),
