@@ -4,10 +4,10 @@ import { DepartmentStats } from "@/lib/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface ComplianceChartProps {
-  data: DepartmentStats[];
+  departmentStats: DepartmentStats[];
 }
 
-export function ComplianceChart({ data }: ComplianceChartProps) {
+export function ComplianceChart({ departmentStats = [] }: ComplianceChartProps) {
   return (
     <Card className="col-span-2">
       <CardHeader>
@@ -17,7 +17,7 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={data}
+              data={departmentStats}
               margin={{
                 top: 5,
                 right: 30,
@@ -46,7 +46,7 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
                 dataKey="complianceRate" 
                 radius={[4, 4, 0, 0]}
               >
-                {data.map((entry, index) => (
+                {departmentStats.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
                     fill={entry.complianceRate >= 90 ? "#84cc16" : 
@@ -64,4 +64,3 @@ export function ComplianceChart({ data }: ComplianceChartProps) {
 }
 
 export default ComplianceChart;
-
