@@ -38,7 +38,7 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       console.log(`Fetching training completions with joined data (limit: ${limit})`);
       
-      // Fetch data with a join to ensure we have all related information
+      // IMPROVED: Enhanced join query with better error handling
       const query = supabase
         .from('employee_training_completions_2')
         .select(`
@@ -66,6 +66,13 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       if (joinError) {
         console.error("Error fetching joined completion data:", joinError);
+        
+        // IMPROVED: Log the error for debugging
+        console.error("Join error details:", {
+          error: joinError,
+          message: joinError.message,
+          details: joinError.details
+        });
       }
       
       if (joinedData && joinedData.length > 0) {
@@ -77,14 +84,29 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       }
       
       // If join fails, try the traditional approach as fallback
-      console.warn("Joined query failed or returned no results, trying standard approach");
+      console.warn("Joined query failed or returned no results, trying direct approach");
+      
+      // IMPROVED: Direct fetch of bamboo_training_types first for more reliable name lookup
+      const { data: trainingTypes } = await supabase
+        .from('bamboo_training_types')
+        .select('id, name, category');
+      
+      // Create a map for quick lookup
+      const trainingMap = trainingTypes ? trainingTypes.reduce((acc, t) => {
+        acc[t.id] = t;
+        return acc;
+      }, {} as Record<number, any>) : {};
+      
+      console.log(`Loaded ${Object.keys(trainingMap).length} training types for mapping`);
+      
+      // Now fetch the completions
       const { data: completionsData, error: completionsError } = await supabase
         .from('employee_training_completions_2')
         .select('*')
         .order('completed', { ascending: false });
       
-      if (limit > 0) {
-        query.limit(limit);
+      if (limit > 0 && completionsData) {
+        completionsData.splice(limit);
       }
       
       if (completionsError) {
@@ -94,27 +116,36 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       if (completionsData && completionsData.length > 0) {
         console.log(`Fetched ${completionsData.length} training completions`);
         
-        return completionsData.map((completion): TrainingCompletion => ({
-          id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
-          employeeId: String(completion.employee_id),
-          trainingId: String(completion.training_id),
-          completionDate: completion.completed,
-          status: 'completed' as const,
-          instructor: completion.instructor ?? undefined,
-          notes: completion.notes ?? undefined,
-          // Include the display name from the record itself
-          employeeData: {
-            id: "direct",
-            name: completion.display_name || "Unknown Employee",
-            bamboo_employee_id: String(completion.employee_id)
-          },
-          // Add a basic training data object for consistency
-          trainingData: {
-            id: String(completion.training_id),
-            name: "Training " + completion.training_id,
-            category: "Unknown"
-          }
-        }));
+        return completionsData.map((completion): TrainingCompletion => {
+          // Get the training info from our map
+          const trainingInfo = trainingMap[completion.training_id];
+          
+          return {
+            id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
+            employeeId: String(completion.employee_id),
+            trainingId: String(completion.training_id),
+            completionDate: completion.completed,
+            status: 'completed' as const,
+            instructor: completion.instructor ?? undefined,
+            notes: completion.notes ?? undefined,
+            // Include the display name from the record itself
+            employeeData: {
+              id: "direct",
+              name: completion.display_name || "Unknown Employee",
+              bamboo_employee_id: String(completion.employee_id)
+            },
+            // IMPROVED: Add training data from our pre-fetched map
+            trainingData: trainingInfo ? {
+              id: String(trainingInfo.id),
+              name: trainingInfo.name,
+              category: trainingInfo.category || "Unknown"
+            } : {
+              id: String(completion.training_id),
+              name: `Training ${completion.training_id}`,
+              category: "Unknown"
+            }
+          };
+        });
       }
       
       console.log("No training completions found");

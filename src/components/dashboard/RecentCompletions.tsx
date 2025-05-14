@@ -19,7 +19,7 @@ export function RecentCompletions({
   employees,
   trainings
 }: RecentCompletionsProps) {
-  // State for training names from database
+  // State for direct database training names
   const [trainingNamesMap, setTrainingNamesMap] = useState<Record<string, string>>({});
   
   // Log data for debugging
@@ -32,7 +32,7 @@ export function RecentCompletions({
   // Use our custom hook to get training names
   const { trainingTypeNames, isLoadingNames } = useTrainingTypeNames(completions);
   
-  // Fetch actual training names from bamboo_training_types
+  // Fetch actual training names directly from bamboo_training_types
   useEffect(() => {
     const fetchTrainingNames = async () => {
       // Extract all unique training IDs from completions
@@ -44,6 +44,9 @@ export function RecentCompletions({
       if (trainingIds.length === 0) return;
       
       try {
+        // IMPROVED: Direct fetch of training names with better logging
+        console.log(`Fetching training names for ${trainingIds.length} unique IDs:`, trainingIds);
+        
         const { data, error } = await supabase
           .from('bamboo_training_types')
           .select('id, name')
@@ -62,6 +65,12 @@ export function RecentCompletions({
         
         setTrainingNamesMap(namesMap);
         console.log(`Fetched ${data.length} training names for display`, namesMap);
+        
+        // ADDED: Log any IDs that couldn't be resolved
+        const missingIds = trainingIds.filter(id => !namesMap[id]);
+        if (missingIds.length > 0) {
+          console.warn(`Could not find names for ${missingIds.length} training IDs:`, missingIds);
+        }
       } catch (error) {
         console.error('Error in fetchTrainingNames:', error);
       }
@@ -110,33 +119,41 @@ export function RecentCompletions({
     );
   }
   
-  // Function to get training name from ID
+  // IMPROVED: Enhanced function to get training name from ID with better prioritization and logging
   const getTrainingName = (completion: TrainingCompletion): string => {
     const trainingId = completion.trainingId;
     
-    // First priority: use directly fetched names from database
+    // PRIORITY 1: Use directly fetched names from database (most reliable)
     if (trainingNamesMap[trainingId]) {
       return trainingNamesMap[trainingId];
     }
     
-    // Second priority: check if we already have the name in the joined data
+    // PRIORITY 2: Use the training data that came with the completion (from join)
     if (completion.trainingData?.name) {
       return completion.trainingData.name;
     }
     
-    // Third priority: try to find the name in our trainingTypeNames map
+    // PRIORITY 3: Use the names from the training types hook
     if (trainingTypeNames[trainingId]) {
       return trainingTypeNames[trainingId];
     }
     
-    // Fourth priority: try to find it in the trainings array
+    // PRIORITY 4: Look in the trainings array
     const training = trainings.find(t => t.id === trainingId);
-    if (training) {
+    if (training?.title) {
       return training.title;
     }
     
+    // If we got here, log the issue for debugging
+    console.warn(`Could not resolve name for training ID: ${trainingId}`, {
+      directNamesAvailable: Object.keys(trainingNamesMap).length,
+      hookNamesAvailable: Object.keys(trainingTypeNames).length,
+      trainingDataPresent: !!completion.trainingData,
+      trainingsArraySize: trainings?.length || 0
+    });
+    
     // Default fallback - more descriptive than just ID
-    return `Training (ID: ${trainingId})`;
+    return `Unknown Training (ID: ${trainingId})`;
   };
   
   // Function to format date or show meaningful fallback

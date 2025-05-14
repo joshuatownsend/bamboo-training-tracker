@@ -8,6 +8,9 @@ import { toStringId } from '@/utils/idConverters';
  * Handles null safety for joined data
  */
 export function mapToTrainingCompletion(record: CompletionJoinedRow): TrainingCompletion {
+  // Enhanced: Better check for training data presence
+  const hasValidTrainingData = record.training && record.training.name;
+
   // Extract employee data with null safety
   const employeeData = record.employee ? {
     id: String(record.employee.id),
@@ -21,14 +24,15 @@ export function mapToTrainingCompletion(record: CompletionJoinedRow): TrainingCo
     email: undefined
   };
 
-  // Extract training data with null safety
-  const trainingData = record.training ? {
+  // Extract training data with null safety and better fallback
+  const trainingData = hasValidTrainingData ? {
     id: String(record.training.id),
-    name: record.training.name,
+    name: record.training.name, // Use actual name when available
     category: record.training.category || "Unknown"
   } : {
     id: String(record.training_id),
-    name: "Training " + record.training_id,
+    // Don't default to "Training X" here to allow component to resolve the name
+    name: undefined, 
     category: "Unknown"
   };
 
