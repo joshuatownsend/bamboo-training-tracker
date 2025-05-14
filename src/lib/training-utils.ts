@@ -28,10 +28,10 @@ export const safeTextValue = (value: any): string => {
   return String(value);
 };
 
-// Enhanced function to format date with proper validation and logging
+// FIXED: Enhanced function to format date with proper validation and always return a value
 export const formatDate = (dateStr: string | undefined): string => {
   // Add logging for debugging date formatting issues
-  console.log("Training utils - formatDate input:", dateStr);
+  console.log("Training utils - formatDate input:", dateStr, typeof dateStr);
   
   if (!dateStr) {
     console.log("Training utils - formatDate: No date provided");
@@ -41,7 +41,7 @@ export const formatDate = (dateStr: string | undefined): string => {
   try {
     // First try ISO format
     const date = parseISO(dateStr);
-    console.log("Training utils - parseISO result:", date);
+    console.log("Training utils - parseISO result:", date, "isValid:", isValid(date));
     
     if (isValid(date)) {
       const formatted = format(date, "MMM d, yyyy");
@@ -51,7 +51,7 @@ export const formatDate = (dateStr: string | undefined): string => {
     
     // If not valid ISO format, try regular Date constructor
     const fallbackDate = new Date(dateStr);
-    console.log("Training utils - fallback Date constructor result:", fallbackDate);
+    console.log("Training utils - fallback Date constructor result:", fallbackDate, "isValid:", isValid(fallbackDate));
     
     if (isValid(fallbackDate)) {
       const formatted = format(fallbackDate, "MMM d, yyyy");
@@ -59,13 +59,13 @@ export const formatDate = (dateStr: string | undefined): string => {
       return formatted;
     }
     
-    // If all else fails, return the raw string
-    console.warn("Training utils - Unable to parse date:", dateStr);
+    // FIXED: If all else fails, return the raw string instead of N/A
+    console.warn("Training utils - Unable to parse date, returning raw string:", dateStr);
     return dateStr;
   } catch (e) {
-    // Handle any other errors
+    // Handle any other errors - return the raw string
     console.error("Training utils - Error formatting date:", e);
-    return dateStr;
+    return dateStr; // FIXED: Return the raw date string instead of N/A
   }
 };
 

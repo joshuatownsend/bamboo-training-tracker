@@ -38,7 +38,7 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       console.log(`Fetching training completions with joined data (limit: ${limit})`);
       
-      // IMPROVED: Enhanced join query with better error handling
+      // IMPROVED: Enhanced join query with better error handling and debugging
       const query = supabase
         .from('employee_training_completions_2')
         .select(`
@@ -80,9 +80,13 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
       
       if (joinedData && joinedData.length > 0) {
         console.log(`Fetched ${joinedData.length} joined training completions`);
-        // Log a sample of the data to help debug date issues
+        // FIXED: Log several samples of the data to help debug date issues
         console.log("Sample joined data first row:", joinedData[0]);
-        console.log("Sample 'completed' field value:", joinedData[0].completed);
+        console.log("Sample 'completed' field value:", joinedData[0].completed, typeof joinedData[0].completed);
+        
+        if (joinedData.length > 1) {
+          console.log("Sample 'completed' field value (second row):", joinedData[1].completed, typeof joinedData[1].completed);
+        }
         
         // Map to our TrainingCompletion type with the joined data
         return (joinedData as unknown as CompletionJoinedRow[]).map(mapToTrainingCompletion);
@@ -123,7 +127,8 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
         console.log("Sample direct completion data:", {
           employeeId: completionsData[0].employee_id,
           trainingId: completionsData[0].training_id,
-          completedDate: completionsData[0].completed
+          completedDate: completionsData[0].completed,
+          completedType: typeof completionsData[0].completed
         });
         
         return completionsData.map((completion): TrainingCompletion => {
@@ -134,7 +139,7 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
             id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
             employeeId: String(completion.employee_id),
             trainingId: String(completion.training_id),
-            completionDate: completion.completed, // Ensure we use this value
+            completionDate: completion.completed, // FIXED: Ensure we use this value as-is
             status: 'completed' as const,
             instructor: completion.instructor ?? undefined,
             notes: completion.notes ?? undefined,

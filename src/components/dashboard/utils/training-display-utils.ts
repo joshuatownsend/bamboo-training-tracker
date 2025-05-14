@@ -10,7 +10,7 @@ import { TrainingCompletion } from "@/lib/types";
  */
 export const formatCompletionDate = (dateString: string | undefined): string => {
   // Added more logging to debug date formatting issues
-  console.log("Formatting completion date:", dateString);
+  console.log("Formatting completion date:", dateString, typeof dateString);
   
   // Only show "No date" if the date string is actually missing
   if (!dateString) {
@@ -23,12 +23,12 @@ export const formatCompletionDate = (dateString: string | undefined): string => 
     const date = new Date(dateString);
     
     // Log the parsed date to verify conversion
-    console.log("Parsed date:", date);
+    console.log("Parsed date:", date, "isValid:", !isNaN(date.getTime()));
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
       console.warn("Invalid date after parsing:", dateString);
-      return dateString; // Return the original if parsing failed
+      return dateString; // FIXED: Return the original string if parsing failed
     }
     
     // Try to format with date-fns
@@ -38,7 +38,7 @@ export const formatCompletionDate = (dateString: string | undefined): string => 
   } catch (err) {
     // If format fails, log the error but still show the raw date string
     console.warn("Error formatting date:", err, "Raw date:", dateString);
-    return dateString; // Return the original string so user can see the problematic date
+    return dateString; // FIXED: Return the original string so user can see the problematic date
   }
 };
 

@@ -1,103 +1,126 @@
 
-import { useState, useMemo } from 'react';
-import { UserTraining } from "@/lib/types";
-import { safeString } from '@/components/training/utils/StringUtils';
+import { useState, useMemo, useCallback } from 'react';
+import { UserTraining } from '@/lib/types';
+import { safeTextValue } from '@/lib/training-utils';
 
-export function useTrainingFilters(userTrainings: UserTraining[]) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<string>("completionDate");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+type SortField = 'title' | 'category' | 'completionDate';
+type SortDirection = 'asc' | 'desc';
 
-  // Get unique categories for filter
-  const categories = useMemo(() => [
-    ...new Set(
-      userTrainings
-        .map((t) => safeString(t.trainingDetails?.category))
-        .filter(Boolean)
-    ),
-  ], [userTrainings]);
+export function useTrainingFilters(trainings: UserTraining[]) {
+  // State for search and filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('completionDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  // Calculate statistics
-  const categoryCounts = useMemo(() => userTrainings.reduce((acc, training) => {
-    const category = safeString(training.trainingDetails?.category || 'Uncategorized');
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>), [userTrainings]);
-  
-  // Function to handle sorting
-  const handleSort = (field: string, direction: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(direction);
-  };
-  
-  // Apply filters
-  const filteredTrainings = useMemo(() => userTrainings
-    .filter((training) => {
-      const title = safeString(training.trainingDetails?.title).toLowerCase();
-      const description = safeString(training.trainingDetails?.description).toLowerCase();
-      const notes = safeString(training.notes).toLowerCase();
-      
-      const matchesSearch = 
-        title.includes(searchQuery.toLowerCase()) ||
-        description.includes(searchQuery.toLowerCase()) ||
-        notes.includes(searchQuery.toLowerCase());
-      
-      // Fix the type issue by ensuring both sides are strings
-      const trainingCategory = safeString(training.trainingDetails?.category);
-      const matchesCategory = categoryFilter === "all" || trainingCategory === categoryFilter;
-      
-      return matchesSearch && matchesCategory;
-    }), [userTrainings, searchQuery, categoryFilter]);
-  
-  // Function to sort trainings
-  const sortTrainings = (trainings: UserTraining[]): UserTraining[] => {
-    return [...trainings].sort((a, b) => {
-      let valueA: any;
-      let valueB: any;
-      
-      // Extract values to compare based on the sort field
-      switch(sortField) {
-        case 'title':
-          valueA = safeString(a.trainingDetails?.title);
-          valueB = safeString(b.trainingDetails?.title);
-          break;
-        case 'category':
-          valueA = safeString(a.trainingDetails?.category);
-          valueB = safeString(b.trainingDetails?.category);
-          break;
-        case 'completionDate':
-          valueA = a.completionDate || '';
-          valueB = b.completionDate || '';
-          break;
-        default:
-          valueA = a[sortField as keyof UserTraining] || '';
-          valueB = b[sortField as keyof UserTraining] || '';
-      }
-      
-      // Handle string comparison
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortDirection === 'asc' 
-          ? valueA.localeCompare(valueB) 
-          : valueB.localeCompare(valueA);
-      }
-      
-      // Handle number comparison
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return sortDirection === 'asc'
-          ? valueA - valueB
-          : valueB - valueA;
-      }
-      
-      // Default comparison for mixed types
-      return sortDirection === 'asc'
-        ? String(valueA).localeCompare(String(valueB))
-        : String(valueB).localeCompare(String(valueA));
+  // Extract unique categories
+  const categories = useMemo(() => {
+    const categoriesSet = new Set<string>();
+    trainings.forEach(training => {
+      const category = safeTextValue(training.trainingDetails?.category) || 'Uncategorized';
+      categoriesSet.add(category);
     });
-  };
+    return ['all', ...Array.from(categoriesSet).sort()];
+  }, [trainings]);
   
-  // Apply sorting after filtering
-  const sortedTrainings = sortTrainings(filteredTrainings);
+  // Calculate category counts
+  const categoryCounts = useMemo(() => {
+    return trainings.reduce((acc, training) => {
+      const category = safeTextValue(training.trainingDetails?.category) || 'Uncategorized';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [trainings]);
+
+  // Custom sort function with improved date handling
+  const getSortedTrainings = useCallback((trainings: UserTraining[]): UserTraining[] => {
+    // Debug info
+    console.log(`Sorting trainings by ${sortField} in ${sortDirection} order`);
+
+    // First apply category filter if not 'all'
+    const filteredTrainings = categoryFilter === 'all' 
+      ? trainings 
+      : trainings.filter(t => {
+          const category = safeTextValue(t.trainingDetails?.category) || 'Uncategorized';
+          return category === categoryFilter;
+        });
+    
+    // Apply search filter
+    const searchFilteredTrainings = searchQuery 
+      ? filteredTrainings.filter(training => {
+          const title = safeTextValue(training.trainingDetails?.title);
+          const desc = safeTextValue(training.trainingDetails?.description);
+          const searchLower = searchQuery.toLowerCase();
+          return title.toLowerCase().includes(searchLower) || 
+                 desc.toLowerCase().includes(searchLower);
+        })
+      : filteredTrainings;
+    
+    // FIXED: Improved sorting with better date handling
+    return [...searchFilteredTrainings].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'title') {
+        const titleA = safeTextValue(a.trainingDetails?.title).toLowerCase();
+        const titleB = safeTextValue(b.trainingDetails?.title).toLowerCase();
+        comparison = titleA.localeCompare(titleB);
+      } 
+      else if (sortField === 'category') {
+        const catA = safeTextValue(a.trainingDetails?.category || 'Uncategorized').toLowerCase();
+        const catB = safeTextValue(b.trainingDetails?.category || 'Uncategorized').toLowerCase();
+        comparison = catA.localeCompare(catB);
+      } 
+      else if (sortField === 'completionDate') {
+        // FIXED: Handle missing dates (null, undefined, empty string)
+        const dateA = a.completionDate || '';
+        const dateB = b.completionDate || '';
+        
+        // Log the date values to help with debugging
+        console.log("Sorting dates:", { dateA, dateB, typeA: typeof dateA, typeB: typeof dateB });
+        
+        if (!dateA && !dateB) comparison = 0;
+        else if (!dateA) comparison = 1; // No date goes last
+        else if (!dateB) comparison = -1; // No date goes last
+        else {
+          // Try to compare as dates first
+          try {
+            const dateObjA = new Date(dateA);
+            const dateObjB = new Date(dateB);
+            
+            // Check if both dates are valid
+            if (!isNaN(dateObjA.getTime()) && !isNaN(dateObjB.getTime())) {
+              comparison = dateObjA.getTime() - dateObjB.getTime();
+            } else {
+              // Fallback to string comparison if date parsing fails
+              comparison = String(dateA).localeCompare(String(dateB));
+            }
+          } catch (e) {
+            // If date comparison fails, fallback to string comparison
+            comparison = String(dateA).localeCompare(String(dateB));
+          }
+        }
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [sortField, sortDirection, categoryFilter, searchQuery]);
+  
+  // Get the sorted and filtered trainings
+  const sortedTrainings = useMemo(() => {
+    return getSortedTrainings(trainings);
+  }, [trainings, getSortedTrainings]);
+
+  // Handle sorting toggle
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      // Toggle direction if clicking on the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to descending for date, ascending for others
+      setSortField(field);
+      setSortDirection(field === 'completionDate' ? 'desc' : 'asc');
+    }
+  };
 
   return {
     searchQuery,

@@ -28,6 +28,13 @@ export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableR
     return safeTextValue(training.trainingDetails?.category) || "Uncategorized";
   };
 
+  // FIXED: Log the completionDate for debugging
+  console.log("TrainingTableRow - training completion date:", {
+    completionDate: training.completionDate,
+    id: training.id,
+    type: typeof training.completionDate
+  });
+
   return (
     <TableRow key={safeTextValue(training.id)}>
       <TableCell>
@@ -44,7 +51,12 @@ export function TrainingTableRow({ training, trainingTypeNames }: TrainingTableR
         {getCategory(training)}
       </TableCell>
       <TableCell>
-        {formatDate(safeTextValue(training.completionDate))}
+        {/* FIXED: Use formatDate but with better logging */}
+        {(() => {
+          const formattedDate = formatDate(safeTextValue(training.completionDate));
+          console.log("TrainingTableRow - formatted completion date:", formattedDate);
+          return formattedDate;
+        })()}
       </TableCell>
       <TableCell>
         {training.trainingDetails && 
