@@ -1,12 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Employee, Training, TrainingCompletion } from "@/lib/types";
-import { CheckCircle2 } from "lucide-react";
-import { format } from "date-fns";
 import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import CompletionItem from "./CompletionItem";
+import EmptyCompletions from "./EmptyCompletions";
+import { getTrainingName } from "./utils/training-display-utils";
 
 interface RecentCompletionsProps {
   completions: TrainingCompletion[];
@@ -81,18 +81,7 @@ export function RecentCompletions({
   
   if (!completions?.length) {
     console.warn("No completions data provided to RecentCompletions component");
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Completions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[200px]">
-            <p className="text-sm text-muted-foreground">No recent completions found</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <EmptyCompletions title="Recent Completions" />;
   }
 
   // Get most recent 10 completions
@@ -105,74 +94,8 @@ export function RecentCompletions({
   console.log(`Found ${recentCompletions.length} recent completions to display`);
   
   if (!recentCompletions.length) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Completions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[200px]">
-            <p className="text-sm text-muted-foreground">No completed trainings found</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <EmptyCompletions title="Recent Completions" message="No completed trainings found" />;
   }
-  
-  // IMPROVED: Enhanced function to get training name from ID with better prioritization and logging
-  const getTrainingName = (completion: TrainingCompletion): string => {
-    const trainingId = completion.trainingId;
-    
-    // PRIORITY 1: Use directly fetched names from database (most reliable)
-    if (trainingNamesMap[trainingId]) {
-      return trainingNamesMap[trainingId];
-    }
-    
-    // PRIORITY 2: Use the training data that came with the completion (from join)
-    if (completion.trainingData?.name) {
-      return completion.trainingData.name;
-    }
-    
-    // PRIORITY 3: Use the names from the training types hook
-    if (trainingTypeNames[trainingId]) {
-      return trainingTypeNames[trainingId];
-    }
-    
-    // PRIORITY 4: Look in the trainings array
-    const training = trainings.find(t => t.id === trainingId);
-    if (training?.title) {
-      return training.title;
-    }
-    
-    // If we got here, log the issue for debugging
-    console.warn(`Could not resolve name for training ID: ${trainingId}`, {
-      directNamesAvailable: Object.keys(trainingNamesMap).length,
-      hookNamesAvailable: Object.keys(trainingTypeNames).length,
-      trainingDataPresent: !!completion.trainingData,
-      trainingsArraySize: trainings?.length || 0
-    });
-    
-    // Default fallback - more descriptive than just ID
-    return `Unknown Training (ID: ${trainingId})`;
-  };
-  
-  // UPDATED: Modified function to always display dates, including potentially invalid ones
-  const formatCompletionDate = (dateString: string | undefined): string => {
-    // Only show "No date" if the date string is actually missing
-    if (!dateString) return "No date";
-    
-    try {
-      // Always attempt to create a Date object
-      const date = new Date(dateString);
-      
-      // Try to format with date-fns
-      return format(date, "MMM d, yyyy");
-    } catch (err) {
-      // If format fails, log the error but still show the raw date string
-      console.warn("Error formatting date:", err, "Raw date:", dateString);
-      return dateString; // Return the original string so user can see the problematic date
-    }
-  };
     
   return (
     <Card>
@@ -182,45 +105,19 @@ export function RecentCompletions({
       <CardContent>
         <div className="space-y-4">
           {recentCompletions.map((completion) => {
-            // Use the embedded data directly if available
-            let employeeName = completion.employeeData?.name;
+            const trainingName = getTrainingName(
+              completion,
+              trainingNamesMap,
+              trainingTypeNames,
+              trainings
+            );
             
-            // If still no data, use fallbacks from the completion itself
-            if (!employeeName) {
-              employeeName = "Unknown Employee";
-            }
-            
-            // Create unique key from all available data
-            const uniqueKey = `${completion.id || completion.employeeId}-${completion.trainingId}-${completion.completionDate}`;
-            
-            const initials = employeeName
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()
-              .substring(0, 2);
-              
-            // Log the completion date being used (for debugging purposes)
-            if (!completion.completionDate) {
-              console.warn("Missing completion date for:", uniqueKey);
-            }
-              
             return (
-              <div key={uniqueKey} className="flex items-center">
-                <Avatar className="h-9 w-9 mr-3">
-                  <AvatarFallback>{initials || "??"}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">{employeeName}</p>
-                  <p className="text-xs text-muted-foreground">{getTrainingName(completion)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {formatCompletionDate(completion.completionDate)}
-                  </span>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                </div>
-              </div>
+              <CompletionItem
+                key={completion.id}
+                completion={completion}
+                trainingName={trainingName}
+              />
             );
           })}
         </div>
