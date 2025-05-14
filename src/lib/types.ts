@@ -1,3 +1,4 @@
+
 export interface Employee {
   id: string;
   name: string;
@@ -125,7 +126,7 @@ export interface User {
 }
 
 export interface UserTraining {
-  id: string;
+  id?: string;  // Make id optional since it might not always be available
   employeeId: string;
   trainingId?: string;
   completionDate: string;
@@ -135,6 +136,8 @@ export interface UserTraining {
   // Add type or any other fields that might be present in the BambooHR response
   type?: string;  
   completed?: string;
+  // Add displayName property which is used in the mapToUserTraining function
+  displayName?: string;
 }
 
 export interface TrainingType {
