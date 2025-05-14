@@ -52,5 +52,14 @@ export const usePositionData = () => {
     }
   }, [positions]);
   
-  return { positions, isLoading, error, refetch };
+  // Return with renamed properties to match what components expect
+  return { 
+    positions: positions || [], 
+    isLoading, 
+    error,
+    refetch,
+    // Add these properties to match what the components are looking for
+    isLoadingPositions: isLoading,
+    positionsError: error
+  };
 };

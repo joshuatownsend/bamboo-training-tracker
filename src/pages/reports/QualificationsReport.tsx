@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +16,7 @@ export default function QualificationsReport() {
   const [requirementType, setRequirementType] = useState<"county" | "avfrd" | "both">("avfrd");
   
   // Fetch positions from database - use the destructured properties directly
-  const { positions, isLoadingPositions, positionsError } = usePositionData();
+  const { positions, isLoading: isLoadingPositions, error: positionsError } = usePositionData();
   
   // Fetch real employees from database
   const { 

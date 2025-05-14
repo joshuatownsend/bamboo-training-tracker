@@ -17,7 +17,7 @@ export interface UserQualification extends QualificationStatus {
 
 export const useQualifications = () => {
   const { currentUser } = useUser();
-  const trainingDataQuery = useTrainingData(currentUser?.employeeId);
+  const { trainings, isLoading: isLoadingTrainings, error: trainingError } = useTrainingData(currentUser?.employeeId);
   const [qualifications, setQualifications] = useState<QualificationStatus[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -25,16 +25,15 @@ export const useQualifications = () => {
 
   // Map trainings and completions to qualifications
   useEffect(() => {
-    setIsLoading(trainingDataQuery.isLoading);
+    setIsLoading(isLoadingTrainings);
     
     try {
-      if (!trainingDataQuery.isLoading && trainingDataQuery.data) {
-        const userTrainings = trainingDataQuery.data;
+      if (!isLoadingTrainings && trainings) {
         
         // Map trainings to qualifications (simplified approach)
-        const mappedQualifications = userTrainings.map((training): QualificationStatus => ({
+        const mappedQualifications = trainings.map((training): QualificationStatus => ({
           positionId: 'default',
-          positionTitle: training.display_name || `Training ${training.training_id}`,
+          positionTitle: training.trainingDetails?.title || `Training ${training.trainingId}`,
           isQualifiedCounty: true,
           isQualifiedAVFRD: false,
           missingCountyTrainings: [],
@@ -47,7 +46,7 @@ export const useQualifications = () => {
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error occurred'));
     }
-  }, [trainingDataQuery.data, trainingDataQuery.isLoading, currentUser]);
+  }, [trainings, isLoadingTrainings, currentUser]);
 
   // Mock function for position qualifications - this would be replaced with actual logic
   const getPositionQualifications = (): QualificationStatus[] => {
@@ -66,8 +65,8 @@ export const useQualifications = () => {
 
   return {
     qualifications,
-    isLoading: trainingDataQuery.isLoading || isLoading,
-    error: trainingDataQuery.error || error,
+    isLoading: isLoadingTrainings || isLoading,
+    error: trainingError || error,
     activeTab,
     setActiveTab,
     getPositionQualifications,

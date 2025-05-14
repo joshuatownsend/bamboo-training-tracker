@@ -13,7 +13,7 @@ export const useTrainingData = (employeeId?: string) => {
   // Use provided employeeId or fall back to currentUser's employeeId
   const targetEmployeeId = employeeId || currentUser?.bambooEmployeeId || currentUser?.employeeId;
   
-  const { data: trainings, isLoading, error } = useQuery({
+  const trainingsQuery = useQuery({
     queryKey: ['trainings', targetEmployeeId],
     queryFn: async () => {
       if (!targetEmployeeId) {
@@ -52,12 +52,15 @@ export const useTrainingData = (employeeId?: string) => {
       
       // Convert to UserTraining format
       return data.map((item): UserTraining => {
-        const trainingDetails: Training | null = item.training ? {
-          id: String(item.training.id),
-          title: item.training.name,
+        // Safely access training properties
+        const trainingDetails: Training | null = item.training && typeof item.training === 'object' ? {
+          id: String(item.training.id || item.training_id),
+          title: String(item.training.name || `Training ${item.training_id}`),
           type: String(item.training_id),
-          category: item.training.category || 'Uncategorized',
-          description: item.training.description || '',
+          category: item.training && typeof item.training === 'object' ? 
+                   String(item.training.category || 'Uncategorized') : 'Uncategorized',
+          description: item.training && typeof item.training === 'object' ? 
+                       String(item.training.description || '') : '',
           durationHours: 0,
           requiredFor: []
         } : null;
@@ -79,5 +82,9 @@ export const useTrainingData = (employeeId?: string) => {
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
   
-  return { trainings, isLoading, error };
+  return { 
+    trainings: trainingsQuery.data || [], 
+    isLoading: trainingsQuery.isLoading, 
+    error: trainingsQuery.error as Error 
+  };
 };

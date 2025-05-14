@@ -55,16 +55,13 @@ export function useCompletionsCache() {
           if (record.employee && 
               typeof record.employee === 'object' && 
               record.employee !== null) {
-            // Check if it's an error object from Supabase
-            if (!('error' in record.employee)) {
-              // Type safety by checking existence of properties
-              employeeData = {
-                id: 'id' in record.employee ? String(record.employee.id) : "unknown",
-                name: 'name' in record.employee ? record.employee.name : (record.display_name || "Unknown Employee"),
-                bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : record.employee_id.toString(),
-                email: 'email' in record.employee ? record.employee.email : undefined
-              };
-            }
+            // Type safety by checking existence of properties
+            employeeData = {
+              id: 'id' in record.employee ? String(record.employee.id) : "unknown",
+              name: 'name' in record.employee ? String(record.employee.name) : (record.display_name || "Unknown Employee"),
+              bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : record.employee_id.toString(),
+              email: 'email' in record.employee ? String(record.employee.email) : undefined
+            };
           }
               
           // Safe access for training data with null checks
@@ -78,15 +75,12 @@ export function useCompletionsCache() {
           if (record.training && 
               typeof record.training === 'object' && 
               record.training !== null) {
-            // Check if it's an error object from Supabase
-            if (!('error' in record.training)) {
-              // Type safety by checking existence of properties
-              trainingData = {
-                id: 'id' in record.training ? String(record.training.id) : "unknown",
-                name: 'name' in record.training ? record.training.name : "Unknown Training",
-                category: 'category' in record.training ? record.training.category : "Unknown"
-              };
-            }
+            // Type safety by checking existence of properties
+            trainingData = {
+              id: 'id' in record.training ? String(record.training.id) : "unknown",
+              name: 'name' in record.training ? String(record.training.name) : "Unknown Training",
+              category: 'category' in record.training ? String(record.training.category) : "Unknown"
+            };
           }
             
           return {
