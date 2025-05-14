@@ -27,10 +27,15 @@ export function useTrainingData(employeeId?: string) {
         }
         
         // Query the employee_training_completions_2 table which is updated by the sync process
+        // Convert string ID to number if needed
+        const employeeIdNum = typeof targetEmployeeId === 'string' 
+          ? parseInt(targetEmployeeId, 10) 
+          : targetEmployeeId;
+        
         const { data, error } = await supabase
           .from('employee_training_completions_2')
           .select('*')
-          .eq('employee_id', targetEmployeeId);
+          .eq('employee_id', employeeIdNum);
           
         if (error) {
           console.error("Error fetching training data:", error);

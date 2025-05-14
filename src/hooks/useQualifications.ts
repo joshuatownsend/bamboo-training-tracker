@@ -34,7 +34,7 @@ export const useQualifications = () => {
         // Map trainings to qualifications (simplified approach)
         const mappedQualifications = userTrainings.map((training): QualificationStatus => ({
           positionId: 'default',
-          positionTitle: training.trainingDetails?.title || `Training ${training.trainingId}`,
+          positionTitle: training.display_name || `Training ${training.training_id}`,
           isQualifiedCounty: true,
           isQualifiedAVFRD: false,
           missingCountyTrainings: [],

@@ -16,7 +16,7 @@ export default function EligibilityReport() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [requirementType, setRequirementType] = useState<"county" | "avfrd" | "both">("county");
 
-  // Fetch positions from database
+  // Fetch positions from database - use the destructured properties directly
   const { positions, isLoadingPositions } = usePositionData();
   
   // Fetch employees from database

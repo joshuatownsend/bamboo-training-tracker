@@ -3,15 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { toast } from "@/components/ui/use-toast";
+import { Position } from "@/lib/types";
 
 /**
  * Hook to fetch position data for qualifications
- * @returns Position data query result
+ * @returns Position data query result with additional properties
  */
 export function usePositionData() {
   const { currentUser } = useUser();
   
-  return useQuery({
+  const query = useQuery({
     queryKey: ['position_data', currentUser?.id],
     queryFn: async () => {
       try {
@@ -40,4 +41,12 @@ export function usePositionData() {
     },
     enabled: !!currentUser,
   });
+
+  // Return with the expected properties that components use
+  return {
+    positions: query.data as Position[],
+    isLoadingPositions: query.isLoading,
+    positionsError: query.error,
+    ...query
+  };
 }
