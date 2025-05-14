@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { UserTraining } from "@/lib/types";
+import { UserTraining, TrainingCompletion } from "@/lib/types";
 
-export function useTrainingTypeNames(trainings: UserTraining[]) {
+export function useTrainingTypeNames(trainings: UserTraining[] | TrainingCompletion[]) {
   const [trainingTypeNames, setTrainingTypeNames] = useState<Record<string, string>>({});
   const [isLoadingNames, setIsLoadingNames] = useState(true);
 
@@ -14,8 +14,12 @@ export function useTrainingTypeNames(trainings: UserTraining[]) {
       
       try {
         // Extract all unique training IDs and convert to numbers
-        const trainingIds = [...new Set(trainings.map(t => 
-          t.trainingId || t.type?.toString() || ''))]
+        const trainingIds = [...new Set(trainings.map(t => {
+          // Handle both UserTraining and TrainingCompletion types
+          const id = 'trainingId' in t ? t.trainingId : 
+                     'type' in t ? t.type : '';
+          return id;
+        }))]
           .filter(id => id)
           .map(id => {
             const numId = parseInt(id, 10);
