@@ -1,4 +1,3 @@
-
 export interface Employee {
   id: string;
   name: string;
@@ -47,6 +46,20 @@ export interface TrainingCompletion {
   certificateUrl?: string;
   notes?: string;
   instructor?: string;
+  // Add these properties to store joined data
+  employeeData?: {
+    id: string;
+    name: string;
+    bamboo_employee_id: string;
+    email?: string;
+    [key: string]: any;
+  };
+  trainingData?: {
+    id: string;
+    name: string;
+    category?: string;
+    [key: string]: any;
+  };
 }
 
 export interface DepartmentStats {

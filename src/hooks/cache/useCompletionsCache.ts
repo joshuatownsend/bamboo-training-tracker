@@ -4,40 +4,74 @@ import { supabase } from "@/integrations/supabase/client";
 import { TrainingCompletion } from "@/lib/types";
 
 /**
- * Hook to fetch training completions from the employee_training_completions_2 table
- * Updated to ensure we retrieve ALL training completions without pagination limits
+ * Hook to fetch training completions with employee and training details
+ * Returns a joined dataset to avoid frontend matching issues
  */
 export function useCompletionsCache() {
   return useQuery({
     queryKey: ['cached', 'completions'],
     queryFn: async () => {
-      console.log("Fetching training completions from employee_training_completions_2 table");
+      console.log("Fetching training completions with joined employee and training data");
       
-      // Try fetching from the employee_training_completions_2 table 
-      // with explicit count of records for debugging
-      const { count: totalCount, error: countError } = await supabase
+      // Fetch data with a join to ensure we have all related information
+      const { data: joinedData, error: joinError } = await supabase
         .from('employee_training_completions_2')
-        .select('*', { count: 'exact', head: true });
+        .select(`
+          *,
+          employee:employee_mappings!employee_id(
+            id,
+            name,
+            bamboo_employee_id,
+            email
+          ),
+          training:bamboo_training_types!training_id(
+            id,
+            name,
+            category
+          )
+        `)
+        .order('completed', { ascending: false })
+        .limit(100); // Limit to recent records
       
-      if (totalCount) {
-        console.log(`Database contains approximately ${totalCount} training completions`);
+      if (joinError) {
+        console.error("Error fetching joined completion data:", joinError);
       }
       
-      if (countError) {
-        console.warn("Error getting count:", countError);
+      if (joinedData && joinedData.length > 0) {
+        console.log(`Fetched ${joinedData.length} joined training completions`);
+        console.log("Sample joined data:", joinedData[0]);
+        
+        // Map to our TrainingCompletion type with the joined data
+        return joinedData.map((record): TrainingCompletion => ({
+          id: `${record.employee_id}-${record.training_id}-${record.completed}`,
+          employeeId: record.employee_id.toString(),
+          trainingId: record.training_id.toString(),
+          completionDate: record.completed,
+          status: 'completed' as const,
+          instructor: record.instructor,
+          notes: record.notes,
+          // Include the joined data
+          employeeData: record.employee,
+          trainingData: record.training
+        }));
       }
       
-      // Now fetch all the data with a very high limit (no default limit which was causing the 1000 record issue)
-      const { data: newData, error: newError } = await supabase
+      // If join fails, try the traditional approach as fallback
+      console.warn("Joined query failed or returned no results, trying standard approach");
+      const { data: completionsData, error: completionsError } = await supabase
         .from('employee_training_completions_2')
         .select('*')
-        .limit(100000); // Set a very high limit to ensure we get all records
+        .limit(100)
+        .order('completed', { ascending: false });
       
-      if (newData && newData.length > 0) {
-        console.log(`Fetched ${newData.length} training completions from employee_training_completions_2 table`);
+      if (completionsError) {
+        console.error("Error fetching training completions:", completionsError);
+      }
+      
+      if (completionsData && completionsData.length > 0) {
+        console.log(`Fetched ${completionsData.length} training completions`);
         
-        // Map the data to our TrainingCompletion type
-        return newData.map((completion): TrainingCompletion => ({
+        return completionsData.map((completion): TrainingCompletion => ({
           id: `${completion.employee_id}-${completion.training_id}-${completion.completed}`,
           employeeId: completion.employee_id.toString(),
           trainingId: completion.training_id.toString(),
@@ -48,36 +82,7 @@ export function useCompletionsCache() {
         }));
       }
       
-      if (newError) {
-        console.warn("Error fetching from employee_training_completions_2 table:", newError);
-      }
-      
-      // Try the legacy employee_training_completions table as fallback
-      const { data: legacyData, error: legacyError } = await supabase
-        .from('employee_training_completions')
-        .select('*')
-        .limit(100000); // Also apply the high limit here
-      
-      if (legacyData && legacyData.length > 0) {
-        console.log(`Fetched ${legacyData.length} training completions from legacy employee_training_completions table`);
-        
-        return legacyData.map((completion): TrainingCompletion => ({
-          id: completion.id,
-          employeeId: completion.employee_id.toString(),
-          trainingId: completion.training_id.toString(),
-          completionDate: completion.completion_date,
-          status: 'completed' as const,
-          instructor: completion.instructor,
-          notes: completion.notes
-        }));
-      }
-      
-      if (legacyError) {
-        console.error("Error fetching from legacy employee_training_completions:", legacyError);
-      }
-      
-      // If both tables failed or had no data, return empty array
-      console.log("No training completions found in any table");
+      console.log("No training completions found");
       return [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

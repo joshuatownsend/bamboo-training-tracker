@@ -25,6 +25,19 @@ export function DashboardCharts({
     trainingsCount: trainings?.length || 0
   });
 
+  // Log sample data for better debugging
+  if (completions.length > 0) {
+    console.log("Sample completion:", completions[0]);
+  }
+  
+  if (employees.length > 0) {
+    console.log("Sample employee:", employees[0]);
+  }
+  
+  if (trainings.length > 0) {
+    console.log("Sample training:", trainings[0]);
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {/* Department Compliance Chart */}
