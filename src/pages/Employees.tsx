@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -97,7 +96,10 @@ const Employees = () => {
       ? mockTrainings 
       : (directApiData?.trainings || []);
     
-  const completionsData: TrainingCompletion[] = (cachedCompletions && cachedCompletions.length > 0) 
+  const completionsData: TrainingCompletion[] = (
+    // Ensure cachedCompletions is an array, not a number
+    Array.isArray(cachedCompletions) && cachedCompletions.length > 0
+  ) 
     ? cachedCompletions
     : (!isConfigured || directApiError) 
       ? mockCompletions 

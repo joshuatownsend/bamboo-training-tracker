@@ -29,7 +29,7 @@ export function useCompletionsCache(options: UseCompletionsCacheOptions = {}) {
           
         if (error) {
           console.error("Error fetching completion count:", error);
-          return [];
+          return 0; // Return 0 instead of empty array for count
         }
         
         console.log(`Found ${count} total completions`);

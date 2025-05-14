@@ -70,6 +70,7 @@ export function useDashboardStats() {
         totalTrainings: trainingCount || 0,
         completedTrainings: completedTrainings || 0,
         expiredTrainings: expiredTrainings,
+        upcomingTrainings: 0, // Add missing property required by the TrainingStatistics type
         completionRate: completionRate,
         departmentStats: [] // This would need to be calculated separately if needed
       };

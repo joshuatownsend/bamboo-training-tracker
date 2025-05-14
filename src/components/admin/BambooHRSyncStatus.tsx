@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,7 +97,10 @@ export function BambooHRSyncStatus() {
   }, [trainings]);
 
   const mappedCompletions: CachedCompletion[] = React.useMemo(() => {
-    return completions.map(comp => ({
+    // Make sure completions is an array before mapping
+    const completionsArray = Array.isArray(completions) ? completions : [];
+    
+    return completionsArray.map(comp => ({
       id: comp.id,
       employee_id: comp.employeeId,
       type: comp.trainingId, // Updated to match our new schema

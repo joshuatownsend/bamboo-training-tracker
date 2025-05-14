@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import useEmployeeCache from "@/hooks/useEmployeeCache";
@@ -36,7 +35,9 @@ export function useDashboardData() {
   const { data: dashboardStats, isLoading: isDashboardStatsLoading, refetch: refetchStats } = useDashboardStats();
 
   // Format completions for consistent use across components
-  const formattedCompletions = useCompletionFormatting(trainingCompletions);
+  const formattedCompletions = useCompletionFormatting(
+    Array.isArray(trainingCompletions) ? trainingCompletions : []
+  );
 
   // Handle sync operations with the dedicated hook
   const { 
