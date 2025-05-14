@@ -5,6 +5,8 @@ import { Employee, Training, TrainingCompletion } from "@/lib/types";
 import { CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RecentCompletionsProps {
   completions: TrainingCompletion[];
@@ -17,6 +19,9 @@ export function RecentCompletions({
   employees,
   trainings
 }: RecentCompletionsProps) {
+  // State for training names from database
+  const [trainingNamesMap, setTrainingNamesMap] = useState<Record<string, string>>({});
+  
   // Log data for debugging
   console.log("RecentCompletions component received:", { 
     completionsCount: completions?.length || 0, 
@@ -26,6 +31,44 @@ export function RecentCompletions({
 
   // Use our custom hook to get training names
   const { trainingTypeNames, isLoadingNames } = useTrainingTypeNames(completions);
+  
+  // Fetch actual training names from bamboo_training_types
+  useEffect(() => {
+    const fetchTrainingNames = async () => {
+      // Extract all unique training IDs from completions
+      const trainingIds = [...new Set(completions.map(c => c.trainingId))]
+        .filter(Boolean)
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+      
+      if (trainingIds.length === 0) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('bamboo_training_types')
+          .select('id, name')
+          .in('id', trainingIds);
+        
+        if (error) {
+          console.error('Error fetching training names:', error);
+          return;
+        }
+        
+        // Create a mapping of ID to name
+        const namesMap = data.reduce((acc, item) => {
+          acc[String(item.id)] = item.name;
+          return acc;
+        }, {} as Record<string, string>);
+        
+        setTrainingNamesMap(namesMap);
+        console.log(`Fetched ${data.length} training names for display`, namesMap);
+      } catch (error) {
+        console.error('Error in fetchTrainingNames:', error);
+      }
+    };
+    
+    fetchTrainingNames();
+  }, [completions]);
   
   if (!completions?.length) {
     console.warn("No completions data provided to RecentCompletions component");
@@ -69,25 +112,31 @@ export function RecentCompletions({
   
   // Function to get training name from ID
   const getTrainingName = (completion: TrainingCompletion): string => {
-    // First check if we already have the name in the joined data
+    const trainingId = completion.trainingId;
+    
+    // First priority: use directly fetched names from database
+    if (trainingNamesMap[trainingId]) {
+      return trainingNamesMap[trainingId];
+    }
+    
+    // Second priority: check if we already have the name in the joined data
     if (completion.trainingData?.name) {
       return completion.trainingData.name;
     }
     
-    // Next, try to find the name in our trainingTypeNames map
-    const trainingId = completion.trainingId;
+    // Third priority: try to find the name in our trainingTypeNames map
     if (trainingTypeNames[trainingId]) {
       return trainingTypeNames[trainingId];
     }
     
-    // If all else fails, try to find it in the trainings array
+    // Fourth priority: try to find it in the trainings array
     const training = trainings.find(t => t.id === trainingId);
     if (training) {
       return training.title;
     }
     
-    // Default fallback
-    return `Training ${trainingId}`;
+    // Default fallback - more descriptive than just ID
+    return `Training (ID: ${trainingId})`;
   };
   
   // Function to format date or show meaningful fallback
