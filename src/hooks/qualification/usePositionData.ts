@@ -28,7 +28,20 @@ export function usePositionData() {
         }
         
         console.info(`Fetched position data: ${data.length} positions`);
-        return data || [];
+        
+        // Map the database columns to the Position interface
+        const mappedPositions = data.map(position => ({
+          id: position.id,
+          title: position.title,
+          description: position.description,
+          department: position.department,
+          countyRequirements: position.county_requirements,
+          avfrdRequirements: position.avfrd_requirements,
+          created_at: position.created_at,
+          updated_at: position.updated_at,
+        })) as Position[];
+        
+        return mappedPositions || [];
       } catch (error) {
         console.error("Exception in usePositionData:", error);
         toast({
