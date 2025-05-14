@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TrainingCompletion } from "@/lib/types";
-import { toStringId, safeProperty, hasProperty } from "@/utils/idConverters";
+import { toStringId, hasProperty } from "@/utils/idConverters";
 
 /**
  * Hook to fetch training completions with employee and training details
@@ -53,19 +53,20 @@ export function useCompletionsCache() {
           };
           
           // Process employee data with null safety
-          const employeeData = hasProperty(record, 'employee') && 
-                              typeof record.employee === 'object' ? 
+          const employeeData = (record.employee !== null && 
+                               typeof record.employee === 'object') ? 
             {
-              id: safeProperty(record.employee, 'id', "unknown"),
-              name: hasProperty(record.employee, 'name') && record.employee.name ? 
-                String(record.employee.name) : 
-                (record.display_name || "Unknown Employee"),
-              bamboo_employee_id: hasProperty(record.employee, 'bamboo_employee_id') ? 
-                String(record.employee.bamboo_employee_id) : 
-                String(record.employee_id),
-              email: hasProperty(record.employee, 'email') ? 
-                record.employee.email as string | undefined : 
-                undefined
+              id: record.employee && hasProperty(record.employee, 'id') ? 
+                  String(record.employee.id) : "unknown",
+              name: record.employee && hasProperty(record.employee, 'name') ? 
+                  String(record.employee.name) : 
+                  (record.display_name || "Unknown Employee"),
+              bamboo_employee_id: record.employee && hasProperty(record.employee, 'bamboo_employee_id') ? 
+                  String(record.employee.bamboo_employee_id) : 
+                  String(record.employee_id),
+              email: record.employee && hasProperty(record.employee, 'email') ? 
+                  record.employee.email as string | undefined : 
+                  undefined
             } : defaultEmployeeData;
               
           // Default values for training data when missing
@@ -76,18 +77,18 @@ export function useCompletionsCache() {
           };
           
           // Process training data with null safety
-          const trainingData = hasProperty(record, 'training') && 
-                              typeof record.training === 'object' ? 
+          const trainingData = (record.training !== null && 
+                               typeof record.training === 'object') ? 
             {
-              id: hasProperty(record.training, 'id') ? 
-                toStringId(record.training.id, "unknown") : 
-                String(record.training_id),
-              name: hasProperty(record.training, 'name') ? 
-                String(record.training.name) : 
-                "Unknown Training",
-              category: hasProperty(record.training, 'category') ? 
-                String(record.training.category) : 
-                "Unknown"
+              id: record.training && hasProperty(record.training, 'id') ? 
+                  toStringId(record.training.id, "unknown") : 
+                  String(record.training_id),
+              name: record.training && hasProperty(record.training, 'name') ? 
+                  String(record.training.name) : 
+                  "Unknown Training",
+              category: record.training && hasProperty(record.training, 'category') ? 
+                  String(record.training.category) : 
+                  "Unknown"
             } : defaultTrainingData;
             
           return {

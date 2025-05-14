@@ -43,30 +43,12 @@ export const isDefined = <T>(value: T | null | undefined): value is T => {
 };
 
 /**
- * Safely accesses a property on an object that might be null/undefined
- * @param obj The object to access
- * @param prop The property name to access
- * @param fallback Optional fallback value if property doesn't exist
- * @returns The property value or fallback
- */
-export const safeProperty = <T, K extends keyof T>(
-  obj: T | null | undefined, 
-  prop: K, 
-  fallback: any = undefined
-): T[K] | undefined => {
-  if (obj === null || obj === undefined) {
-    return fallback;
-  }
-  return obj[prop] !== undefined ? obj[prop] : fallback;
-};
-
-/**
- * Type guard to check if a record has a specific property
+ * Type guard to check if an object has a specific property
  * @param obj The object to check
  * @param propertyName The property name to check
  * @returns True if the object has the property and it's not null/undefined
  */
-export function hasProperty<T, K extends PropertyKey>(
+export function hasProperty<T, K extends string | number>(
   obj: T,
   propertyName: K
 ): obj is T & Record<K, unknown> {
@@ -74,6 +56,24 @@ export function hasProperty<T, K extends PropertyKey>(
          obj !== undefined && 
          typeof obj === 'object' && 
          propertyName in obj && 
-         obj[propertyName as keyof T] !== null && 
-         obj[propertyName as keyof T] !== undefined;
+         (obj as any)[propertyName] !== null && 
+         (obj as any)[propertyName] !== undefined;
 }
+
+/**
+ * Safely accesses a property on an object that might be null/undefined
+ * @param obj The object to access
+ * @param prop The property name to access
+ * @param fallback Optional fallback value if property doesn't exist
+ * @returns The property value or fallback
+ */
+export const safeProperty = <T extends Record<string, any>, K extends string>(
+  obj: T | null | undefined, 
+  prop: K, 
+  fallback: any = undefined
+): any => {
+  if (obj === null || obj === undefined) {
+    return fallback;
+  }
+  return obj[prop] !== undefined ? obj[prop] : fallback;
+};

@@ -75,17 +75,17 @@ export const useTrainingData = (employeeId?: string) => {
         // Process training data with null safety
         let trainingDetails: Training = defaultTraining;
         
-        if (hasProperty(item, 'training') && typeof item.training === 'object') {
+        if (item.training !== null && typeof item.training === 'object') {
           trainingDetails = {
             id: toStringId(item.training_id),
-            title: hasProperty(item.training, 'name') ? 
+            title: item.training && hasProperty(item.training, 'name') ? 
               String(item.training.name) : 
               `Training ${item.training_id}`,
             type: toStringId(item.training_id),
-            category: hasProperty(item.training, 'category') ? 
+            category: item.training && hasProperty(item.training, 'category') ? 
               String(item.training.category) : 
               'Uncategorized',
-            description: hasProperty(item.training, 'description') ? 
+            description: item.training && hasProperty(item.training, 'description') ? 
               String(item.training.description) : 
               '',
             durationHours: 0,
