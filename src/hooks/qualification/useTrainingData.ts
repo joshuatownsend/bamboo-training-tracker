@@ -21,7 +21,7 @@ export function useTrainingData(employeeId?: string) {
       const { data: newData, error: newError } = await supabase
         .from('employee_training_completions_2')
         .select('*')
-        .eq('employee_id', employeeId);
+        .eq('employee_id', parseInt(employeeId));
       
       // If we have data in the new table, use that
       if (newData && newData.length > 0) {
@@ -32,9 +32,9 @@ export function useTrainingData(employeeId?: string) {
           employeeId: completion.employee_id.toString(),
           trainingId: completion.training_id.toString(),
           completionDate: completion.completed,
-          status: 'completed' as const,
+          instructor: completion.instructor,
           notes: completion.notes,
-          instructor: completion.instructor
+          trainingDetails: null  // Required by UserTraining type
         }));
       }
       
@@ -47,7 +47,7 @@ export function useTrainingData(employeeId?: string) {
       const { data: legacyData, error: legacyError } = await supabase
         .from('employee_training_completions')
         .select('*')
-        .eq('employee_id', employeeId);
+        .eq('employee_id', parseInt(employeeId));
       
       if (legacyError) {
         console.error("Error fetching training completions:", legacyError);
@@ -62,9 +62,9 @@ export function useTrainingData(employeeId?: string) {
           employeeId: completion.employee_id.toString(),
           trainingId: completion.training_id.toString(),
           completionDate: completion.completion_date,
-          status: 'completed' as const,
           notes: completion.notes,
-          instructor: completion.instructor
+          instructor: completion.instructor,
+          trainingDetails: null  // Required by UserTraining type
         }));
       }
       

@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useTrainingData } from './qualification';
 import { useUser } from '@/contexts/user';
-import { Training, TrainingCompletion, QualificationStatus } from '@/lib/types';
-import { CachedTraining, CachedCompletion } from '@/types/bamboo';
+import { Training, UserTraining, QualificationStatus } from '@/lib/types';
 import { useQualificationTabs } from './qualification';
 
 // Update UserQualification interface to match QualificationStatus properties
@@ -17,34 +16,25 @@ export interface UserQualification extends QualificationStatus {
 }
 
 export const useQualifications = () => {
-  const { trainings, completions, isTrainingsLoading, isCompletionsLoading } = useTrainingData();
+  const { currentUser } = useUser();
+  const trainingDataQuery = useTrainingData(currentUser?.employeeId);
   const [qualifications, setQualifications] = useState<QualificationStatus[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const { currentUser } = useUser();
   const { activeTab, setActiveTab } = useQualificationTabs();
 
   // Map trainings and completions to qualifications
   useEffect(() => {
-    setIsLoading(isTrainingsLoading || isCompletionsLoading);
+    setIsLoading(trainingDataQuery.isLoading);
     
     try {
-      if (!isTrainingsLoading && !isCompletionsLoading && trainings.length > 0 && completions.length > 0) {
-        // Create a mapping of training IDs to names for easy lookup
-        const trainingMap = new Map<string, string>();
-        trainings.forEach((training) => {
-          trainingMap.set(training.id, training.title);
-        });
-
-        // Filter completions for the current user
-        const userCompletions = currentUser ? 
-          completions.filter(c => c.employeeId === currentUser.id) : 
-          completions;
-
-        // Map completions to qualifications
-        const mappedQualifications = userCompletions.map((completion): QualificationStatus => ({
+      if (!trainingDataQuery.isLoading && trainingDataQuery.data) {
+        const userTrainings = trainingDataQuery.data;
+        
+        // Map trainings to qualifications (simplified approach)
+        const mappedQualifications = userTrainings.map((training): QualificationStatus => ({
           positionId: 'default',
-          positionTitle: trainingMap.get(completion.trainingId) || `Training ${completion.trainingId}`,
+          positionTitle: training.trainingDetails?.title || `Training ${training.trainingId}`,
           isQualifiedCounty: true,
           isQualifiedAVFRD: false,
           missingCountyTrainings: [],
@@ -57,7 +47,7 @@ export const useQualifications = () => {
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error occurred'));
     }
-  }, [trainings, completions, isTrainingsLoading, isCompletionsLoading, currentUser]);
+  }, [trainingDataQuery.data, trainingDataQuery.isLoading, currentUser]);
 
   // Mock function for position qualifications - this would be replaced with actual logic
   const getPositionQualifications = (): QualificationStatus[] => {
@@ -76,8 +66,8 @@ export const useQualifications = () => {
 
   return {
     qualifications,
-    isLoading,
-    error,
+    isLoading: trainingDataQuery.isLoading || isLoading,
+    error: trainingDataQuery.error || error,
     activeTab,
     setActiveTab,
     getPositionQualifications,
