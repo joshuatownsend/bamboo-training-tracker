@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/contexts/user";
 import { UserTraining, Training } from "@/lib/types";
+import { toStringId } from "@/utils/idConverters";
 
 /**
  * Hook to fetch user training data from BambooHR via Supabase
@@ -61,27 +62,26 @@ export const useTrainingData = (employeeId?: string) => {
       // Convert to UserTraining format
       return data.map((item): UserTraining => {
         // Create default training values for safety
-        let trainingDetails: Training | null = null;
+        const defaultTraining: Training = {
+          id: String(item.training_id),
+          title: `Training ${item.training_id}`,
+          type: String(item.training_id),
+          category: 'Uncategorized',
+          description: '',
+          durationHours: 0,
+          requiredFor: []
+        };
         
         // Only try to access training properties if it exists and is an object
+        let trainingDetails: Training = defaultTraining;
+        
         if (item.training && typeof item.training === 'object' && item.training !== null) {
           trainingDetails = {
-            id: String(item.training.id || item.training_id),
-            title: String(item.training.name || `Training ${item.training_id}`),
-            type: String(item.training_id),
-            category: item.training.category ? String(item.training.category) : 'Uncategorized',
-            description: item.training.description ? String(item.training.description) : '',
-            durationHours: 0,
-            requiredFor: []
-          };
-        } else {
-          // Fallback if training data is missing
-          trainingDetails = {
-            id: String(item.training_id),
-            title: `Training ${item.training_id}`,
-            type: String(item.training_id),
-            category: 'Uncategorized',
-            description: '',
+            id: toStringId(item.training_id),
+            title: item.training.name || `Training ${item.training_id}`,
+            type: toStringId(item.training_id),
+            category: item.training.category || 'Uncategorized',
+            description: item.training.description || '',
             durationHours: 0,
             requiredFor: []
           };
@@ -90,11 +90,11 @@ export const useTrainingData = (employeeId?: string) => {
         return {
           id: `${item.employee_id}-${item.training_id}-${item.completed}`,
           employeeId: String(item.employee_id),
-          trainingId: String(item.training_id),
+          trainingId: toStringId(item.training_id),
           completionDate: item.completed,
           instructor: item.instructor,
           notes: item.notes,
-          type: String(item.training_id),
+          type: toStringId(item.training_id),
           completed: item.completed,
           trainingDetails
         };

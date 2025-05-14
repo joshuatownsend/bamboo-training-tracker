@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { TrainingCompletion } from "@/lib/types";
+import { toStringId, safeProperty } from "@/utils/idConverters";
 
 /**
  * Hook to fetch training completions with employee and training details
@@ -52,17 +53,14 @@ export function useCompletionsCache() {
           };
           
           // Only try to access employee properties if employee exists and is an object
-          if (record.employee && 
-              typeof record.employee === 'object' && 
-              record.employee !== null) {
-            // Type safety by checking existence of properties
+          if (record.employee && typeof record.employee === 'object' && record.employee !== null) {
+            // Use optional chaining and our utility functions for safe property access
             employeeData = {
-              id: 'id' in record.employee ? String(record.employee.id) : "unknown",
-              name: 'name' in record.employee && record.employee.name ? String(record.employee.name) : 
-                    (record.display_name || "Unknown Employee"),
-              bamboo_employee_id: 'bamboo_employee_id' in record.employee ? String(record.employee.bamboo_employee_id) : 
-                                 String(record.employee_id),
-              email: 'email' in record.employee && record.employee.email ? String(record.employee.email) : undefined
+              id: safeProperty(record.employee, 'id', "unknown"),
+              name: record.employee.name || record.display_name || "Unknown Employee",
+              bamboo_employee_id: record.employee.bamboo_employee_id ? 
+                String(record.employee.bamboo_employee_id) : String(record.employee_id),
+              email: record.employee.email || undefined
             };
           }
               
@@ -74,14 +72,12 @@ export function useCompletionsCache() {
           };
           
           // Only try to access training properties if training exists and is an object
-          if (record.training && 
-              typeof record.training === 'object' &&
-              record.training !== null) {
-            // Type safety by checking existence of properties
+          if (record.training && typeof record.training === 'object' && record.training !== null) {
+            // Use utility functions for safe property access
             trainingData = {
-              id: 'id' in record.training ? String(record.training.id) : "unknown",
-              name: 'name' in record.training && record.training.name ? String(record.training.name) : "Unknown Training",
-              category: 'category' in record.training && record.training.category ? String(record.training.category) : "Unknown"
+              id: toStringId(record.training.id, "unknown"),
+              name: record.training.name || "Unknown Training",
+              category: record.training.category || "Unknown"
             };
           }
             
