@@ -9,6 +9,17 @@ import type { TrainingStatistics, Training, TrainingCompletion } from "@/lib/typ
 import useBambooHR from "@/hooks/useBambooHR";
 import { useCompletionsCache } from "@/hooks/cache";
 
+// Define type for database training completion record
+interface DbTrainingCompletion {
+  employee_id: number | string;
+  training_id: number | string;
+  completed?: string;
+  completion_date?: string;
+  instructor?: string;
+  notes?: string;
+  [key: string]: any; // For other potential fields
+}
+
 /**
  * Custom hook for efficiently retrieving and processing dashboard data
  * Uses cached data from Supabase instead of direct API calls to BambooHR
@@ -108,18 +119,22 @@ export function useDashboardData() {
     
     console.log(`Formatting ${trainingCompletions.length} completions for dashboard use`);
     
-    // Format the completions to match our TrainingCompletion type
-    return trainingCompletions.map(completion => {
-      // Fixed: Use proper camelCase property names to match the TrainingCompletion type
+    // Properly cast the data to our DB type for proper property access
+    return trainingCompletions.map((completion: any): TrainingCompletion => {
+      const dbCompletion = completion as DbTrainingCompletion;
+      
+      // Use the completion date from either field, defaulting to the most likely field first
+      const completionDate = dbCompletion.completed || dbCompletion.completion_date || '';
+      
       return {
-        id: `${completion.employee_id}-${completion.training_id}-${completion.completed || completion.completion_date}`,
-        employeeId: completion.employee_id.toString(),
-        trainingId: completion.training_id.toString(),
-        completionDate: completion.completed || completion.completion_date,
+        id: `${dbCompletion.employee_id}-${dbCompletion.training_id}-${completionDate}`,
+        employeeId: String(dbCompletion.employee_id),
+        trainingId: String(dbCompletion.training_id),
+        completionDate,
         status: 'completed' as const,
-        instructor: completion.instructor,
-        notes: completion.notes
-      } as TrainingCompletion;
+        instructor: dbCompletion.instructor,
+        notes: dbCompletion.notes
+      };
     });
   }, [trainingCompletions]);
 
