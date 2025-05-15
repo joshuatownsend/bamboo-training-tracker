@@ -131,7 +131,7 @@ export function QualificationsExportButton({
         return;
       }
       
-      // Export to Excel
+      // Export to Excel - now with proper typing
       exportToExcel(
         exportData.trainings, 
         exportData.positionTitle, 
@@ -172,7 +172,7 @@ export function QualificationsExportButton({
         return;
       }
       
-      // Export to PDF
+      // Export to PDF - now with proper typing
       const success = exportToPdf(
         exportData.trainings, 
         exportData.positionTitle, 

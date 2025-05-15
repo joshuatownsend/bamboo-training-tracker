@@ -20,23 +20,41 @@ const prepareTrainingsForExport = (
   positionTitle: string, 
   requirementType: "county" | "avfrd" | "combined"
 ) => {
-  return trainings.map((training) => ({
-    Training: 'title' in training 
-      ? training.title 
-      : (training as UserTraining).trainingDetails?.title || (training as TrainingCompletion).trainingData?.name || "Unknown Training",
-    Category: 'category' in training 
-      ? training.category 
-      : (training as UserTraining).trainingDetails?.category || (training as TrainingCompletion).trainingData?.category || "Unknown",
-    Description: 'description' in training 
-      ? (training.description || "No description available") 
-      : "No description available",
-    Position: positionTitle,
-    "Requirement Type": requirementType === "county" 
-      ? "Loudoun County" 
-      : requirementType === "avfrd" 
-        ? "AVFRD" 
-        : "Combined"
-  }));
+  return trainings.map((training) => {
+    // Handle different training object structures
+    let title: string;
+    let category: string;
+    let description: string;
+
+    if ('title' in training) {
+      // It's a Training object
+      title = training.title;
+      category = training.category;
+      description = training.description || "No description available";
+    } else if ('trainingDetails' in training) {
+      // It's a UserTraining object
+      title = training.trainingDetails?.title || "Unknown Training";
+      category = training.trainingDetails?.category || "Unknown";
+      description = "No description available";
+    } else {
+      // It's a TrainingCompletion object
+      title = training.trainingData?.name || "Unknown Training";
+      category = training.trainingData?.category || "Unknown";
+      description = "No description available";
+    }
+
+    return {
+      Training: title,
+      Category: category,
+      Description: description,
+      Position: positionTitle,
+      "Requirement Type": requirementType === "county" 
+        ? "Loudoun County" 
+        : requirementType === "avfrd" 
+          ? "AVFRD" 
+          : "Combined"
+    };
+  });
 };
 
 // Export to Excel
@@ -85,17 +103,26 @@ export const exportToPdf = (
   
   // Prepare table data
   const tableRows = trainings.map(training => {
-    const title = 'title' in training 
-      ? training.title 
-      : (training as UserTraining).trainingDetails?.title || (training as TrainingCompletion).trainingData?.name || "Unknown Training";
-    
-    const category = 'category' in training 
-      ? training.category 
-      : (training as UserTraining).trainingDetails?.category || (training as TrainingCompletion).trainingData?.category || "Unknown";
-    
-    const description = 'description' in training 
-      ? (training.description || "No description available") 
-      : "No description available";
+    let title: string;
+    let category: string;
+    let description: string;
+
+    if ('title' in training) {
+      // It's a Training object
+      title = training.title;
+      category = training.category;
+      description = training.description || "No description available";
+    } else if ('trainingDetails' in training) {
+      // It's a UserTraining object
+      title = training.trainingDetails?.title || "Unknown Training";
+      category = training.trainingDetails?.category || "Unknown";
+      description = "No description available";
+    } else {
+      // It's a TrainingCompletion object
+      title = training.trainingData?.name || "Unknown Training";
+      category = training.trainingData?.category || "Unknown";
+      description = "No description available";
+    }
     
     return [title, category, description];
   });
