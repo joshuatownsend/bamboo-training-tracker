@@ -14,6 +14,9 @@ import { PageHeader } from "@/components/training/headers/PageHeader";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
 import { ApiErrorAlert } from "@/components/training/alerts/ApiErrorAlert";
 import { SortableHeader } from "@/components/training/headers/SortableHeader";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import { ExportDataButton } from "@/components/reports/ExportDataButton";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
@@ -94,6 +97,22 @@ export default function MyTrainings() {
   // Check if there was an API error
   const hasApiError = error !== null && error !== undefined;
 
+  // Prepare data for export
+  const exportColumns = [
+    { header: "Training Name", accessor: "title" },
+    { header: "Category", accessor: "category" },
+    { header: "Completion Date", accessor: "completionDate" },
+    { header: "Expiration Date", accessor: "expirationDate" }
+  ];
+
+  // Format data for export
+  const exportData = sortedTrainings.map(training => ({
+    title: training.trainingDetails?.title || `Training ${training.trainingId || training.type}`,
+    category: training.trainingDetails?.category || "Uncategorized",
+    completionDate: training.completionDate || "N/A",
+    expirationDate: training.trainingDetails?.expirationDate || "No expiration"
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader 
@@ -107,13 +126,24 @@ export default function MyTrainings() {
 
       <StatCards userTrainings={userTrainings} categoryCounts={categoryCounts} />
 
-      <SearchAndFilter
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
-        categories={categories}
-      />
+      <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+        <SearchAndFilter
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          categories={categories}
+        />
+
+        {!isLoading && !error && sortedTrainings.length > 0 && (
+          <ExportDataButton
+            data={exportData}
+            fileName="My_Training_Records"
+            title="Training Records"
+            columns={exportColumns}
+          />
+        )}
+      </div>
 
       <Card>
         <CardHeader>

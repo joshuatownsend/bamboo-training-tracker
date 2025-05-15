@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrainingTableRow } from "./TrainingTableRow";
