@@ -3,7 +3,7 @@ import { toast } from "@/hooks/use-toast";
 import { exportToExcel, exportToPdf } from "@/utils/exportUtils";
 import { Training } from "@/lib/types";
 
-interface ExportData {
+export interface ExportData {
   trainings: Training[];
   positionTitle: string;
   requirementType: "county" | "avfrd" | "combined";

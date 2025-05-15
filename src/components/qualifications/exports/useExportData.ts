@@ -1,6 +1,7 @@
 
 import { QualificationStatus, Training } from "@/lib/types";
 import { useState } from "react";
+import { ExportData } from "./useExportActions";
 
 // Hook to prepare data for export from qualifications
 export function useExportData(
@@ -54,8 +55,14 @@ export function useExportData(
     }
   };
   
+  // Map activeTab to requirementType for exports
+  const getRequirementType = (): "county" | "avfrd" | "combined" => {
+    if (activeTab === "both") return "combined";
+    return activeTab;
+  };
+  
   // Format qualifications data for export
-  const prepareExportData = () => {
+  const prepareExportData = (): ExportData => {
     setIsProcessing(true);
     
     try {
@@ -65,14 +72,13 @@ export function useExportData(
         return {
           trainings: [],
           positionTitle: "My Qualifications",
-          requirementType: activeTab === "both" ? "combined" : activeTab
+          requirementType: getRequirementType()
         };
       }
       
       // Get the first qualification to use for export
       const qualification = filteredQualifications[0];
       const positionTitle = "My Qualifications";
-      const requirementType = activeTab === "both" ? "combined" : activeTab;
       
       // Get trainings based on active tab
       const trainings = getExportTrainings(qualification);
@@ -80,7 +86,7 @@ export function useExportData(
       return { 
         trainings, 
         positionTitle, 
-        requirementType 
+        requirementType: getRequirementType()
       };
     } catch (error) {
       console.error("Error preparing export data:", error);
