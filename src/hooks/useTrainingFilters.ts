@@ -20,7 +20,8 @@ export function useTrainingFilters(trainings: UserTraining[]) {
       const category = safeTextValue(training.trainingDetails?.category) || 'Uncategorized';
       categoriesSet.add(category);
     });
-    return ['all', ...Array.from(categoriesSet).sort()];
+    // We don't need to add 'all' to the categories list since it's added separately in the UI
+    return Array.from(categoriesSet).sort();
   }, [trainings]);
   
   // Calculate category counts

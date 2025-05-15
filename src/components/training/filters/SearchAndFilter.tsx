@@ -44,11 +44,13 @@ export function SearchAndFilter({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category || 'Uncategorized'}
-              </SelectItem>
-            ))}
+            {categories
+              .filter(category => category.toLowerCase() !== 'all')
+              .map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category || 'Uncategorized'}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       )}
