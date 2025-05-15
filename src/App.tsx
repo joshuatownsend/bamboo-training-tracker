@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
@@ -25,7 +26,6 @@ import EligibilityReport from './pages/reports/EligibilityReport';
 import RequirementsReport from './pages/reports/RequirementsReport';
 import ComplianceReport from './pages/reports/ComplianceReport';
 import TrainingRequirementManagement from './pages/TrainingRequirementManagement';
-import MyAdvancement from "./pages/MyAdvancement";
 
 function App() {
   return (
@@ -60,7 +60,6 @@ function App() {
               {/* Admin-only section */}
               <Route path="/position-management" element={<AuthGuard><PositionManagement /></AuthGuard>} />
               <Route path="/training-requirement-management" element={<AuthGuard><TrainingRequirementManagement /></AuthGuard>} />
-              <Route path="/advancement" element={<MyAdvancement />} />
             </Route>
           </Routes>
           <Toaster />

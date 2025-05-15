@@ -14,7 +14,6 @@ import { PageHeader } from "@/components/training/headers/PageHeader";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
 import { ApiErrorAlert } from "@/components/training/alerts/ApiErrorAlert";
 import { SortableHeader } from "@/components/training/headers/SortableHeader";
-import { ExportDataButton } from "@/components/reports/ExportDataButton";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
@@ -95,41 +94,13 @@ export default function MyTrainings() {
   // Check if there was an API error
   const hasApiError = error !== null && error !== undefined;
 
-  // Prepare export data
-  const exportData = sortedTrainings.map(training => ({
-    "Training Name": training.trainingDetails?.title || training.displayName || "Unknown Training",
-    "Category": training.trainingDetails?.category || "Uncategorized",
-    "Completion Date": training.completionDate || "Unknown",
-    "Instructor": training.instructor || "Not specified",
-    "Notes": training.notes || ""
-  }));
-
-  // Define columns for export
-  const exportColumns = [
-    { header: "Training Name", accessor: "Training Name" },
-    { header: "Category", accessor: "Category" },
-    { header: "Completion Date", accessor: "Completion Date" },
-    { header: "Instructor", accessor: "Instructor" },
-    { header: "Notes", accessor: "Notes" }
-  ];
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <PageHeader 
-          isAdmin={isAdmin}
-          isRefetching={isRefetching}
-          handleRefresh={handleRefresh}
-        />
-        {!isLoading && !hasApiError && !isMissingEmployeeId && (
-          <ExportDataButton 
-            data={exportData}
-            fileName="My_Training_Records"
-            title="My Training Records"
-            columns={exportColumns}
-          />
-        )}
-      </div>
+      <PageHeader 
+        isAdmin={isAdmin}
+        isRefetching={isRefetching}
+        handleRefresh={handleRefresh}
+      />
 
       {isMissingEmployeeId && <MissingEmployeeIdAlert isAdmin={isAdmin} />}
       {hasApiError && <ApiErrorAlert error={error} />}

@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Settings,
@@ -10,8 +11,7 @@ import {
   Users,
   AlertCircle,
   FileChartLine,
-  Briefcase,
-  ArrowUpRight
+  Briefcase
 } from "lucide-react";
 import { NavSection } from './types';
 
@@ -41,8 +41,8 @@ export const navigationSections: NavSection[] = [
       },
       {
         name: "My Advancement",
-        href: "/advancement",
-        icon: ArrowUpRight,
+        href: "/required-trainings",
+        icon: FileText,
       },
     ],
   },
