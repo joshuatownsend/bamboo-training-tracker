@@ -9,6 +9,7 @@ import { QualificationsHeader } from "@/components/qualifications/Qualifications
 import { useQualifications } from "@/hooks/useQualifications";
 import { MissingEmployeeIdAlert } from "@/components/training/alerts/MissingEmployeeIdAlert";
 import { useUser } from "@/contexts/user";
+import { ExportDataButton } from "@/components/reports/ExportDataButton";
 
 export default function MyQualifications() {
   const { currentUser } = useUser();
@@ -56,9 +57,65 @@ export default function MyQualifications() {
   // Use a safe default for qualifications if it's undefined
   const safeQualifications = qualifications || [];
   
+  // Prepare export data based on active tab
+  const prepareExportData = () => {
+    const exportData = [];
+    
+    for (const qualification of safeQualifications) {
+      let requiredTrainings = [];
+      
+      if (activeTab === "county") {
+        requiredTrainings = qualification.missingCountyTrainings;
+      } else if (activeTab === "avfrd") {
+        requiredTrainings = qualification.missingAVFRDTrainings;
+      } else {
+        // For "both" tab, combine both sets of missing trainings
+        requiredTrainings = [
+          ...qualification.missingCountyTrainings,
+          ...qualification.missingAVFRDTrainings
+        ];
+      }
+      
+      for (const training of requiredTrainings) {
+        exportData.push({
+          "Position": qualification.positionTitle,
+          "Requirement Type": activeTab === "county" ? "Loudoun County" : 
+                            activeTab === "avfrd" ? "AVFRD" : "Combined",
+          "Training Name": training.title,
+          "Category": training.category || "Uncategorized",
+          "Training Type": training.type || "Unknown",
+          "Status": "Required"
+        });
+      }
+    }
+    
+    return exportData;
+  };
+  
+  const exportData = prepareExportData();
+  
+  // Define columns for export
+  const exportColumns = [
+    { header: "Position", accessor: "Position" },
+    { header: "Requirement Type", accessor: "Requirement Type" },
+    { header: "Training Name", accessor: "Training Name" },
+    { header: "Category", accessor: "Category" },
+    { header: "Training Type", accessor: "Training Type" },
+    { header: "Status", accessor: "Status" }
+  ];
+  
   return (
     <div className="space-y-6">
-      <QualificationsHeader />
+      <div className="flex justify-between items-center">
+        <QualificationsHeader />
+        <ExportDataButton 
+          data={exportData}
+          fileName={`My_Qualifications_${activeTab.toUpperCase()}`}
+          title={`My Qualifications - ${activeTab === "county" ? "Loudoun County" : 
+                    activeTab === "avfrd" ? "AVFRD" : "Combined"} Requirements`}
+          columns={exportColumns}
+        />
+      </div>
       <QualificationsSummaryCards qualifications={safeQualifications} />
       <QualificationsTabs 
         qualifications={safeQualifications}
