@@ -10,14 +10,18 @@ import { Training } from "@/lib/types";
 const prepareTrainingsForExport = (
   trainings: Training[], 
   positionTitle: string, 
-  requirementType: "county" | "avfrd"
+  requirementType: "county" | "avfrd" | "combined"
 ) => {
   return trainings.map((training) => ({
     Training: training.title,
     Category: training.category,
     Description: training.description || "No description available",
     Position: positionTitle,
-    "Requirement Type": requirementType === "county" ? "Loudoun County" : "AVFRD"
+    "Requirement Type": requirementType === "county" 
+      ? "Loudoun County" 
+      : requirementType === "avfrd" 
+        ? "AVFRD" 
+        : "Combined"
   }));
 };
 
@@ -25,7 +29,7 @@ const prepareTrainingsForExport = (
 export const exportToExcel = (
   trainings: Training[], 
   positionTitle: string, 
-  requirementType: "county" | "avfrd"
+  requirementType: "county" | "avfrd" | "combined"
 ) => {
   const data = prepareTrainingsForExport(trainings, positionTitle, requirementType);
   
@@ -46,14 +50,23 @@ export const exportToExcel = (
 export const exportToPdf = (
   trainings: Training[], 
   positionTitle: string, 
-  requirementType: "county" | "avfrd"
+  requirementType: "county" | "avfrd" | "combined"
 ) => {
   // Initialize PDF document
   const doc = new jsPDF();
   
   // Add title
   doc.setFontSize(16);
-  doc.text(`${positionTitle} - ${requirementType === "county" ? "Loudoun County" : "AVFRD"} Requirements`, 14, 20);
+  let titleText = `${positionTitle} - `;
+  if (requirementType === "county") {
+    titleText += "Loudoun County Requirements";
+  } else if (requirementType === "avfrd") {
+    titleText += "AVFRD Requirements";
+  } else {
+    titleText += "Combined Requirements";
+  }
+  
+  doc.text(titleText, 14, 20);
   doc.setFontSize(10);
   
   // Prepare table data
@@ -65,6 +78,7 @@ export const exportToPdf = (
   
   // Add table
   if (tableRows.length > 0) {
+    // Fix: Cast doc to any to use autoTable
     (doc as any).autoTable({
       startY: 30,
       head: [["Training", "Category", "Description"]],
@@ -78,7 +92,8 @@ export const exportToPdf = (
       }
     });
   } else {
-    doc.text(`No ${requirementType === "county" ? "County" : "AVFRD"} requirements defined for this position.`, 14, 40);
+    let emptyMessage = `No ${requirementType === "county" ? "County" : requirementType === "avfrd" ? "AVFRD" : "Combined"} requirements defined for this position.`;
+    doc.text(emptyMessage, 14, 40);
   }
   
   // Save file

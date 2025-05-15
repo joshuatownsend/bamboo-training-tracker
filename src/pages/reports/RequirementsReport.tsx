@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPositions } from "@/services/positionService";
@@ -13,7 +13,7 @@ import { EmptyPositionState } from "@/components/reports/EmptyPositionState";
 
 export default function RequirementsReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"county" | "avfrd">("county");
+  const [activeTab, setActiveTab] = useState<"county" | "avfrd" | "combined">("county");
 
   // Fetch positions from Supabase
   const { 
@@ -36,19 +36,58 @@ export default function RequirementsReport() {
   // Get position details
   const position = positions.find(p => p.id === selectedPosition);
   
-  // Get required trainings by type
-  const requiredTrainings = position ? {
-    county: trainings.filter(t => {
+  // Get required trainings by type with combined view
+  const requiredTrainings = useMemo(() => {
+    if (!position) return { county: [], avfrd: [], combined: [] };
+    
+    const countyTrainings = trainings.filter(t => {
       // Handle both array and RequirementGroup types
       const countyReqs = position.countyRequirements;
       return Array.isArray(countyReqs) ? countyReqs.includes(t.id) : false;
-    }),
-    avfrd: trainings.filter(t => {
+    });
+    
+    const avfrdTrainings = trainings.filter(t => {
       // Handle both array and RequirementGroup types
       const avfrdReqs = position.avfrdRequirements;
       return Array.isArray(avfrdReqs) ? avfrdReqs.includes(t.id) : false;
-    })
-  } : { county: [], avfrd: [] };
+    });
+    
+    // For combined view, merge both sets and remove duplicates
+    const combinedMap = new Map();
+    
+    // Add county trainings to map
+    countyTrainings.forEach(training => {
+      combinedMap.set(training.id, {
+        ...training,
+        source: "county"
+      });
+    });
+    
+    // Add AVFRD trainings to map (will overwrite duplicates)
+    avfrdTrainings.forEach(training => {
+      if (combinedMap.has(training.id)) {
+        // If already exists, update the source to indicate both
+        combinedMap.set(training.id, {
+          ...training,
+          source: "both"
+        });
+      } else {
+        combinedMap.set(training.id, {
+          ...training,
+          source: "avfrd"
+        });
+      }
+    });
+    
+    // Convert map back to array
+    const combinedTrainings = Array.from(combinedMap.values());
+    
+    return { 
+      county: countyTrainings, 
+      avfrd: avfrdTrainings,
+      combined: combinedTrainings
+    };
+  }, [position, trainings]);
 
   const isLoading = isLoadingPositions || isLoadingTrainings;
   const error = positionsError || trainingsError;

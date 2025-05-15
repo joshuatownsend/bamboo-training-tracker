@@ -13,10 +13,11 @@ import { exportToExcel, exportToPdf } from "@/utils/exportUtils";
 
 interface ExportReportButtonProps {
   position?: Position;
-  activeTab: "county" | "avfrd";
+  activeTab: "county" | "avfrd" | "combined";
   trainings: {
     county: Training[];
     avfrd: Training[];
+    combined?: Training[];
   };
 }
 
@@ -24,19 +25,27 @@ export function ExportReportButton({ position, activeTab, trainings }: ExportRep
   if (!position) return null;
 
   const handleExportExcel = () => {
-    exportToExcel(
-      activeTab === "county" ? trainings.county : trainings.avfrd,
-      position.title,
-      activeTab
-    );
+    if (activeTab === "combined" && trainings.combined) {
+      exportToExcel(trainings.combined, position.title, "combined");
+    } else {
+      exportToExcel(
+        activeTab === "county" ? trainings.county : trainings.avfrd,
+        position.title,
+        activeTab
+      );
+    }
   };
 
   const handleExportPdf = () => {
-    exportToPdf(
-      activeTab === "county" ? trainings.county : trainings.avfrd,
-      position.title,
-      activeTab
-    );
+    if (activeTab === "combined" && trainings.combined) {
+      exportToPdf(trainings.combined, position.title, "combined");
+    } else {
+      exportToPdf(
+        activeTab === "county" ? trainings.county : trainings.avfrd,
+        position.title,
+        activeTab
+      );
+    }
   };
 
   return (
