@@ -7,7 +7,7 @@ import { Training } from "@/lib/types";
 interface RequirementDetailsProps {
   trainings: Training[];
   isEmpty: boolean;
-  type: "county" | "avfrd";
+  type: "county" | "avfrd" | "combined";
 }
 
 export function RequirementDetails({ trainings, isEmpty, type }: RequirementDetailsProps) {
@@ -34,7 +34,9 @@ export function RequirementDetails({ trainings, isEmpty, type }: RequirementDeta
             ) : (
               <TableRow>
                 <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                  {`No ${type === "county" ? "county" : "AVFRD"} requirements defined`}
+                  {type === "combined" 
+                    ? "No combined requirements defined" 
+                    : `No ${type === "county" ? "county" : "AVFRD"} requirements defined`}
                 </TableCell>
               </TableRow>
             )}
