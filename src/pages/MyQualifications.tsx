@@ -58,7 +58,11 @@ export default function MyQualifications() {
   
   return (
     <div className="space-y-6">
-      <QualificationsHeader />
+      <QualificationsHeader 
+        qualifications={safeQualifications} 
+        activeTab={activeTab} 
+        isLoading={isLoading} 
+      />
       <QualificationsSummaryCards qualifications={safeQualifications} />
       <QualificationsTabs 
         qualifications={safeQualifications}

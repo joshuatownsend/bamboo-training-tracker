@@ -1,17 +1,37 @@
 
-import React from 'react';
-import { useUser } from "@/contexts/user";
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QualificationsExportButton } from "./QualificationsExportButton";
+import { QualificationStatus } from "@/lib/types";
 
-export function QualificationsHeader() {
-  const { currentUser } = useUser();
-  
+interface QualificationsHeaderProps {
+  qualifications?: QualificationStatus[];
+  activeTab: "county" | "avfrd" | "both";
+  isLoading?: boolean;
+}
+
+export function QualificationsHeader({ 
+  qualifications = [], 
+  activeTab, 
+  isLoading = false 
+}: QualificationsHeaderProps) {
   return (
-    <div>
-      <h1 className="text-3xl font-bold">My Qualifications</h1>
-      <p className="text-muted-foreground mt-2">
-        View your current qualifications for operational positions based on your completed trainings
-        {currentUser?.name && ` - ${currentUser.name}`}
-      </p>
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-2xl">My Qualifications</CardTitle>
+        </div>
+        <QualificationsExportButton 
+          qualifications={qualifications} 
+          activeTab={activeTab} 
+          isLoading={isLoading}
+        />
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground">
+          View your current qualifications for operational positions based on your training records. Switch between tabs to see your qualifications under Loudoun County requirements, AVFRD requirements, or both.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
