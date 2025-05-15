@@ -2,8 +2,16 @@
 import { saveAs } from "file-saver";
 import { utils, write } from "xlsx";
 import jsPDF from "jspdf";
-// Add the autotable type for jsPDF
-import "jspdf-autotable";
+// Import jspdf-autotable properly
+import 'jspdf-autotable';
+
+// Add the autotable type augmentation for jsPDF
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 import { Training } from "@/lib/types";
 
 // Helper function to prepare training data for export
@@ -78,8 +86,8 @@ export const exportToPdf = (
   
   // Add table
   if (tableRows.length > 0) {
-    // Fix: Cast doc to any to use autoTable
-    (doc as any).autoTable({
+    // Use autoTable - jsPDF with autoTable plugin correctly typed
+    doc.autoTable({
       startY: 30,
       head: [["Training", "Category", "Description"]],
       body: tableRows,
