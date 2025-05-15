@@ -17,6 +17,7 @@ import { SortableHeader } from "@/components/training/headers/SortableHeader";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { ExportDataButton } from "@/components/reports/ExportDataButton";
+import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
 
 export default function MyTrainings() {
   const { currentUser, isAdmin, refreshEmployeeId } = useUser();
@@ -41,6 +42,9 @@ export default function MyTrainings() {
     refetch,
     isRefetching,
   } = useUserTrainings(employeeId);
+  
+  // Get training type names for better display in exports
+  const { trainingTypeNames, isLoadingNames } = useTrainingTypeNames(userTrainings);
   
   // Log fetched trainings
   useEffect(() => {
@@ -97,7 +101,18 @@ export default function MyTrainings() {
   // Check if there was an API error
   const hasApiError = error !== null && error !== undefined;
 
-  // Prepare data for export
+  // Helper function to get proper training name from the training object
+  const getTrainingName = (training) => {
+    if (training.trainingDetails?.title) {
+      return training.trainingDetails.title;
+    }
+    
+    // Use the training type ID to look up the name in trainingTypeNames
+    const typeId = training.trainingId || training.type?.toString() || '';
+    return trainingTypeNames[typeId] || `Training ${typeId}`;
+  };
+
+  // Prepare data for export with proper training names
   const exportColumns = [
     { header: "Training Name", accessor: "title" },
     { header: "Category", accessor: "category" },
@@ -105,9 +120,9 @@ export default function MyTrainings() {
     { header: "Expiration Date", accessor: "expirationDate" }
   ];
 
-  // Format data for export
+  // Format data for export with improved name handling
   const exportData = sortedTrainings.map(training => ({
-    title: training.trainingDetails?.title || `Training ${training.trainingId || training.type}`,
+    title: getTrainingName(training),
     category: training.trainingDetails?.category || "Uncategorized",
     completionDate: training.completionDate || "N/A",
     expirationDate: training.trainingDetails?.expirationDate || "No expiration"
@@ -135,7 +150,7 @@ export default function MyTrainings() {
           categories={categories}
         />
 
-        {!isLoading && !error && sortedTrainings.length > 0 && (
+        {!isLoading && !error && !isLoadingNames && sortedTrainings.length > 0 && (
           <ExportDataButton
             data={exportData}
             fileName="My_Training_Records"

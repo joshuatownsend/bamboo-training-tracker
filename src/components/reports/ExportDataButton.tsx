@@ -14,6 +14,13 @@ import { utils, write } from "xlsx";
 import jsPDF from "jspdf";
 import 'jspdf-autotable';
 
+// Explicitly declare jsPDF augmentation for TypeScript
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
+
 interface ExportDataButtonProps {
   data: any[];
   fileName: string;
@@ -27,6 +34,8 @@ interface ExportDataButtonProps {
 export function ExportDataButton({ data, fileName, title, columns }: ExportDataButtonProps) {
   const handleExportExcel = () => {
     try {
+      console.log("Exporting Excel with data:", data);
+      
       // Convert data to worksheet format
       const worksheetData = data.map(item => {
         const row: Record<string, any> = {};
@@ -64,6 +73,8 @@ export function ExportDataButton({ data, fileName, title, columns }: ExportDataB
 
   const handleExportPdf = () => {
     try {
+      console.log("Exporting PDF with data:", data);
+      
       // Initialize PDF document
       const doc = new jsPDF();
       
@@ -73,24 +84,43 @@ export function ExportDataButton({ data, fileName, title, columns }: ExportDataB
       doc.setFontSize(10);
       
       // Prepare table data
+      const tableHeaders = columns.map(column => column.header);
       const tableRows = data.map(item => {
-        return columns.map(column => String(item[column.accessor] || ''));
+        return columns.map(column => {
+          // Ensure data is converted to string
+          const value = item[column.accessor];
+          return value !== undefined && value !== null ? String(value) : '';
+        });
       });
       
-      // Add table
+      // Log prepared table data for debugging
+      console.log("PDF export - headers:", tableHeaders);
+      console.log("PDF export - rows:", tableRows);
+      
+      // Add table with better error handling
       if (tableRows.length > 0) {
-        doc.autoTable({
-          startY: 30,
-          head: [columns.map(column => column.header)],
-          body: tableRows,
-          headStyles: {
-            fillColor: [116, 116, 116], // Grey
-            textColor: [255, 255, 255] // White
-          },
-          alternateRowStyles: {
-            fillColor: [248, 248, 248]
-          }
-        });
+        try {
+          doc.autoTable({
+            startY: 30,
+            head: [tableHeaders],
+            body: tableRows,
+            headStyles: {
+              fillColor: [116, 116, 116], // Grey
+              textColor: [255, 255, 255] // White
+            },
+            alternateRowStyles: {
+              fillColor: [248, 248, 248]
+            },
+            // Add error handling options
+            didDrawCell: (data) => {
+              // Optional callback for debugging
+              console.log("Drew cell:", data.row.index, data.column.index);
+            }
+          });
+        } catch (autoTableError) {
+          console.error("PDF autoTable error:", autoTableError);
+          throw new Error(`Error in autoTable: ${autoTableError.message}`);
+        }
       } else {
         doc.text("No data available for export.", 14, 40);
       }
