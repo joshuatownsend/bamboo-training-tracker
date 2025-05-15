@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ExportDataButton } from "@/components/reports/ExportDataButton";
 
 export default function ComplianceReport() {
   const { 
@@ -33,6 +34,14 @@ export default function ComplianceReport() {
   ];
   
   const COLORS = ["#4ade80", "#f87171"];
+
+  // Prepare export columns for compliance data
+  const exportColumns = [
+    { header: "Department", accessor: "department" },
+    { header: "Total Volunteers", accessor: "totalRequired" },
+    { header: "With Training Records", accessor: "completedCount" },
+    { header: "Compliance Rate (%)", accessor: "complianceRate" }
+  ];
 
   if (isLoading) {
     return (
@@ -111,10 +120,20 @@ export default function ComplianceReport() {
             View overall training compliance across the department
           </p>
         </div>
-        <Button variant="outline" onClick={refetchAll} className="flex items-center gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh Data
-        </Button>
+        <div className="flex gap-2">
+          {departmentStats.length > 0 && (
+            <ExportDataButton
+              data={departmentStats}
+              fileName="AVFRD_Compliance_Report"
+              title="AVFRD Compliance Report"
+              columns={exportColumns}
+            />
+          )}
+          <Button variant="outline" onClick={refetchAll} className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh Data
+          </Button>
+        </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2">
@@ -194,7 +213,7 @@ export default function ComplianceReport() {
       <Card>
         <CardHeader>
           <CardTitle>Department Compliance Details</CardTitle>
-          <CardDescription>
+          <CardDescription className="pr-8">
             Detailed breakdown of compliance by department
           </CardDescription>
         </CardHeader>

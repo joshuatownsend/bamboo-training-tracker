@@ -10,6 +10,7 @@ import { trainings, trainingCompletions } from "@/lib/data";
 import { FilterControls } from "@/components/reports/FilterControls";
 import { EligibleEmployeesTable } from "@/components/reports/EligibleEmployeesTable";
 import { EmployeeSearch } from "@/components/reports/EmployeeSearch";
+import { ExportDataButton } from "@/components/reports/ExportDataButton";
 
 export default function EligibilityReport() {
   const [selectedPosition, setSelectedPosition] = useState<string>("");
@@ -52,6 +53,16 @@ export default function EligibilityReport() {
     );
   };
 
+  const selectedPositionTitle = positions.find(p => p.id === selectedPosition)?.title || "Selected Position";
+  
+  const exportColumns = [
+    { header: "Name", accessor: "name" },
+    { header: "Position", accessor: "position" },
+    { header: "Division", accessor: "division" },
+    { header: "Department", accessor: "department" },
+    { header: "Hire Date", accessor: "hireDate" }
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -62,11 +73,21 @@ export default function EligibilityReport() {
       </div>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Volunteer Eligibility Report</CardTitle>
-          <CardDescription>
-            Volunteers who meet Loudoun County requirements but not AVFRD requirements
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Volunteer Eligibility Report</CardTitle>
+            <CardDescription className="pr-8">
+              Volunteers who meet Loudoun County requirements but not AVFRD requirements
+            </CardDescription>
+          </div>
+          {selectedPosition && filteredEmployees.length > 0 && (
+            <ExportDataButton
+              data={filteredEmployees}
+              fileName={`${selectedPositionTitle}_Eligible_Volunteers`}
+              title={`${selectedPositionTitle} Eligible Volunteers`}
+              columns={exportColumns}
+            />
+          )}
         </CardHeader>
         <CardContent className="space-y-6">
           <FilterControls
