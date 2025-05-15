@@ -19,6 +19,12 @@ interface QualificationsExportButtonProps {
   isLoading?: boolean;
 }
 
+interface ExportData {
+  trainings: Training[];
+  positionTitle: string;
+  requirementType: "county" | "avfrd" | "combined";
+}
+
 export function QualificationsExportButton({ 
   qualifications, 
   activeTab,
@@ -79,11 +85,15 @@ export function QualificationsExportButton({
   };
   
   // Format qualifications data for export
-  const prepareExportData = () => {
+  const prepareExportData = (): ExportData => {
     const filteredQualifications = getFilteredQualifications();
     
     if (filteredQualifications.length === 0) {
-      return [];
+      return {
+        trainings: [],
+        positionTitle: "My Qualifications",
+        requirementType: activeTab === "both" ? "combined" : activeTab
+      };
     }
     
     // Get the first qualification to use for export
@@ -125,7 +135,7 @@ export function QualificationsExportButton({
       exportToExcel(
         exportData.trainings, 
         exportData.positionTitle, 
-        exportData.requirementType as "county" | "avfrd" | "combined"
+        exportData.requirementType
       );
       
       toast({
@@ -166,7 +176,7 @@ export function QualificationsExportButton({
       const success = exportToPdf(
         exportData.trainings, 
         exportData.positionTitle, 
-        exportData.requirementType as "county" | "avfrd" | "combined"
+        exportData.requirementType
       );
       
       if (success) {
