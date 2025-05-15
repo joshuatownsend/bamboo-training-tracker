@@ -9,19 +9,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { saveAs } from "file-saver";
-import { utils, write } from "xlsx";
-import jsPDF from "jspdf";
-import 'jspdf-autotable';
-import { QualificationStatus } from "@/lib/types";
+import { QualificationStatus, Training } from "@/lib/types";
+import { exportToExcel, exportToPdf } from "@/utils/exportUtils";
 import { useTrainingTypeNames } from "@/hooks/useTrainingTypeNames";
-
-// Explicitly declare jsPDF augmentation for TypeScript
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 interface QualificationsExportButtonProps {
   qualifications: QualificationStatus[];
@@ -64,31 +54,51 @@ export function QualificationsExportButton({
     }
   };
   
+  // Get relevant trainings based on tab
+  const getExportTrainings = (qualification: QualificationStatus): Training[] => {
+    if (activeTab === "county") {
+      return qualification.missingCountyTrainings || [];
+    } else if (activeTab === "avfrd") {
+      return qualification.missingAVFRDTrainings || [];
+    } else {
+      // For both tab, include both missing training lists
+      const countyMissing = qualification.missingCountyTrainings || [];
+      const avfrdMissing = qualification.missingAVFRDTrainings || [];
+      
+      // Combine and deduplicate by ID
+      const allTrainings = [...countyMissing, ...avfrdMissing];
+      const uniqueIds = new Set();
+      return allTrainings.filter(training => {
+        if (uniqueIds.has(training.id)) {
+          return false;
+        }
+        uniqueIds.add(training.id);
+        return true;
+      });
+    }
+  };
+  
   // Format qualifications data for export
   const prepareExportData = () => {
     const filteredQualifications = getFilteredQualifications();
     
-    return filteredQualifications.map(qualification => {
-      const missingTrainings = activeTab === "county" 
-        ? qualification.missingCountyTrainings 
-        : activeTab === "avfrd" 
-          ? qualification.missingAVFRDTrainings
-          : [];
-          
-      // Format missing training names
-      const missingTrainingNames = missingTrainings
-        ?.map(training => training.title || trainingTypeNames[training.id] || `Training ${training.id}`)
-        .join(", ") || "None";
-        
-      return {
-        Position: qualification.positionTitle,
-        Status: activeTab === "both" || 
-          (activeTab === "county" && qualification.isQualifiedCounty) ||
-          (activeTab === "avfrd" && qualification.isQualifiedAVFRD)
-          ? "Qualified" : "Not Qualified",
-        "Missing Requirements": missingTrainingNames
-      };
-    });
+    if (filteredQualifications.length === 0) {
+      return [];
+    }
+    
+    // Get the first qualification to use for export
+    const qualification = filteredQualifications[0];
+    const positionTitle = "My Qualifications";
+    const requirementType = activeTab === "both" ? "combined" : activeTab;
+    
+    // Get trainings based on active tab
+    const trainings = getExportTrainings(qualification);
+    
+    return { 
+      trainings, 
+      positionTitle, 
+      requirementType 
+    };
   };
   
   const handleExportExcel = () => {
@@ -103,7 +113,7 @@ export function QualificationsExportButton({
       
       const exportData = prepareExportData();
       
-      if (exportData.length === 0) {
+      if (!exportData.trainings || exportData.trainings.length === 0) {
         toast({
           title: "No data to export",
           description: "There are no qualifications available to export for this view.",
@@ -111,18 +121,12 @@ export function QualificationsExportButton({
         return;
       }
       
-      // Create worksheet
-      const worksheet = utils.json_to_sheet(exportData);
-      const workbook = utils.book_new();
-      utils.book_append_sheet(workbook, worksheet, getTabName());
-      
-      // Generate Excel file
-      const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
-      const fileData = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      
-      // Save file
-      const fileName = `My ${getTabName()} Qualifications`;
-      saveAs(fileData, `${fileName}.xlsx`);
+      // Export to Excel
+      exportToExcel(
+        exportData.trainings, 
+        exportData.positionTitle, 
+        exportData.requirementType as "county" | "avfrd" | "combined"
+      );
       
       toast({
         title: "Excel export successful",
@@ -150,7 +154,7 @@ export function QualificationsExportButton({
       
       const exportData = prepareExportData();
       
-      if (exportData.length === 0) {
+      if (!exportData.trainings || exportData.trainings.length === 0) {
         toast({
           title: "No data to export",
           description: "There are no qualifications available to export for this view.",
@@ -158,65 +162,21 @@ export function QualificationsExportButton({
         return;
       }
       
-      // Initialize PDF document
-      const doc = new jsPDF();
+      // Export to PDF
+      const success = exportToPdf(
+        exportData.trainings, 
+        exportData.positionTitle, 
+        exportData.requirementType as "county" | "avfrd" | "combined"
+      );
       
-      // Add title
-      const title = `My ${getTabName()} Qualifications`;
-      doc.setFontSize(16);
-      doc.text(title, 14, 20);
-      doc.setFontSize(10);
-      
-      // Prepare table data
-      const tableHeaders = ["Position", "Status", "Missing Requirements"];
-      const tableRows = exportData.map(item => [
-        item.Position,
-        item.Status,
-        item["Missing Requirements"]
-      ]);
-      
-      // Add table
-      try {
-        doc.autoTable({
-          startY: 30,
-          head: [tableHeaders],
-          body: tableRows,
-          headStyles: {
-            fillColor: [116, 116, 116], // Grey
-            textColor: [255, 255, 255] // White
-          },
-          alternateRowStyles: {
-            fillColor: [248, 248, 248]
-          },
-          columnStyles: {
-            0: { cellWidth: 50 },
-            1: { cellWidth: 30 },
-            2: { cellWidth: 'auto' }
-          },
-          // Set word wrap to handle long text
-          styles: { 
-            overflow: 'linebreak',
-            cellPadding: 3
-          },
-          // Add error handling
-          didDrawCell: (data) => {
-            if (data.row.index === 0) {
-              console.log("Drew header cell:", data.column.index, tableHeaders[data.column.index]);
-            }
-          }
+      if (success) {
+        toast({
+          title: "PDF export successful",
+          description: `The ${getTabName()} qualifications have been exported to PDF.`,
         });
-      } catch (autoTableError) {
-        console.error("PDF autoTable error:", autoTableError);
-        throw new Error(`Error in autoTable: ${autoTableError.message}`);
+      } else {
+        throw new Error("PDF export failed");
       }
-      
-      // Save file
-      doc.save(`${title}.pdf`);
-      
-      toast({
-        title: "PDF export successful",
-        description: `The ${getTabName()} qualifications have been exported to PDF.`,
-      });
     } catch (error) {
       console.error("PDF export error:", error);
       toast({

@@ -12,18 +12,24 @@ declare module 'jspdf' {
   }
 }
 
-import { Training } from "@/lib/types";
+import { Training, UserTraining, TrainingCompletion } from "@/lib/types";
 
 // Helper function to prepare training data for export
 const prepareTrainingsForExport = (
-  trainings: Training[], 
+  trainings: Training[] | UserTraining[] | TrainingCompletion[], 
   positionTitle: string, 
   requirementType: "county" | "avfrd" | "combined"
 ) => {
   return trainings.map((training) => ({
-    Training: training.title,
-    Category: training.category,
-    Description: training.description || "No description available",
+    Training: 'title' in training 
+      ? training.title 
+      : (training as UserTraining).trainingDetails?.title || (training as TrainingCompletion).trainingData?.name || "Unknown Training",
+    Category: 'category' in training 
+      ? training.category 
+      : (training as UserTraining).trainingDetails?.category || (training as TrainingCompletion).trainingData?.category || "Unknown",
+    Description: 'description' in training 
+      ? (training.description || "No description available") 
+      : "No description available",
     Position: positionTitle,
     "Requirement Type": requirementType === "county" 
       ? "Loudoun County" 
@@ -35,7 +41,7 @@ const prepareTrainingsForExport = (
 
 // Export to Excel
 export const exportToExcel = (
-  trainings: Training[], 
+  trainings: Training[] | UserTraining[] | TrainingCompletion[], 
   positionTitle: string, 
   requirementType: "county" | "avfrd" | "combined"
 ) => {
@@ -56,7 +62,7 @@ export const exportToExcel = (
 
 // Export to PDF
 export const exportToPdf = (
-  trainings: Training[], 
+  trainings: Training[] | UserTraining[] | TrainingCompletion[], 
   positionTitle: string, 
   requirementType: "county" | "avfrd" | "combined"
 ) => {
@@ -78,11 +84,21 @@ export const exportToPdf = (
   doc.setFontSize(10);
   
   // Prepare table data
-  const tableRows = trainings.map(training => [
-    training.title,
-    training.category,
-    training.description || "No description available"
-  ]);
+  const tableRows = trainings.map(training => {
+    const title = 'title' in training 
+      ? training.title 
+      : (training as UserTraining).trainingDetails?.title || (training as TrainingCompletion).trainingData?.name || "Unknown Training";
+    
+    const category = 'category' in training 
+      ? training.category 
+      : (training as UserTraining).trainingDetails?.category || (training as TrainingCompletion).trainingData?.category || "Unknown";
+    
+    const description = 'description' in training 
+      ? (training.description || "No description available") 
+      : "No description available";
+    
+    return [title, category, description];
+  });
   
   // Add table
   if (tableRows.length > 0) {
@@ -105,5 +121,11 @@ export const exportToPdf = (
   }
   
   // Save file
-  doc.save(`${positionTitle} - ${requirementType.toUpperCase()} Requirements.pdf`);
+  try {
+    doc.save(`${positionTitle} - ${requirementType.toUpperCase()} Requirements.pdf`);
+    return true;
+  } catch (error) {
+    console.error("PDF save error:", error);
+    return false;
+  }
 };
