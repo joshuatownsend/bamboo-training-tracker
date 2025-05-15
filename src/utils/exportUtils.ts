@@ -1,7 +1,8 @@
 
 import { saveAs } from "file-saver";
 import { utils, write } from "xlsx";
-import { jsPDF } from "jspdf";
+import jsPDF from "jspdf";
+// Add the autotable type for jsPDF
 import "jspdf-autotable";
 import { Training } from "@/lib/types";
 
